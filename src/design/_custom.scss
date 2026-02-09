@@ -1,0 +1,665 @@
+@use 'sass:math';
+
+@import "custom/components/animation";
+
+.modal-backdrop {
+    opacity: .5;
+}
+
+.modal-header,
+.alert {
+    .close {
+        padding: 0.3rem 1.75rem;
+        background: transparent;
+        border: 0;
+        font-size: 25px;
+        position: absolute;
+        top: 0;
+        right: 0;
+        opacity: .4;
+        width: 1em;
+        height: 1em;
+        z-index: 2;
+
+        button {
+            display: none;
+        }
+    }
+}
+
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.vhd__datepicker__input {
+    height: $input-height !important;
+    line-height: $input-height !important;
+}
+
+.form-check {
+    .custom-control-input {
+        border-radius: .25em;
+        float: left;
+        margin: 3px 3px 3px -19px !important;
+    }
+}
+
+.check-group {
+    input {
+        position: absolute;
+        clip: rect(0, 0, 0, 0);
+        pointer-events: none;
+    }
+}
+
+.vue-simple-drawer {
+    background: $gray-100 !important;
+    color: $gray-800 !important;
+
+    .close-btn {
+
+        .leftright,
+        .rightleft {
+            width: 20px !important;
+            background-color: $gray-600 !important
+        }
+    }
+}
+
+body {
+  overflow-x: hidden;
+    * {
+        outline: none;
+    }
+}
+
+.b-form-btn-label-control {
+    padding: 0;
+    border: none;
+
+    >.btn {
+        position: absolute;
+        right: 0;
+        top: 0;
+
+        &:focus {
+            box-shadow: none;
+        }
+    }
+}
+
+.vue-simple-drawer {
+    // default style
+    padding: 20px;
+    color: $--simple-drawer-fg-color;
+    background: $--simple-drawer-bg-color;
+    // common
+    position: fixed;
+    overflow: auto;
+
+    &.closeable {
+        padding-top: 40px;
+    }
+
+    &.left {
+        left: 0;
+        top: 0;
+        bottom: 0;
+    }
+
+    &.right {
+        right: 0;
+        top: 0;
+        bottom: 0;
+    }
+
+    &.up {
+        top: 0;
+        left: 0;
+        right: 0;
+    }
+
+    &.down {
+        bottom: 0;
+        left: 0;
+        right: 0;
+    }
+
+    .close-btn {
+        width: $--simple-drawer-close-width;
+        height: $--simple-drawer-close-width;
+        position: absolute;
+        right: 0;
+        top: 20px;
+        transform: translate(-50%, -50%);
+        color: currentColor;
+        font-size: 20px;
+        cursor: pointer;
+        user-select: none;
+
+        .leftright {
+            height: 4px;
+            width: $--simple-drawer-close-width;
+            position: absolute;
+            margin-top: math.div($--simple-drawer-close-width, 2);
+            background-color: $--simple-drawer-softorange;
+            border-radius: 2px;
+            transform: rotate(45deg);
+            transition: all 0.3s ease-in;
+        }
+
+        .rightleft {
+            height: 4px;
+            width: $--simple-drawer-close-width;
+            position: absolute;
+            margin-top: math.div($--simple-drawer-close-width, 2);
+            background-color: $--simple-drawer-softorange;
+            border-radius: 2px;
+            transform: rotate(-45deg);
+            transition: all 0.3s ease-in;
+        }
+
+        .close {
+            margin: 60px 0 0 5px;
+            position: absolute;
+        }
+
+        &:hover .leftright {
+            transform: rotate(-45deg);
+            background-color: $--simple-drawer-tomatored;
+        }
+
+        &:hover .rightleft {
+            transform: rotate(45deg);
+            background-color: $--simple-drawer-tomatored;
+        }
+    }
+}
+
+.mask {
+    position: fixed;
+    background: grey;
+    opacity: 0.5;
+    width: 100%;
+    left: 0;
+    top: 0;
+    height: 100%;
+}
+
+.slider-tooltip , .slider-connect{
+    background: $primary
+}
+
+// modal
+.v-modal-custom {
+    .modal-dialog {
+      .modal-content {
+        z-index: 1056;
+      }
+    }
+  
+    .v-modal-footer {
+      padding: var(--vz-modal-padding) 0 0;
+    }
+  }
+
+.dropdown-toggle::after{
+    display: none;
+}
+
+.el-table thead th{
+    color: #495057;
+}
+/* 为了修改滚动条样式，你需要先隐藏默认的滚动条 */
+::-webkit-scrollbar {
+    width: 9px; /* 设置滚动条的宽度 */
+    height: 9px; /* 设置滚动条的高度 */
+  }
+  
+  /* 滚动条轨道 */
+  ::-webkit-scrollbar-track {
+    background: #ffffff; /* 设置轨道的背景颜色 */
+    width: 9px;
+  }
+  
+  /* 滚动条的滑块 */
+  ::-webkit-scrollbar-thumb {
+    background: #e9e9e9; /* 设置滑块的背景颜色 */
+    border-radius: 20px;
+  }
+  
+  /* 当鼠标滑过滑块 */
+  ::-webkit-scrollbar-thumb:hover {
+    background: #e9e9e9; /* 设置滑块hover状态的背景颜色 */
+  }
+
+  .ag-header-cell-resize{
+    z-index: 1
+  }
+
+  .ag-theme-alpine{
+    --ag-header-background-color:#fff;
+    --ag-header-font-size:200;
+    --ag-font-family:"Poppins", sans-serif;
+    --ag-foreground-color:#495057;
+    --ag-odd-row-background-color:#fff;
+    --ag-row-border-color:#eff2f7;
+    --ag-range-selection-background-color:#f5f7fa;
+    --ag-selected-row-background-color:#f5f7fa;
+    --ag-row-hover-color:#f5f7fa;
+    --ag-foreground-color:#606266;
+    --ag-alpine-active-color:#556ee6;
+    .ag-details-row{
+      padding: 8px 30px 24px;
+    }
+    .ag-set-filter-list{
+      height: 40vh;
+    }
+    .ag-menu-list{
+      padding: 0;
+      .ag-menu-option-part{
+        padding-top:calc(var(--ag-grid-size) + 4px);
+        padding-bottom:calc(var(--ag-grid-size) + 4px)
+      }
+    }
+    
+  }
+  .ag-header-cell-text{
+    font-weight: 600 !important;
+    color: #495057 !important;
+  }
+//   .ag-header-icon{
+//     display: none;
+//   }
+  .ag-ltr .ag-cell-range-single-cell{
+    border: none;
+  }
+  .ag-cell{
+    display: flex;
+    align-items: center;
+  }
+  .ag-header{
+    border-bottom: 1px solid #eff2f7;
+    .ag-filter-icon{
+      color: red;
+    }
+  }
+  
+  // .ag-root-wrapper{
+  //   border: none;
+  // }
+//   .modal{
+//     --bs-modal-width:600px
+//   }
+.el-popover__title{
+    font-weight: 600;
+    font-size: 15px;
+}
+.modal-body{
+    max-height: 80vh;
+    overflow-y: auto;
+}
+.popper-item {
+    max-width: 350px !important;
+}
+// 表格超出隐藏鼠标悬浮框宽度-- 影响筛选类型树结构
+.el-popper{
+    &:not(.el-cascader__dropdown):not(.el-select__popper) {  
+        // 这些样式将不会应用到具有 .exclude 类的 div 上  
+        max-width: 650px !important;
+    }
+}
+.el-dropdown-menu{
+    max-height: 250px !important;
+}
+// .el-table th.el-table__cell > .cell{
+//     white-space: nowrap !important;
+//     text-overflow:initial !important
+// }
+
+//自适应弹窗宽度
+.autoWidth-modal{
+    width: auto !important;
+    min-width: 500px;
+    display: table !important;;
+}
+.largeAutoWidth-modal{
+    width: auto !important;
+    min-width: 800px;
+    display: table !important;;
+}
+
+.el-message--error{
+    --el-message-bg-color:#f5c6cb !important;
+    --el-message-border-color:#f5c6cb !important;
+    --el-message-text-color:#721c24 !important;
+    .el-message-icon--error{
+        display: none;
+    }
+    .el-message__badge{
+        display: none;
+    }
+}
+.el-button--primary{
+    --el-button-bg-color:#556ee6;
+    --el-button-border-color:#556ee6;
+    --el-button-hover-bg-color:#485ec4;
+    --el-button-active-bg-color:#485ec4;
+    --el-button-active-border-color:#485ec4;
+}
+.table-nowrap td{
+    white-space: normal !important;
+}
+.table-td-nowrap{
+    td{
+        white-space: nowrap;
+    }
+    th{
+        white-space: nowrap;
+    }
+} 
+@media (max-width: 1200px) {
+  .offcanvas.offcanvas-end {
+    width: 85%;
+  }
+}
+@media (min-width: 1200px) {
+  .offcanvas.offcanvas-end {
+    width: 70%;
+  }
+}
+
+//抽屉样式
+.offcanvas.offcanvas-end {
+    border-left: none !important; /* 去除左侧边框 */
+    box-shadow: 0 0.75rem 1.5rem rgba(18, 38, 63, 0.2); /* 添加阴影 */
+    transition: none !important;
+  }
+  .offcanvas-header {
+    padding: 13px;
+    z-index: 11;
+    box-shadow: 0 0.75rem 1.5rem rgba(18, 38, 63, 0.03);
+  }
+  .offcanvas-body {
+    background-color: var(--bs-body-bg);
+  }
+  /* 自定义 Offcanvas 头部样式 */
+  .custom-offcanvas-header {
+    display: flex;
+    align-items: center;
+    position: relative;
+    width: 100%;
+    padding-left: 1rem;
+    min-height: 25px;
+  }
+  .offcanvas-title {
+    /* font-weight: bold; */
+    letter-spacing: 0.1rem;
+  }
+  /* 自定义关闭按钮样式 */
+  .close-btn-custom {
+    position: absolute;
+    left: -26px; /* 调整按钮位置 */
+    /* top: 20px;
+    transform: translateY(-50%); */
+    background-color: #ffffff !important; /* 背景色为白色 */
+    border: 1px solid #b3b3b3; /* 边框颜色 */
+    border-radius: 50%; /* 圆形按钮 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 9px;
+    height: 9px;
+    z-index: 10; /* 确保按钮在最上层 */
+    transition: background-color 0.3s ease; /* 平滑过渡效果 */
+    opacity: 0.75;
+    color: #747474;
+  }
+  
+  /* 鼠标悬停时的样式 */
+  .close-btn-custom:hover,
+  .close-btn-custom:focus {
+    background-color: white; /* 鼠标悬停时背景色保持白色 */
+    border-color: #747474; /* 鼠标悬停时边框颜色保持不变 */
+  }
+  .detial-expanded {
+    position: absolute;
+    margin-left: 3px;
+    top: calc(50vh - 60px);
+  }
+  .detial-expanded .expanded-div {
+    cursor: pointer;
+    width: 18px;
+    height: 50px;
+    background-color: rgb(166 176 207 / 30%);
+    border-radius: 2px 5px 5px 2px;
+  }
+  .detial-expanded .expanded-div i {
+    color: #ffffff;
+    font-size: 18px;
+    padding: 16px 0px;
+  }
+  .detial-expanded .expanded-div:hover {
+    background-color: rgb(166 176 207);
+  }
+
+  //字段可点击样式
+  .clickable{
+    cursor: pointer;
+    color: #556ee6 !important;
+  }
+
+  //自定义下拉悬浮框样式
+  // .dropdown-menu-custom{
+    // .el-dropdown-menu{
+    //     background-color: #f5f7fa;
+    //   }
+    // .el-dropdown-menu__item{
+    //   color:#556ee6;
+    // }
+    // .el-dropdown-menu__item:not(.is-disabled):hover{
+    //   color:#1326b4
+    // }
+  // }
+  .modal-dialog-centered{
+    justify-content: center;
+  }
+  :root {
+    --el-color-primary: #556ee6;
+    --el-color-primary-light-9:#f5f7fa;
+    --el-color-primary-light-3: #485ec4
+  }
+  //form样式
+  // .el-form-item{
+  //   margin-bottom: 12px;
+  // }
+
+  //抽屉头部样式
+  .el-drawer__header {
+    margin-bottom: 0;
+    border-bottom: 1px solid #eee;
+    height: 48px;
+    padding: 0 20px;
+    color: #495057;
+  }
+  //抽屉底部样式
+  .el-drawer__footer{
+    padding: 0 20px;
+    height: 48px;
+  }
+  //表格顶部搜索
+  .top-search {
+    .el-input-group__prepend {
+      background: none;
+      padding: 0 14px;
+    }
+  }
+  //图样放大显示
+  #cloneNode{
+    position: fixed;
+  }
+
+  //禁用错误遮罩层
+  #webpack-dev-server-client-overlay{
+    display: none !important;
+  }
+
+  //详情左侧导航栏
+  .leftbar-item{
+    cursor: pointer;
+  }
+
+  //上传按钮悬浮
+  .upload-btn:hover{
+    border:1px solid #556ee6 !important;
+    color:#556ee6 !important
+  }
+  .remainerd-dialog{
+    .el-checkbox{
+      position: absolute;
+      bottom: 2px;
+      left: 18px;
+    }
+  }
+
+  .text-ellipsis{
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .task-content{
+    padding: 12px 15px; 
+  }
+
+  //平板拖拽按钮样式
+  .full-width-toggle {
+    position: absolute;
+    left: 10px; /* 调整位置 */
+    bottom: 20px; /* 调整位置 */
+    width: 32px;
+    height: 32px;
+    background-color: #556ee6;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1050;
+    transition: all 0.3s;
+  }
+  
+  .full-width-toggle:hover {
+    background-color: #4458b8;
+    transform: scale(1.1);
+  }
+
+  .fc-toolbar {
+  margin: 0 !important;
+}
+.fc-view {
+  margin-top: 16px;
+}
+.fc-event {
+  cursor: pointer !important;
+}
+.item-content {
+  background-color: #f0f2f5;
+  border-radius: 4px;
+  padding: 0 10px;
+  width: 100%;
+  min-height: 32px;
+}
+.fc .fc-list-empty {
+  background-color: inherit;
+}
+.fc .fc-list-event:hover td{
+  background-color: inherit !important;
+}
+
+/* 自定义列表视图样式 */
+.fc-list-event td {
+  padding: 8px 14px !important;
+}
+
+.fc-list-event-title {
+  font-size: 14px;
+}
+
+.fc-list-event-title .text-muted {
+  color: #6c757d !important;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.font-weight-semibold {
+  font-weight: 600;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+/* 隐藏列表视图中的状态点 */
+.fc .fc-list-event-graphic {
+  display: none !important;
+}
+
+/* 状态标签样式 */
+.status-tag {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: normal;
+  width: 64px;
+}
+
+/* 确保状态标垂直对齐 */
+.font-weight-semibold {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 列表事件内容布局 */
+.list-event-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 8px 0;
+}
+
+/* 事件标题样式 */
+.event-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  justify-content: center;  /* 水平居中 */
+}
+
+/* 状态标签样式 */
+.status-tag {
+  margin-left: auto;  /* 推到最右侧 */
+  padding-left: 16px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* 移除列表视图中的状态点 */
+.fc .fc-list-event-graphic {
+  display: none !important;
+}
+
+/* 调整列表项内容布局 */
+.fc .fc-list-event td {
+  padding: 0 14px !important;
+  vertical-align: middle;
+}
+
+.fc-event-main{
+  color: unset !important;
+}

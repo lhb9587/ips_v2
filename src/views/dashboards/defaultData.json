@@ -1,0 +1,15 @@
+[
+  { "x": 0, "y": 0, "w": 2, "h": 1,"minH":1,"minW":2, "i": "0", "cpn": "CaseDeadline" },
+  { "x": 2, "y": 0, "w": 2, "h": 1,"minH":1,"minW":2, "i": "1", "cpn": "PatentAnnuity" },
+  { "x": 4, "y": 0, "w": 2, "h": 1,"minH":1,"minW":2,"i": "2", "cpn": "ExpirationOfContract" },
+  { "x": 8, "y": 0, "w": 4, "h": 6,"minH":5,"minW":3,"i": "3", "cpn": "TimeLimit" },
+  { "x": 0, "y": 1, "w": 4, "h": 5,"minH":4,"minW":3, "i": "4", "cpn": "Tasks" },
+  { "x": 4, "y": 1, "w": 4, "h": 5,"minH":4,"minW":3, "i": "5", "cpn": "Cases" },
+  { "x": 0, "y": 8, "w": 12, "h": 6,"minH":4,"minW":6, "i": "6", "cpn": "AgencyTask" },
+  { "x": 0, "y": 14, "w": 12, "h": 3,"minH":3,"minW":12, "i": "7", "cpn": "Customer" },
+  { "x": 0, "y": 17, "w": 6, "h": 4,"minH":4,"minW":4, "i": "8", "cpn": "Bill" },
+  { "x": 6, "y": 17, "w": 6, "h": 4,"minH":4,"minW":4,"i": "9", "cpn": "Invoice" },
+  { "x": 0, "y": 21, "w": 6, "h": 4,"minH":4,"minW":4,"i": "10", "cpn": "WorkTime" },
+  { "x": 6, "y": 21, "w": 6, "h": 4,"minH":3,"minW":3,"i": "11", "cpn": "Employees" },
+  { "x": 0, "y": 25, "w": 4, "h": 2,"minH":2,"minW":3, "i": "12", "cpn": "RevenueFromBills" }
+]

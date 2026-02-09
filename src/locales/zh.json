@@ -1,0 +1,631 @@
+{
+  "navbar": {
+    "search": {
+      "text": "搜索..."
+    },
+    "dropdown": {
+      "megamenu": {
+        "text": "快捷导航",
+        "uicontent": {
+          "title": "UI组件",
+          "list": {
+            "lightbox": "灯箱",
+            "rangeslider": "范围滑块",
+            "sweetalert": "甜蜜警报",
+            "rating": "评分",
+            "forms": "形式",
+            "tables": "桌子",
+            "charts": "图表"
+          }
+        },
+        "application": {
+          "title": "应用领域",
+          "list": {
+            "ecommerce": "电子商务",
+            "calendar": "日历",
+            "email": "电子邮件",
+            "projects": "专案",
+            "tasks": "任务",
+            "contacts": "联络人"
+          }
+        },
+        "extrapages": {
+          "title": "额外页面",
+          "list": {
+            "lightsidebar": "侧边灯",
+            "compactsidebar": "紧凑型侧边栏",
+            "horizontallayout": "水平布局",
+            "maintenance": "保养",
+            "comingsoon": "快来了",
+            "timeline": "时间线",
+            "faqs": "常见问题"
+          }
+        }
+      },
+      "site": {
+        "list": {
+          "github": "的GitHub",
+          "bitbucket": "比特桶",
+          "dribbble": "运球",
+          "dropbox": "投寄箱",
+          "mailchimp": "邮件黑猩猩",
+          "slack": "松弛"
+        }
+      },
+      "notification": {
+        "badge": "3",
+        "text": "通知事项",
+        "subtext": "查看全部",
+        "order": {
+          "title": "您的订单已下达",
+          "text": "如果几种语言合并了语法",
+          "time": "3分钟前"
+        },
+        "james": {
+          "title": "詹姆斯·勒米尔",
+          "text": "好像是简体英语。",
+          "time": "1小时前"
+        },
+        "item": {
+          "title": "您的物品已发货",
+          "text": "如果几种语言合并了语法",
+          "time": "3分钟前"
+        },
+        "salena": {
+          "title": "萨莱娜·莱菲尔德",
+          "text": "作为西方的一个怀疑的剑桥朋友。",
+          "time": "1小时前"
+        },
+        "button": "装载更多.."
+      },
+      "henry": {
+        "text": "亨利",
+        "list": {
+          "profile": "个人中心",
+          "mywallet": "我的钱包",
+          "settings": "设定值",
+          "lockscreen": "锁屏",
+          "logout": "登出"
+        }
+      }
+    }
+  },
+  "menuitems": {
+    "menu": {
+      "text": "菜单"
+    },
+    "dashboards": {
+      "text": "工作台",
+      "list": {
+        "default": "默认",
+        "saas": "萨斯",
+        "crypto": "加密货币",
+        "blog": "博客",
+        "jobs": {
+          "text": "工作",
+          "badge": "新的"
+        }
+      }
+    },
+    "mytask": {
+      "text": "我的任务"
+    },
+    "schedule": {
+      "text": "日程"
+    },
+    "layouts": {
+      "text": "版面",
+      "list": {
+        "horizontal": "卧式",
+        "lightsidebar": "侧边灯",
+        "compactsidebar": "紧凑型侧边栏",
+        "iconsidebar": "图标侧栏",
+        "boxed": "盒装版式",
+        "coloredsidebar": "彩色边栏",
+        "vertical": "垂直",
+        "lighttopbar": "轻顶杆",
+        "coloredheader": "彩色标题"
+      }
+    },
+    "apps": {
+      "text": "应用"
+    },
+    "calendar": {
+      "text": "日历"
+    },
+    "chat": {
+      "text": "聊天室",
+      "badge": "新"
+    },
+    "case": {
+      "text": "案件",
+      "list": {
+        "filing": "立卷",
+        "trademark": "商标案件",
+        "litigation": "诉讼案件",
+        "protection": "保护案件",
+        "patent": "专利案件",
+        "domain": "域名案件",
+        "copyright": "著作权案件",
+        "nonlitigation": "非诉案件",
+        "allcases": "全部案件"
+      }
+    },
+    "release":{
+      "text": "发布",
+      "list": {
+        "releaselist":"发布列表"
+      }
+    },
+    "worktime": {
+      "text": "工时"
+    },
+    "item": {
+      "text": "项目",
+      "list": {
+        "tasks": "任务",
+        "items": "项目"
+      }
+    },
+    "process": {
+      "text": "流程",
+      "list": {
+        "submitofficial": "递交官方",
+        "notice": "官方通知",
+        "writing": "商标撰写"
+      }
+    },
+    "knowledgebase": {
+      "text": "知识库",
+      "list": {
+        "knowledge_search": "知识检索",
+        "data_statistics": "数据统计",
+        "knowledge_management": "知识管理",
+        "personal_articles": "个人文章",
+        "ai_knowledge_management": "AI知识库管理"
+      }
+    },
+    "filemanager": {
+      "text": "资料",
+      "list": {
+        "file_management": "资料管理",
+        "internal_external_management": "内外资料管理",
+        "case_documents": "案件文档",
+        "archive_management": "档案管理"
+      }
+    },
+    "data": {
+      "text": "数据",
+      "list": {
+        "business_data": "经营数据",
+        "human_resources": "人力资源",
+        "partner_weekly_report": "合伙人周报",
+        "law_firm_performance": "律所绩效",
+        "company_news": "公司快讯",
+        "schedule_management": "日程管理"
+      }
+    },
+    "setting": {
+      "text": "配置",
+      "list": {
+        "domestic_price_list": "国内价目表",
+        "department_management": "部门管理（地域）",
+        "field_management": "领域管理",
+        "workgroup_management": "工作组管理",
+        "employee_management": "员工管理",
+        "role_management": "角色管理",
+        "permission_management": "权限管理",
+        "error_log": "报错日志",
+        "template_approval": "模版加批",
+        "fee_approval_rules": "费用加批规则"
+      }
+    },
+    "hrm": {
+      "text": "人力资源",
+      "list": {
+        "my_profile": "我的档案",
+        "personnel_management": "人员管理",
+        "salary_management": "工资管理",
+        "bonus_management": "奖金管理",
+        "payroll_statistics": "薪酬统计",
+        "approval_management": "审批管理"
+      }
+    },
+    "bussiness_trip": {
+      "text": "出差管理",
+      "list": {
+        "businesstrip-management": "出差管理"
+      }
+    },
+    "management": {
+      "text": "管理",
+      "list": {
+        "contract-management": "合同管理"
+      }
+    },
+    "finance": {
+      "text": "财务",
+      "list": {
+        "billing_management": {
+          "text": "账单管理",
+          "list": {
+            "bills": "账单",
+            "internal_bills": "内部账单",
+            "drafts": "草单"
+          }
+        },
+        "expenses": "费用",
+        "expense_details": "费用明细",
+        "receivables_management": "收款管理",
+        "financial_reconciliation": "财务对账",
+        "invoice_management": {
+          "text": "发票管理",
+          "list": {
+            "invoice_opener": "开具发票",
+            "borrowed_invoices": "入账发票外借",
+            "invoice_repository": "发票库"
+          }
+        },
+        "loan_management": "借款管理",
+        "report_center": {
+          "text": "报表中心",
+          "list": {
+            "reports": "报表",
+            "report_management": "报表管理",
+            "entity_management": "主体管理",
+            "account_management": "账户管理"
+          }
+        },
+        "official_fee_payment": "官费缴纳",
+        "overseas_quotations": "境外报价",
+        "overseas_bills": "境外账单",
+        "exchange_rate_settings": "汇率设置"
+      }
+    },
+    "customer": {
+      "text": "客户",
+      "list": {
+        "customer_info": "客户信息",
+        "business_opportunities": "商机列表",
+        "responsible_person": "负责人",
+        "data_statistics": "数据统计",
+        "customer_activities": "客户活动",
+        "market_efficiency": "市场效率",
+        "customer_contacts": "客户联系人",
+        "official_agencies": "官方机构",
+        "cooperation_resources": "合作资源",
+        "conflict_of_interest": "利益冲突者",
+        "applicant": "申请人",
+        "group_customers": "集团客户",
+        "doormanage": "客户门户"
+      }
+    },
+    "crypto": {
+      "text": "加密货币",
+      "list": {
+        "wallet": "钱包",
+        "buy/sell": "买卖",
+        "exchange": "交换",
+        "lending": "借贷",
+        "orders": "订单",
+        "kycapplication": "KYC应用",
+        "icolanding": "ICO登陆"
+      }
+    },
+    "email": {
+      "text": "电子邮件",
+      "list": {
+        "inbox": "收件箱",
+        "reademail": "阅读电子邮件",
+        "template": {
+          "text": "范本",
+          "list": {
+            "basic": "基本动作",
+            "alert": "警报电子邮件",
+            "billing": "帐单电邮"
+          }
+        }
+      }
+    },
+    "invoices": {
+      "text": "发票",
+      "list": {
+        "invoicelist": "发票清单",
+        "invoicedetail": "发票明细"
+      }
+    },
+    "projects": {
+      "text": "专案",
+      "list": {
+        "grid": "项目网格",
+        "projectlist": "项目清单",
+        "overview": "项目概况",
+        "create": "创建新的"
+      }
+    },
+    "tasks": {
+      "text": "任务",
+      "list": {
+        "tasklist": "任务列表",
+        "kanban": "看板委员会",
+        "createtask": "创建任务"
+      }
+    },
+    "contacts": {
+      "text": "联络人",
+      "list": {
+        "usergrid": "用户网格",
+        "userlist": "用户清单",
+        "profile": "轮廓"
+      }
+    },
+    "blog": {
+      "text": "博客",
+      "list": {
+        "bloglist": "博客列表",
+        "grid": "博客网格",
+        "detail": "博客详细信息"
+      }
+    },
+    "jobs": {
+      "text": "工作",
+      "badge": "新",
+      "list": {
+        "job-list": "工作清单",
+        "job-grid": "工作网格",
+        "job-apply": "工作申请",
+        "job-details": "职位详情",
+        "job-categories": "工作类别",
+        "candidate": {
+          "text": "候选人",
+          "list": "列表",
+          "overview": "概述"
+        }
+      }
+    },
+    "pages": {
+      "text": "页数"
+    },
+    "authentication": {
+      "text": "认证方式",
+      "list": {
+        "login": "登录",
+        "register": "寄存器",
+        "recoverpwd": "恢复密码",
+        "lockscreen": "锁屏",
+        "login-2": "登录2",
+        "register-2": "注册2",
+        "recoverpwd-2": "找回密码2",
+        "lockscreen-2": "锁屏2",
+        "confirm-mail": "确认邮件",
+        "confirm-mail-2": "确认邮件2",
+        "verification": "电子邮件验证",
+        "verification-2": "电子邮件验证2",
+        "verification-step": "两步验证",
+        "verification-step-2": "两步验证2"
+      }
+    },
+    "utility": {
+      "text": "效用",
+      "list": {
+        "starter": "起始页",
+        "maintenance": "保养",
+        "timeline": "时间线",
+        "faqs": "常见问题",
+        "pricing": "价钱",
+        "error404": "错误404",
+        "error500": "错误500",
+        "comingsoon": "快来了"
+      }
+    },
+    "components": {
+      "text": "组件"
+    },
+    "uielements": {
+      "text": "UI元素",
+      "list": {
+        "alerts": "警报",
+        "buttons": "纽扣",
+        "cards": "牌",
+        "carousel": "轮播",
+        "dropdowns": "下拉菜单",
+        "grid": "格网",
+        "images": "图片",
+        "modals": "模态",
+        "rangeslider": "范围滑块",
+        "progressbar": "进度条",
+        "placeholder": "占位符",
+        "sweetalert": "甜蜜警报",
+        "tabs": "标签和手风琴",
+        "typography": "版式",
+        "video": "视频",
+        "general": "一般",
+        "colors": "色彩",
+        "lightbox": "灯箱",
+        "cropper": "圖像裁剪器",
+        "offcanvas": "畫布外",
+        "utilities": {
+          "text": "公用事业",
+          "badge": "新的"
+        }
+      }
+    },
+    "forms": {
+      "text": "形式",
+      "badge": "9",
+      "list": {
+        "elements": "表单元素",
+        "layouts": "表单布局",
+        "validation": "表格验证",
+        "advanced": "表格高级",
+        "editor": "表格编辑器",
+        "fileupload": "表格文件上传",
+        "repeater": "表单中继器",
+        "wizard": "表单向导",
+        "mask": "表格蒙版"
+      }
+    },
+    "tables": {
+      "text": "桌子",
+      "list": {
+        "basic": "基本表",
+        "advanced": "高级表"
+      }
+    },
+    "charts": {
+      "text": "图表",
+      "list": {
+        "apex": "顶点图",
+        "chartjs": "Chartjs图表",
+        "chartist": "宪章图",
+        "echart": "电子图表"
+      }
+    },
+    "icons": {
+      "text": "图示",
+      "list": {
+        "boxicons": "Boxicons",
+        "materialdesign": "材料设计",
+        "dripicons": "滴灌",
+        "fontawesome": "字体很棒"
+      }
+    },
+    "maps": {
+      "text": "地图",
+      "list": {
+        "googlemap": "谷歌地图",
+        "leafletmap": "傳單地圖"
+      }
+    },
+    "multilevel": {
+      "text": "多层次",
+      "list": {
+        "level1": {
+          "1": "1.1级",
+          "2": "1.2级",
+          "level2": {
+            "1": "2.1级",
+            "2": "2.2级"
+          }
+        }
+      }
+    }
+  },
+  "gridtable": {
+    "selectAll": "全选",
+    "cancenSelectAll": "取消全选",
+    "copy": "复制",
+    "paste": "粘贴",
+    "totalAndFilteredRows": "本页",
+    "searchOoo": "搜索",
+    "blanks": "空",
+    "pinColumn": "放置",
+    "pinLeft": "置左",
+    "pinRight": "置右",
+    "noPin": "归位",
+    "autosizeThiscolumn": "自动调整此列",
+    "autosizeAllColumns": "自动调整所有列",
+    "groupBy": "分组",
+    "ungroupBy": "laUnGroup by",
+    "resetColumns": "重置列",
+    "noRowsToShow": "暂无数据",
+    "equals": "等于",
+    "notEqual": "不等于",
+    "lessThan": "小于",
+    "greaterThan": "大于",
+    "inRange": "范围",
+    "inRangeStart": "开始时间",
+    "inRangeEnd": "结束时间",
+    "andCondition": "和",
+    "orCondition": "或",
+    "rowGroupColumnsEmptyMessage": "把列拖到这分组",
+    "groups": "组",
+    "expandAll": "展开",
+    "collapseAll": "收起",
+    "selectedRows": "当前选中"
+  },
+  "common": {
+    "fullScreen":"全屏",
+    "exitFullScreen":"退出全屏",
+    "startMonth": "开始月份",
+    "endMonth": "结束月份",
+    "yes": "是",
+    "no": "否",
+    "cancel": "取消",
+    "confirm": "确定",
+    "tip": "提示",
+    "check": "查看",
+    "more": "更多",
+    "total": "共",
+    "number": "个",
+    "all": "全部",
+    "checkErrorTip": "此类型文件不支持预览,请下载查看！",
+    "download": "下载",
+    "downloadBeforeTip": "确认下载文件吗?",
+    "downloadSuccessTip": "文件下载成功！",
+    "prompt": "文件为空",
+    "orderNumber": "序号",
+    "name": "名称",
+    "save": "保存",
+    "cnName": "中文名称",
+    "enName": "英文名称",
+    "jpName": "日文名称",
+    "cardName": "证件名称",
+    "appCertificateNum": "证件号",
+    "certificate": "证明文件",
+    "quickQuery": "快捷查询",
+    "map": "地图",
+    "card": "卡片",
+    "board": "木板",
+    "table": "表格",
+    "overview": "概览",
+    "advancedFilter": "高级筛选",
+    "advancedFilterTip": "高级筛选条件将在此展示...",
+    "moreFilter": "更多...",
+    "resetFilter": "重置",
+    "config": "设置",
+    "columnSetting": "列设置",
+    "filterFieldSetting": "设置筛选字段",
+    "tableHeader": "表头",
+    "optionalField": "可选字段",
+    "selectedFields": "已选字段",
+    "allSelected": "全选",
+    "selected": "已选",
+    "selecteOptionsAllCase": "未选",
+    "defaultPlaceholder": "请搜索",
+    "selectPlaceholder": "请选择",
+    "inputPlaceholder": "请输入",
+    "keywordPlaceholder": "请输入关键词",
+    "restoreDefault": "恢复默认",
+    "border": "边框",
+    "zebraCrossing": "斑马线",
+    "density": "密度",
+    "dataExport": "数据导出",
+    "export": "导出",
+    "exportField": "选择导出数据列字段",
+    "exportFieldTip": "请选择导出数据",
+    "filter": "筛选",
+    "filterItems": "筛选项",
+    "dataDetail": "数据详情",
+    "drillingDownSetting": "下钻设置",
+    "clickDrillingDown": "可点击下钻",
+    "cancelDrillingDown": "取消钻取",
+    "custom": "自定义",
+    "LoadingText": "数据加载中",
+    "loadingCompleted": "加载完全部数据",
+    "noMore": "没有更多数据了",
+    "saveImage": "保存为图片",
+    "start": "开始",
+    "end": "结束",
+    "to": "至",
+    "errorTip": "数据异常！",
+    "list": "列表",
+    "appDateDesc": "按申请日期倒序",
+    "appDateAsc": "按申请日期正序",
+    "columnPtStatus": "按专利状态分栏",
+    "trademark": "商标",
+    "addWdgt": "添加小部件",
+    "widgetNames": "搜索小部件名称，方便快速检索",
+    "pleaseWait": "请等待"
+  }
+}
