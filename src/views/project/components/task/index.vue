@@ -1,14 +1,15 @@
 <template>
-  <div style="padding: 16px">
+  <Layout>
     <TaskDetail
       :taskCode="taskCode"
       @close="handleHidden"
       :taskType="1"
     />
-  </div>
+  </Layout>
 </template>
 <script setup>
 import { ref } from "vue";
+import Layout from "@/layouts/main";
 import TaskDetail from "./task-detail.vue";
 import { useRoute, useRouter } from "vue-router";
 

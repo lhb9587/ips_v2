@@ -17,6 +17,7 @@
         <div
           class="config-breadcrumb-item"
           @click="handleGoBackOne"
+          v-if="breadcrumbList.length > 1"
         >
           <i
             class="bx bx-left-arrow-alt"
@@ -306,9 +307,6 @@ import {
 } from "@element-plus/icons-vue";
 import { statisticCase } from "@/api/caseList";
 import Tabs from "@/components/common/tabs";
-import { useStore } from "vuex";
-const store = useStore();
-
 //导入所有案件列表
 import TrademarkList from "@/views/case/trademark";
 import PatentList from "@/views/case/patent";
@@ -318,6 +316,8 @@ import DomainList from "@/views/case/domain";
 import CopyrightList from "@/views/case/copyright";
 import NonlitigationList from "@/views/case/nonlitigation";
 import AllCasesList from "@/views/case/allcases";
+import { useStore } from "vuex";
+const store = useStore();
 
 //显示类型
 const showType = computed(() => {
@@ -674,6 +674,7 @@ const textSearchRef = ref();
 const closeInput = () => {
   showTopSearch.value = false;
   inputValue.value = "";
+  fetchFolderList();
 };
 const showInput = () => {
   showTopSearch.value = true;

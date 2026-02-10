@@ -15,7 +15,7 @@ import {
   render,
 } from "vue";
 import clipboard3 from "vue-clipboard3";
-import { sort,formatBottomRowData } from "@/utils";
+import { sort, formatBottomRowData } from "@/utils";
 import { savePreference } from "@/api/caseList";
 import { getUserInfo } from "@/utils/user";
 import i18n from "@/i18n";
@@ -133,27 +133,33 @@ watch(
       }
       // setColumnWidth();
     }
-  }
+  },
 );
 watch(
   () => [props.columnDefs, props.gridData],
   (newVal) => {
     if (newVal[0].length > 0 && newVal[1].length > 0) {
-      setColumnWidth();
+      setTimeout(() => {
+        setColumnWidth();
+      }, 100);
       if (props.columnDisplay.length > 0) {
-        pinnedBottomRowData.value = formatBottomRowData(gridData.value, props.columnDefs, props.columnDisplay)
-        console.log('pinnedBottomRowData', pinnedBottomRowData.value);
+        pinnedBottomRowData.value = formatBottomRowData(
+          gridData.value,
+          props.columnDefs,
+          props.columnDisplay,
+        );
+        console.log("pinnedBottomRowData", pinnedBottomRowData.value);
       }
       // window.addEventListener("resize", initTableWidth);
     }
-  }
+  },
 );
 watch(
   () => props.rowHeight,
   async () => {
     await nextTick();
     gridApi.value?.resetRowHeights();
-  }
+  },
 );
 // 表格数据
 const gridData = computed(() => props.gridData);
@@ -306,9 +312,10 @@ const resetColumnWidth = () => {
   }
 
   params.columnApi.autoSizeAllColumns(false);
-  const tableWidth = document.querySelector(".ag-header-viewport")?.clientWidth || 1747;
+  const tableWidth =
+    document.querySelector(".ag-header-viewport")?.clientWidth || 1747;
   const allColumnsWidth = params.columnApi.columnModel.bodyWidth;
-  
+
   if (allColumnsWidth < tableWidth) {
     //根据gridView宽度自适应
     setTimeout(() => {
@@ -318,7 +325,7 @@ const resetColumnWidth = () => {
       }
     }, 500);
   }
-  
+
   saveColumnsTimer = setTimeout(() => {
     cancelColumnMaxWidth(params);
     props.gridName && saveColumnsWidth(params);
@@ -346,7 +353,7 @@ const setColumns240 = (params) => {
     colDef.maxWidth = 240; // 或者设置为null
   });
   params.api.setColumnDefs(colDefs);
-}
+};
 //保存列宽
 const saveColumnsWidth = (params) => {
   let tableHeader = params.columnApi.columnModel
@@ -396,11 +403,14 @@ const getColumnMaxWidth = () => {
 };
 onMounted(() => {
   init(props.columnDefs);
-  
+
   // 创建ResizeObserver实例
   const resizeObserver = new ResizeObserver((entries) => {
     for (const entry of entries) {
-      if (entry.target.classList.contains('grid-table-wrapper') && gridApi.value) {
+      if (
+        entry.target.classList.contains("grid-table-wrapper") &&
+        gridApi.value
+      ) {
         // 确保 grid API 已经准备好
         nextTick(() => {
           resetColumnWidth();
@@ -410,7 +420,7 @@ onMounted(() => {
   });
 
   // 监听grid-table-wrapper元素的尺寸变化
-  const gridWrapper = document.querySelector('.grid-table-wrapper');
+  const gridWrapper = document.querySelector(".grid-table-wrapper");
   if (gridWrapper) {
     resizeObserver.observe(gridWrapper);
   }
@@ -621,9 +631,9 @@ const getSidDiv = (params) => {
             {
               title: `${params.rowIndex + 1}`,
             },
-            `${params.rowIndex + 1}`
+            `${params.rowIndex + 1}`,
           ),
-        ]
+        ],
       )
     : createVNode("div", {}, [
         createVNode(
@@ -631,7 +641,7 @@ const getSidDiv = (params) => {
           {
             title: `${params.rowIndex + 1}`,
           },
-          `${params.rowIndex + 1}`
+          `${params.rowIndex + 1}`,
         ),
       ]);
 
@@ -770,11 +780,10 @@ defineExpose({
   color: red;
   cursor: pointer;
 }
-
 </style>
 <style>
-.ag-floating-bottom{
-  .ag-row-even{
+.ag-floating-bottom {
+  .ag-row-even {
     background-color: #eff2f7;
   }
 }

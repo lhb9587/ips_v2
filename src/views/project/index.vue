@@ -458,6 +458,7 @@ const showInput = () => {
 const closeInput = () => {
   showTopSearch.value = false;
   inputValue.value = "";
+  fetchFolderViewData()
 };
 const defaultBreadcrumbByTab = {
   project: { label: "项目", value: "project" },

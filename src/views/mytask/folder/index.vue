@@ -23,6 +23,7 @@
         <div
           class="config-breadcrumb-item"
           @click="handleGoBackOne"
+          v-if="breadcrumbList.length > 1"
         >
           <i
             class="bx bx-left-arrow-alt"

@@ -16,7 +16,7 @@
       </div>
 
       <!-- 内容 -->
-      <div class="content">
+      <div class="history-content">
         <div class="title">{{ item.fieldLabel }}</div>
         <div class="desc">
           <span
@@ -128,7 +128,7 @@ onMounted(() => {
 }
 
 /* 中间内容 */
-.content {
+.history-content {
   flex: 1;
 }
 

@@ -1,16 +1,17 @@
 <template>
-  <div style="padding: 16px;">
+  <Layout>
     <TaskDetail
       :taskCode="taskCode"
       @close="handleHidden"
       :taskType="3"
     />
-  </div>
+  </Layout>
 </template>
 <script setup>
 import { ref } from "vue";
 import TaskDetail from "./task-detail.vue";
 import { useRoute, useRouter } from "vue-router";
+import Layout from "@/layouts/main";
 
 const route = useRoute();
 const router = useRouter();

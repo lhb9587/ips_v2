@@ -454,9 +454,11 @@ const loadNode = async (node, resolve) => {
     });
 
     nextTick(() => {
-      treeRef.value.setCurrentKey(companies[0].id);
-      handleNodeClick(companies[0]);
-    })
+      if (companies?.length) {
+        treeRef.value.setCurrentKey(companies[0].id);
+        handleNodeClick(companies[0]);
+      }
+    });
     // 检查是否还有更多数据
     hasMore.value = res.data.length >= pageSize.value;
     // 数据加载完成后，设置初次加载状态为false
@@ -557,7 +559,7 @@ const fetchCustAllList = async (isLoadMore = false) => {
     pageSize: custPageSize.value,
     pageNo: custCurrentPage.value,
     keywords: custNameText.value,
-    follow:0
+    follow: 0,
   };
 
   try {
