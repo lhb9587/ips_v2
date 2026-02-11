@@ -8,6 +8,7 @@ import { queryMyTaskList } from "@/api/project";
 import { saveTableConfig } from "@/utils";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import TaskDetail from "@/views/project/components/task/task-detail.vue";
+import dayjs from "dayjs";
 import ContractSidebar from "@/views/management/contract-management/detail-sidebar";
 import { useStore } from "vuex";
 import { useRoute } from "vue-router";
@@ -173,6 +174,10 @@ const mytaskCellRenderer = (params) => {
         params.value || params.value === 0 ? params.value : ""
       }</span>`;
     }
+  } else if(field == "startDate"){
+    return `<span title="${params.value}">${
+      params.value ? dayjs(params.value).format("YYYY-MM-DD")  : ""
+    }</span>`;
   } else {
     return `<span title="${params.value}">${
       params.value || params.value === 0 ? params.value : ""
