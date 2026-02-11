@@ -410,6 +410,13 @@ export const menuItems = [
     ],
   },
   {
+    id: 998,
+    label: "menuitems.performanceAssessment.text",
+    icon: "bx bx-bar-chart-alt-2",
+    link: "/performance-assessment",
+    permissions: [526],
+  },
+  {
     id: 56,
     label: "menuitems.hrm.text",
     icon: "bxs-user-detail",

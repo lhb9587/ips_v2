@@ -8,6 +8,7 @@ import management from '@/router/modules/management'
 import project from '@/router/modules/project'
 import mytask from '@/router/modules/mytask'
 import schedule from '@/router/modules/schedule'
+import performanceAssessment from "@/router/modules/performanceAssessment"
 
 export default [
   {
@@ -60,6 +61,7 @@ export default [
   ...project,
   ...mytask,
   ...schedule,
+  ...performanceAssessment,
   {
     path: "/case/case-management",
     name: "case-management",

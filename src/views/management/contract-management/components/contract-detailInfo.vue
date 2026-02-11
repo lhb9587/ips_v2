@@ -228,6 +228,19 @@
         <i class="bx bx-edit me-1"></i>在线编辑合同
       </b-button>
       <b-button
+          size="sm"
+          variant="dark"
+          v-if="contractDetial.previewXdAttachmentCon?.filePath"
+          @click="
+          downLoad(
+            contractDetial.previewXdAttachmentCon?.filePath,
+            contractDetial.previewXdAttachmentCon?.fileName
+          )
+        "
+          :disabled="submitting"
+      >修订版合同DOC文件下载</b-button
+      >
+      <b-button
         size="sm"
         variant="dark"
         v-if="contractDetial.revisionAttachments?.filePath"

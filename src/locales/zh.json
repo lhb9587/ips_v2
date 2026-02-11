@@ -91,6 +91,9 @@
     }
   },
   "menuitems": {
+    "performanceAssessment": {
+      "text": "绩效评估"
+    },
     "menu": {
       "text": "菜单"
     },

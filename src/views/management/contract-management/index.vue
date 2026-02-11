@@ -6,7 +6,7 @@ import { ElMessageBox } from "element-plus";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import ListSearch from "@/components/common/list-search/index.vue";
-import { getContractList, getToBeReviewedNumber, exportContractFlow } from "@/api/contract";
+import { getContractList, getToBeReviewedNumber, exportContractFlow, copyCreateContract } from "@/api/contract";
 import { deriveList } from "@/api/caseList";
 import { saveTableConfig, downLoadAll } from "@/utils";
 import { useStore } from "vuex";
@@ -163,19 +163,22 @@ const fuzzySearch = () => {
   formInline.value = {};
   fetchDataFunc();
 };
-const fetchDataFunc = () => {
+const fetchDataFunc = (isLoading = false) => {
   //卡片和表格的数据
   getContractList({
     keywords: diminput.value,
     toBeReviewed: selectedTab.value,
     ...listQuery.value,
     ...formInline.value,
+  }, {
+    isLoading
   }).then((res) => {
     getToNumber() // 获取待审批数量
     gridData.value = res.data || [];
     gridData.value.forEach((item, index) => {
       item.sid = index;
     });
+    isLoading && toggleSidebar({data:  gridData.value[0]})
     total.value = res.total || 0;
   });
 };
@@ -273,6 +276,20 @@ const showTemplateModal = () => {
 const hiddenTemplateModal = () => {
   isTemplateModalVisible.value = false;
 };
+
+// 右键菜单配置
+const contextmenuList = ref([
+  {
+    name: "复制合同新建",
+    action: (rowData) => {
+      copyCreateContract({ contractId: rowData.contractId }).then((res) => {
+        if (res.success) {
+          fetchDataFunc(true);
+        }
+      });
+    },
+  },
+]);
 </script>
 <template>
   <Layout>
@@ -408,6 +425,7 @@ const hiddenTemplateModal = () => {
               :columnDefs="columnList"
               :grid-data="gridData"
               :rowClick="toggleSidebar"
+              :contextmenuList="contextmenuList"
             />
           </div>
           <div

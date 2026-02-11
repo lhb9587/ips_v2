@@ -92,6 +92,9 @@
     }
   },
   "menuitems": {
+    "performanceAssessment": {
+      "text": "Performance Assessment"
+    },
     "menu": {
       "text": "Menu"
     },

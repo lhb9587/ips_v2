@@ -135,13 +135,16 @@ service.interceptors.response.use(
     const res = response.data;
     // if the custom code is not 20000, it is judged as an error.
     if (res.success !== true) {
-      res.message &&
-      ElMessage({
-        message: res.message,
-        type: "error",
-        duration: 3 * 1000,
-        grouping:true
-      });
+      // 如果配置了 showErrorMessage: false，则不显示错误 message
+      if (response.config.showErrorMessage !== false) {
+        res.message &&
+        ElMessage({
+          message: res.message,
+          type: "error",
+          duration: 3 * 1000,
+          grouping:true
+        });
+      }
       // 50008: Illegal token; 50012: Other clients logged in; 50014: Token expired;
       if (res.messageType == '-100' || res.message == '身份无效。' || res.message == '身份认证失败') {
         // to re-login
@@ -173,6 +176,12 @@ service.interceptors.response.use(
       }
       return Promise.reject(res);
     } else {
+      if (res && res.messageType == 1000 && (res.data === null || res.data === undefined)) {
+        // messageType=1000 表示无统计数据，统一返回空列表避免页面中断
+        res.data = [];
+        res.total = res.total ?? 0;
+        res.currPage = res.currPage ?? 1;
+      }
       if (
         res.data &&
         Object.prototype.toString.call(res.data) === "[object Array]"

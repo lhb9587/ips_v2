@@ -216,12 +216,12 @@
               <span class="spinner"></span>
               <span class="status-text">加载中...</span>
             </div>
-            <div
+            <!-- <div
               v-else-if="!hasMoreTasks"
               class="status-text"
             >
               没有更多事项了
-            </div>
+            </div> -->
           </div>
         </div>
       </div>
@@ -521,6 +521,7 @@ defineExpose({
 
 onMounted(() => {
   //   fetchRelatedTasks();
+  fetchTaskList()
 });
 </script>
 <style lang="scss" scoped>

@@ -8,11 +8,20 @@ export function queryContractFeeInfo(data) {
     data
   })
 }
-export function getContractList(data) {
+export function getContractList(data, props) {
   return request({
     url: serviceApi.getContractList,
     method: 'post',
-    data
+    data,
+    ...props
+  })
+}
+export function copyCreateContract(data) {
+  return request({
+    url: serviceApi.copyCreateContract,
+    method: 'post',
+    data,
+    isLoading: true
   })
 }
 export function getToBeReviewedNumber(data) {

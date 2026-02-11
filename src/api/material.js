@@ -9,6 +9,14 @@ export function querySortPermission(data) {
     isLoading: false
   })
 }
+export function queryMaterialByUserIdAndYear(data) {
+  return request({
+    url: serviceApi.queryMaterialByUserIdAndYear,
+    method: 'post',
+    data,
+    isLoading: false
+  })
+}
 export function updateSortPermission(data) {
   return request({
     url: serviceApi.updateSortPermission,

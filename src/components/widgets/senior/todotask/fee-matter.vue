@@ -115,7 +115,7 @@
 
 <script>
 // import { upcomingTasks, progressTasks, completedTasks, billTasks } from "./data-kanaban";
-import { queryFeeTask } from "@/api/feeList";
+import { queryFeeTask,queryFeeInfo } from "@/api/feeList";
 import dayjs from "dayjs";
 import LoadingOverlay from "@/components/common/loading";
 import feeHandleModal from "./components/fee-handle-modal.vue";
@@ -178,8 +178,11 @@ export default {
       });
     },
     handleClick(task) {
+      const { feeId } = task;
       this.showModal = true;
-      this.dataDetail = task;
+      queryFeeInfo({ feeId }).then((res) => {
+        this.dataDetail = res.data;
+      });
     },
     fetchData() {
       this.loading = true;

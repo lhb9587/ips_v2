@@ -16,6 +16,7 @@ const SYS_URL11 = '/ip_project/interface/'
 
 const URL_Tem = {
   // 合同管理
+  copyCreateContract: SYS_URL10 + 'contract/copyCreateContract', // 复制合同
   exportContractFlow: SYS_URL10 + 'contract/exportContractFlow', // 导出合同流程
   queryContractFeeInfo: SYS_URL1 + 'fee/queryContractFeeInfo',
   queryMyTaskList: SYS_URL1 + 'myTask/queryMyTaskList',
@@ -661,6 +662,7 @@ const URL_Tem = {
   queryFileNameElement: SYS_URL1 + 'material/queryFileNameElement',// 查询文件命名自定义元素
   createPatentMultMaterial: SYS_URL1 + 'material/createPatentMultMaterial',
   queryMaterialByCaseIdUrl: SYS_URL1 + 'material/queryMaterialByCaseId',
+  queryMaterialByUserIdAndYear: SYS_URL1 + 'material/queryMaterialByUserIdAndYear',
   // 账单
   queryBillStyle: SYS_URL1 + 'caseUtil/queryBillStyle',
   queryAgentUser: SYS_URL1 + 'caseUtil/queryAgentUser',

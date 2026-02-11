@@ -100,7 +100,7 @@
         variant="success"
         class="ms-1"
         @click="passOrReturn('1')"
-        >审核</b-button
+        >通过</b-button
       >
     </div>
     <FeeSidebar
