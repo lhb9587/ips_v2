@@ -9,6 +9,7 @@ import { saveTableConfig } from "@/utils";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import TaskDetail from "@/views/project/components/task/task-detail.vue";
 import dayjs from "dayjs";
+import ProjectDetail from "@/views/project/components/project-detail/project-detail.vue";
 import ContractSidebar from "@/views/management/contract-management/detail-sidebar";
 import { useStore } from "vuex";
 import { useRoute } from "vue-router";
@@ -29,7 +30,7 @@ const changeBorder = (newVal) => {
     ? activeClass.value.push("Borderline")
     : activeClass.value.splice(
         activeClass.value.findIndex((i) => i === "Borderline"),
-        1
+        1,
       );
   saveTableConfig("isBorderline", gridName, newVal);
 };
@@ -38,7 +39,7 @@ const changeRowStyle = (newVal) => {
     ? activeClass.value.push("zebra")
     : activeClass.value.splice(
         activeClass.value.findIndex((i) => i === "zebra"),
-        1
+        1,
       );
   saveTableConfig("iszebra", gridName, newVal);
 };
@@ -115,7 +116,7 @@ const fetchDataFunc = () => {
       ...listQuery.value,
       ...formInline.value,
     },
-    { isLoading: true }
+    { isLoading: true },
   ).then((res) => {
     gridData.value = res.data || [];
     gridData.value.forEach((item, index) => {
@@ -138,6 +139,8 @@ const handleSearch = (typeStr) => {
 const objId = ref();
 const taskType = ref();
 const taskDetailModelValue = ref(false);
+const isShowPrjDetail = ref(false);
+
 const toggleSidebar = (params) => {
   taskType.value = params.data.taskType;
   if (taskType.value === "合同审核") {
@@ -154,6 +157,10 @@ const closeTaskDetailModal = () => {
   taskDetailModelValue.value = false;
   fetchDataFunc();
 };
+const handlePrjSidebarClose = () => {
+  isShowPrjDetail.value = false;
+  fetchDataFunc();
+};
 const handleConSidebarUpdate = (val) => {
   isShowConDetail.value = val;
 };
@@ -161,22 +168,90 @@ const mytaskCellRenderer = (params) => {
   const field = params.colDef.field;
   if (field == "taskName") {
     if (params.data.taskType == "事项" || params.data.taskType == "子事项") {
-      const text = params.value || "";
-      const lastSlashIndex = text.lastIndexOf("/");
-      if (lastSlashIndex !== -1) {
-        const beforeSlash = text.substring(0, lastSlashIndex + 1); // +1 包含斜杠
-        const afterSlash = text.substring(lastSlashIndex + 1);
-        return `<span style="color: #999">${beforeSlash}</span>${afterSlash}`;
-      }
-      return text;
-    } else {
-      return `<span title="${params.value}">${
-        params.value || params.value === 0 ? params.value : ""
-      }</span>`;
+      const value = params.value || "";
+      const parts = value.split("/");
+      const container = document.createElement("div");
+      container.title = value;
+
+      parts.forEach((part, index) => {
+        const span = document.createElement("span");
+        span.innerText = part.trim();
+        span.style.cursor = "pointer";
+        span.style.transition = "all 0.2s";
+
+        const originalColor =
+          (params.data.taskType == "事项" ||
+            params.data.taskType == "子事项") &&
+          index < parts.length - 1
+            ? "#999"
+            : "";
+        if (originalColor) span.style.color = originalColor;
+
+        span.onclick = (e) => {
+          e.stopPropagation();
+          console.log("Row Data:", params.data);
+          console.log("index", index);
+          if (index === 0) {
+            objId.value = params.data.projectId;
+            isShowPrjDetail.value = true;
+          } else {
+            taskType.value = index === 1 ? "事项" : "子事项";
+            objId.value =
+              index === 1 ? params.data.matterId : params.data.subMatterId;
+            taskDetailModelValue.value = true;
+          }
+        };
+
+        span.onmouseenter = () => {
+          span.style.textDecoration = "underline";
+          span.style.color = "#556ee6";
+        };
+        span.onmouseleave = () => {
+          span.style.textDecoration = "none";
+          span.style.color = originalColor;
+        };
+
+        container.appendChild(span);
+
+        if (index < parts.length - 1) {
+          const divider = document.createElement("span");
+          divider.innerText = " / ";
+          divider.style.color = "#999";
+          container.appendChild(divider);
+        }
+      });
+      return container;
+    } else if (params.data.taskType == "合同审核") {
+      //合同审核
+      const container = document.createElement("div");
+      const span = document.createElement("span");
+      span.innerText = params.value || "";
+      span.title = params.value || "";
+      span.style.cursor = "pointer";
+      span.style.transition = "all 0.2s";
+      
+      span.onclick = (e) => {
+        e.stopPropagation();
+        contractId.value = params.data.parentId;
+        isShowConDetail.value = true;
+      };
+      
+      span.onmouseenter = () => {
+        span.style.textDecoration = "underline";
+        span.style.color = "#556ee6";
+      };
+      
+      span.onmouseleave = () => {
+        span.style.textDecoration = "none";
+        span.style.color = "";
+      };
+      
+      container.appendChild(span);
+      return container;
     }
-  } else if(field == "startDate"){
+  } else if (field == "startDate") {
     return `<span title="${params.value}">${
-      params.value ? dayjs(params.value).format("YYYY-MM-DD")  : ""
+      params.value ? dayjs(params.value).format("YYYY-MM-DD") : ""
     }</span>`;
   } else {
     return `<span title="${params.value}">${
@@ -268,7 +343,7 @@ onUnmounted(() => {
             :activeClass="activeClass"
             :columnDefs="columnList"
             :grid-data="gridData"
-            :rowClick="toggleSidebar"
+            :rowDoubleClicked="toggleSidebar"
             :cellRenderer="mytaskCellRenderer"
           />
         </div>
@@ -299,6 +374,17 @@ onUnmounted(() => {
         :taskType="taskType === '事项' ? 1 : 3"
       />
     </DragSidebar>
+    <DragSidebar
+      :noCloseOnEsc="false"
+      v-if="isShowPrjDetail"
+      sidebarName="project-sidebar"
+      v-model="isShowPrjDetail"
+      @close="handlePrjSidebarClose"
+    >
+      <ProjectDetail
+        @close="handlePrjSidebarClose"
+        :project-id="objId"
+    /></DragSidebar>
     <ContractSidebar
       :contractId="contractId"
       v-if="isShowConDetail"
