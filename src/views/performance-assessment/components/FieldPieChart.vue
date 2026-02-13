@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="field-pie-card">
     <div class="field-pie-header">
       <div class="field-pie-title">
@@ -49,6 +49,9 @@ const hoverDetailCache = ref(new Map());
 const hoverDetailLoading = ref(new Set());
 const currentHoverKey = ref(null);
 const currentHoverParams = ref({ seriesIndex: 0, dataIndex: 0 });
+
+const getChartDevicePixelRatio = () =>
+  Math.min(Math.max(window.devicePixelRatio || 1, 2), 3);
 
 const currentData = computed(() => {
   return fieldType.value === 'case' ? props.caseFields : props.businessFields;
@@ -135,7 +138,7 @@ const buildOption = () => {
             return `<div style="padding:4px 0">加载中...</div>`;
           }
           if (hoverDetailCache.value.has(hoverKey)) {
-            return buildHoverDetailHtml(name, hoverDetailCache.value.get(hoverKey));
+            return buildHoverDetailHtml(name, amount, hoverDetailCache.value.get(hoverKey));
           }
         }
         if (d?.subFields || d?.bills) {
@@ -190,16 +193,10 @@ const buildOption = () => {
           formatter: (params) => {
             const val = typeof params.value === 'string' ? parseFloat(params.value) || 0 : (params.value || 0);
             const percent = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
-            const amount = params.data?.amount || "";
-            // 如果没有 amount，从 value 格式化
-            let amountStr = amount;
-            if (!amountStr && val > 0) {
-              amountStr = `¥${val.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            }
             const name = params.name || params.data?.name || params.data?.label || "";
-            return `${name} ${percent}% ${amountStr}`;
+            return `${percent}% ${name}`;
           },
-          fontSize: 10,
+          fontSize: 11,
           color: "#5f6f86",
         },
         data: data.map(item => ({
@@ -230,7 +227,7 @@ const formatAmountValue = (value) => {
   return "";
 };
 
-const buildHoverDetailHtml = (name, rows) => {
+const buildHoverDetailHtml = (name, amount, rows) => {
   if (!rows || rows.length === 0) {
     return `<div style="padding:4px 0">暂无数据</div>`;
   }
@@ -249,7 +246,7 @@ const buildHoverDetailHtml = (name, rows) => {
     .join("");
   return `
     <div style="padding:4px 0;min-width:280px;max-height:300px;display:flex;flex-direction:column">
-      <div style="font-weight:600;margin-bottom:8px;font-size:13px;position:sticky;top:0;background:#fff;z-index:2">${name}</div>
+      <div style="font-weight:600;margin-bottom:8px;font-size:13px;position:sticky;top:0;background:#fff;z-index:2">${name}${amount ? `（${amount}）` : ""}</div>
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead style="position:sticky;top:0;background:#f5f7fa;z-index:1">
           <tr>
@@ -367,7 +364,9 @@ const renderChart = () => {
 
 const initChart = () => {
   if (!chartRef.value || isDataEmpty.value) return;
-  chart.value = echarts.init(chartRef.value);
+  chart.value = echarts.init(chartRef.value, null, {
+    devicePixelRatio: getChartDevicePixelRatio(),
+  });
   renderChart();
 };
 
@@ -465,7 +464,9 @@ watch(
       // 数据有效，初始化或更新图表
       nextTick(() => {
         if (!chart.value && chartRef.value) {
-          chart.value = echarts.init(chartRef.value);
+          chart.value = echarts.init(chartRef.value, null, {
+            devicePixelRatio: getChartDevicePixelRatio(),
+          });
         }
         renderChart();
       });
@@ -489,7 +490,9 @@ watch(
       // 数据有效，初始化或更新图表
       nextTick(() => {
         if (!chart.value && chartRef.value) {
-          chart.value = echarts.init(chartRef.value);
+          chart.value = echarts.init(chartRef.value, null, {
+            devicePixelRatio: getChartDevicePixelRatio(),
+          });
         }
         renderChart();
       });

@@ -4,6 +4,16 @@
 
 // Used invoice page
 @media print {
+    html,
+    body,
+    #layout-wrapper,
+    .main-content,
+    .page-content {
+        height: auto !important;
+        min-height: auto !important;
+        overflow: visible !important;
+    }
+
     .vertical-menu,
     .right-bar,
     .page-title-box,

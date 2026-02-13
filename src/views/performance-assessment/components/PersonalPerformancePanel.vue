@@ -57,10 +57,10 @@
                 type="button"
                 class="pp-report-button"
                 :disabled="exportingReport"
-                @click.stop="exportPerformanceReport"
+                @click.stop="openReportPreview"
               >
                 <i class="bx bx-download" aria-hidden="true"></i>
-                {{ exportingReport ? "生成中..." : "导出报告" }}
+                {{ exportingReport ? "生成中..." : "生成报告" }}
               </button>
             </div>
           </div>
@@ -1038,11 +1038,11 @@
               {{ item.value }}
             </span>
             <span
-              v-else-if="item.topClients !== undefined || (module.title === '客户开发人')"
+              v-else-if="module.title === '客户开发人'"
               class="pp-module-value client-value"
             >
-              <!-- 如果数据为0且没有客户列表，显示"无" -->
-              <span v-if="(!item.count || item.count === 0) && (!item.topClients || (Array.isArray(item.topClients) && item.topClients.length === 0)) && (!item.totalAmount || item.totalAmount === 0)" class="pp-module-empty">
+              <!-- 如果数据为0，显示"无" -->
+              <span v-if="(!item.count || item.count === 0) && (!item.totalAmount || item.totalAmount === 0)" class="pp-module-empty">
                 无
               </span>
               <!-- 如果有客户列表，显示客户列表 -->
@@ -1062,9 +1062,6 @@
                       <span class="pp-client-count pp-client-count--blue">{{ item.count }}家</span>
                       <span v-if="item.totalAmount && item.totalAmount > 0" class="pp-client-total pp-client-total--blue">
                         {{ formatRevenueValue(item.totalAmount) }}
-                      </span>
-                      <span v-else-if="getTotalAmount(getDeveloperClients(item))" class="pp-client-total pp-client-total--blue">
-                        {{ getTotalAmount(getDeveloperClients(item)) }}
                       </span>
                     </span>
                   </template>
@@ -1849,6 +1846,55 @@
       </div>
     </el-dialog>
 
+    <el-dialog
+      v-model="reportPreviewOpen"
+      :fullscreen="true"
+      class="pp-report-preview-dialog"
+      :close-on-click-modal="false"
+      :show-close="false"
+    >
+      <template #header>
+        <div class="pp-report-preview-headerbar">
+          <div class="pp-report-preview-header-left">
+            <span class="pp-report-preview-header-title">报告预览</span>
+          </div>
+          <div class="pp-report-preview-header-actions">
+            <button type="button" class="pp-report-preview-generate" :disabled="exportingReport" @click="exportPreviewPdf">
+              {{ exportingReport ? "生成中..." : "生成报告" }}
+            </button>
+            <button type="button" class="pp-report-preview-close" @click="reportPreviewOpen = false">
+              关闭
+            </button>
+          </div>
+        </div>
+      </template>
+      <div
+        v-loading.lock="exportingReport"
+        element-loading-text="报告生成中... 正在导出 PDF，请稍候"
+        element-loading-background="rgba(243, 246, 251, 0.72)"
+        element-loading-custom-class="pp-report-export-loading-mask"
+        class="pp-report-preview"
+      >
+        <div ref="reportPreviewRef" class="pp-report-preview-page">
+          <div class="pp-report-preview-header">
+            <div class="pp-report-preview-title">
+              {{ props.year }}年个人总结报告
+            </div>
+          </div>
+          <div class="pp-report-preview-section">
+            <div v-if="reportPreviewLoading" class="pp-report-preview-loading">
+              <div class="partner-drawer-loading-card">
+                <div class="partner-drawer-loading-spinner"></div>
+                <div class="partner-drawer-loading-title">报告加载中...</div>
+                <div class="partner-drawer-loading-subtitle">正在生成预览内容，请稍候</div>
+              </div>
+            </div>
+            <div v-show="!reportPreviewLoading" ref="reportPreviewBodyRef" class="pp-report-preview-body"></div>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
+
 </template>
 
 <script setup>
@@ -1860,8 +1906,12 @@ import FieldPieChart from "@/views/performance-assessment/components/FieldPieCha
 import CustomSelect from "@/views/performance-assessment/components/CustomSelect.vue";
 import * as echarts from "echarts";
 import html2canvas from "html2canvas";
-import { getPopoverDetail, getHardMetrics, addSoftMetricRecords, updateSoftMetricRecords, deleteSoftMetricRecords, addSummary, upSummary, addSoftmetrics, upSoftmetrics, querySoftmetrics, getPerformanceRecords } from "@/api/performanceAssessmentApi";
+import { jsPDF } from "jspdf";
+import * as pdfjsLib from "pdfjs-dist/build/pdf";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.entry";
+import { getPopoverDetail, getHardMetrics, addSoftMetricRecords, updateSoftMetricRecords, deleteSoftMetricRecords, querySoftMetricRecords, addSummary, upSummary, addSoftmetrics, upSoftmetrics, querySoftmetrics, getPerformanceRecords } from "@/api/performanceAssessmentApi";
 import { queryMaterialByUserIdAndYear } from "@/api/material";
+import { querycustSelectClass } from "@/api/customerList";
 import { viewPdf } from "@/utils";
 import { getProgID, doEditInOffice } from "@/utils/editInOffice";
 import { Search, View } from "@element-plus/icons-vue";
@@ -1872,6 +1922,7 @@ import WorkhourViewModal from "@/components/common/workhour-view-modal.vue";
 // import { queryCustomerNameId } from "@/api/customerList";
 
 const store = useStore();
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const props = defineProps({
   performance: {
@@ -1904,6 +1955,894 @@ const props = defineProps({
   },
 });
 
+const reportPreviewOpen = ref(false);
+const reportPreviewRef = ref(null);
+const reportPreviewBodyRef = ref(null);
+const reportPreviewLoading = ref(false);
+const previewSoftMetricsLoading = ref(false);
+const previewSoftMetricGroups = ref([]);
+const previewSoftMetricLoadedKey = ref("");
+const previewDeveloperDetailsLoading = ref(false);
+const previewDeveloperDetails = ref([]);
+const previewDeveloperDetailLoadedKey = ref("");
+const PREVIEW_SOFT_METRIC_CLASS_ID_MAP = {
+  praise: "1196",
+  team: "1197",
+  outreach: "1198",
+  publicity: "1199",
+  company: "1200",
+  department: "1201",
+};
+const PREVIEW_SOFT_METRIC_GROUPS = [
+  { key: "praise", title: "客户表扬与批评" },
+  { key: "team", title: "团队建设" },
+  { key: "outreach", title: "对外联络" },
+  { key: "publicity", title: "对外宣传" },
+  { key: "company", title: "参与公司管理工作" },
+  { key: "department", title: "参与部门管理工作" },
+];
+const PREVIEW_DEVELOPER_DETAIL_CONFIGS = [
+  { key: "developer-base", title: "客户开发人（本领域开发客户）TOP3", detailType: "developer-client-list", showCaseCount: true },
+  { key: "developer-cross", title: "客户开发人（跨领域开发）TOP3", detailType: "developer-client-list-kly", showCaseCount: true },
+  { key: "developer-existing-cross", title: "客户开发人（现有客户跨领域开发）TOP3", detailType: "developer-client-list-xykh", showCaseCount: false },
+  { key: "coordinator-top", title: "客户协调人 TOP5", detailType: "coordinator-client-list", showCaseCount: false, pageSize: 5 },
+  { key: "owner-top", title: "客户负责人 TOP10", detailType: "owner-client-list", showCaseCount: true, showRepaymentRate: true, pageSize: 10 },
+  { key: "group-top", title: "客户组 TOP10", detailType: "bossuser-custGroup", showCaseCount: true, showRepaymentRate: true, pageSize: 10 },
+  { key: "undertake-top", title: "承办组 TOP10", detailType: "bossuser-cbGroupBill", showCaseCount: true, pageSize: 10 },
+  { key: "participant-top", title: "客户参与人 TOP10", detailType: "cry-custName", showAmount: false, showCaseCount: false, pageSize: 10 },
+];
+const PREVIEW_INDEX_COL_WIDTH = "64px";
+const PREVIEW_AMOUNT_COL_WIDTH = "160px";
+const PREVIEW_CASE_COL_WIDTH = "110px";
+const PREVIEW_RATE_COL_WIDTH = "120px";
+
+const getPreviewRecordType = (record, groupKey = "", recordIndex = -1) => {
+  const type = getRecordTag(record, groupKey, recordIndex);
+  if (!type) return "";
+  return /^\d+$/.test(String(type)) ? "" : type;
+};
+
+const getPreviewRecordDate = (record) => {
+  if (!record || typeof record !== "object") return "";
+  const source = record.occurredDate || record.createDate || record.createTime || record.updateTime || "";
+  return formatDate(source);
+};
+
+const extractSoftMetricRows = (res) => {
+  if (Array.isArray(res?.data?.rows)) return res.data.rows;
+  if (Array.isArray(res?.data)) return res.data;
+  if (Array.isArray(res)) return res;
+  return [];
+};
+
+const normalizeSoftMetricRecord = (record) => ({
+  id: String(record?.id || ""),
+  type: record?.type || "",
+  content: record?.content || "",
+  occurredDate: record?.occurredDate || "",
+  createDate: record?.createDate || "",
+  createTime: record?.createTime || "",
+  updateTime: record?.updateTime || "",
+  autoAdd: record?.autoAdd,
+});
+
+const extractDetailRows = (res) => {
+  if (Array.isArray(res?.data?.rows)) return res.data.rows;
+  if (Array.isArray(res?.data)) return res.data;
+  if (Array.isArray(res)) return res;
+  return [];
+};
+
+const normalizeDeveloperDetailRow = (row) => ({
+  id: String(row?.id || row?.custId || row?.customerId || ""),
+  custName: row?.custName || row?.customerName || row?.name || "--",
+  amount: row?.billSum ?? row?.amount ?? null,
+  caseCount: row?.caseCount ?? null,
+  repaymentRate: row?.repaymentRate ?? row?.percentage ?? row?.rate ?? null,
+});
+
+const buildPreviewSoftMetricsNode = () => {
+  const wrapper = document.createElement("div");
+  wrapper.className = "pp-report-preview-soft";
+
+  const head = document.createElement("div");
+  head.className = "pp-report-preview-soft-head";
+  const title = document.createElement("span");
+  title.className = "pp-report-preview-soft-title";
+  title.textContent = "软性指标";
+  const meta = document.createElement("span");
+  meta.className = "pp-report-preview-soft-meta";
+  meta.textContent = "";
+  head.appendChild(title);
+  head.appendChild(meta);
+  wrapper.appendChild(head);
+
+  if (previewSoftMetricsLoading.value) {
+    const loading = document.createElement("div");
+    loading.className = "pp-report-preview-soft-loading";
+    loading.textContent = "软性指标加载中...";
+    wrapper.appendChild(loading);
+    return wrapper;
+  }
+
+  const list = document.createElement("div");
+  list.className = "pp-report-preview-soft-list";
+  previewSoftMetricGroups.value.forEach((group) => {
+    const card = document.createElement("div");
+    card.className = "pp-report-preview-soft-card";
+
+    const cardHead = document.createElement("div");
+    cardHead.className = "pp-report-preview-soft-card-head";
+    const cardTitle = document.createElement("span");
+    cardTitle.className = "pp-report-preview-soft-card-title";
+    cardTitle.textContent = group.title || "--";
+    const cardCount = document.createElement("span");
+    cardCount.className = "pp-report-preview-soft-card-count";
+    cardCount.textContent = `${group.records?.length || 0}条`;
+    cardHead.appendChild(cardTitle);
+    cardHead.appendChild(cardCount);
+
+    const body = document.createElement("div");
+    body.className = "pp-report-preview-soft-card-body";
+    const table = document.createElement("table");
+    table.className = "pp-report-preview-soft-table";
+    table.innerHTML = `
+      <colgroup>
+        <col class="pp-col-index" />
+        <col class="pp-col-type" />
+        <col class="pp-col-date" />
+        <col class="pp-col-content" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="pp-col-index-cell">序号</th>
+          <th>类型</th>
+          <th>时间</th>
+          <th>内容</th>
+        </tr>
+      </thead>
+    `;
+    const mainIndexHead = table.querySelector("th.pp-col-index-cell");
+    if (mainIndexHead) {
+      mainIndexHead.style.width = PREVIEW_INDEX_COL_WIDTH;
+      mainIndexHead.style.minWidth = PREVIEW_INDEX_COL_WIDTH;
+      mainIndexHead.style.maxWidth = PREVIEW_INDEX_COL_WIDTH;
+    }
+    const tbody = document.createElement("tbody");
+    const rows = Array.isArray(group.records) ? group.records : [];
+    if (!rows.length) {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.className = "empty";
+      td.colSpan = 4;
+      td.textContent = "暂无数据";
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+    } else {
+      rows.forEach((record, recordIndex) => {
+        const tr = document.createElement("tr");
+        const columns = [
+          String(recordIndex + 1),
+          getPreviewRecordType(record, group.key, recordIndex) || "--",
+          getPreviewRecordDate(record) || "--",
+          getRecordText(record, group.key) || "--",
+        ];
+        columns.forEach((text, colIndex) => {
+          const td = document.createElement("td");
+          if (colIndex === 0) {
+            td.className = "pp-col-index-cell";
+            td.style.width = PREVIEW_INDEX_COL_WIDTH;
+            td.style.minWidth = PREVIEW_INDEX_COL_WIDTH;
+            td.style.maxWidth = PREVIEW_INDEX_COL_WIDTH;
+          }
+          td.textContent = text;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+    table.appendChild(tbody);
+    body.appendChild(table);
+
+    card.appendChild(cardHead);
+    card.appendChild(body);
+    list.appendChild(card);
+  });
+  wrapper.appendChild(list);
+  return wrapper;
+};
+
+const buildPreviewSoftDetailNode = () => {
+  const wrapper = document.createElement("div");
+  wrapper.className = "pp-report-preview-soft-detail";
+  const title = document.createElement("div");
+  title.className = "pp-report-preview-soft-detail-title";
+  title.textContent = "详细数据";
+  wrapper.appendChild(title);
+
+  if (previewDeveloperDetailsLoading.value) {
+    const loading = document.createElement("div");
+    loading.className = "pp-report-preview-soft-loading";
+    loading.textContent = "详细数据加载中...";
+    wrapper.appendChild(loading);
+    return wrapper;
+  }
+
+  const cards = Array.isArray(previewDeveloperDetails.value) ? previewDeveloperDetails.value : [];
+  if (!cards.length) return null;
+
+  const cardList = document.createElement("div");
+  cardList.className = "pp-report-preview-soft-detail-list";
+  cards.forEach((card) => {
+    const cardEl = document.createElement("div");
+    cardEl.className = "pp-report-preview-soft-detail-card";
+    const cardTitle = document.createElement("div");
+    cardTitle.className = "pp-report-preview-soft-detail-card-title";
+    cardTitle.textContent = card.title || "--";
+    const table = document.createElement("table");
+    table.className = "pp-report-preview-soft-table pp-report-preview-soft-table-detail";
+    table.style.width = "100%";
+    table.style.tableLayout = "fixed";
+    const showAmount = card.showAmount !== false;
+    const showCaseCount = !!card.showCaseCount;
+    const showRepaymentRate = !!card.showRepaymentRate;
+    const amountBaseWidth = parseInt(PREVIEW_AMOUNT_COL_WIDTH, 10) || 160;
+    const caseBaseWidth = parseInt(PREVIEW_CASE_COL_WIDTH, 10) || 110;
+    const rateBaseWidth = parseInt(PREVIEW_RATE_COL_WIDTH, 10) || 120;
+    let amountWidth = showAmount ? amountBaseWidth : 0;
+    let caseWidth = showCaseCount ? caseBaseWidth : 0;
+    let rateWidth = showRepaymentRate ? rateBaseWidth : 0;
+    // 统一尾部列对齐：缺失的后置列宽度并入最后一个可见尾列，避免右侧留白
+    if (showAmount && !showCaseCount && !showRepaymentRate) {
+      amountWidth = amountBaseWidth + caseBaseWidth + rateBaseWidth;
+    } else if (showAmount && showCaseCount && !showRepaymentRate) {
+      caseWidth = caseBaseWidth + rateBaseWidth;
+    } else if (showAmount && !showCaseCount && showRepaymentRate) {
+      amountWidth = amountBaseWidth + caseBaseWidth;
+    }
+    const colParts = [
+      `<col class="pp-col-index" style="width:${PREVIEW_INDEX_COL_WIDTH}" />`,
+      `<col class="pp-col-customer" />`,
+    ];
+    if (showAmount) colParts.push(`<col class="pp-col-amount" style="width:${amountWidth}px" />`);
+    if (showCaseCount) colParts.push(`<col class="pp-col-case-count" style="width:${caseWidth}px" />`);
+    if (showRepaymentRate) colParts.push(`<col class="pp-col-rate" style="width:${rateWidth}px" />`);
+    const colGroup = `<colgroup>${colParts.join("")}</colgroup>`;
+    const headParts = [
+      "<th class='pp-col-index-cell pp-col-index-head'>序号</th>",
+      "<th class='pp-col-customer-head'>客户名称</th>",
+    ];
+    if (showAmount) headParts.push("<th class='pp-col-amount-head'>账单额</th>");
+    if (showCaseCount) headParts.push("<th class='pp-col-case-count-head'>案量</th>");
+    if (showRepaymentRate) headParts.push("<th class='pp-col-rate-head'>回款率</th>");
+    table.innerHTML = `${colGroup}<thead><tr>${headParts.join("")}</tr></thead>`;
+    const detailIndexHead = table.querySelector("th.pp-col-index-cell");
+    if (detailIndexHead) {
+      detailIndexHead.style.width = PREVIEW_INDEX_COL_WIDTH;
+      detailIndexHead.style.minWidth = PREVIEW_INDEX_COL_WIDTH;
+      detailIndexHead.style.maxWidth = PREVIEW_INDEX_COL_WIDTH;
+    }
+    const amountHead = table.querySelector("th.pp-col-amount-head");
+    if (amountHead) {
+      amountHead.style.setProperty("width", `${amountWidth}px`, "important");
+      amountHead.style.setProperty("min-width", `${amountWidth}px`, "important");
+      amountHead.style.setProperty("max-width", `${amountWidth}px`, "important");
+    }
+    const caseHead = table.querySelector("th.pp-col-case-count-head");
+    if (caseHead) {
+      caseHead.style.setProperty("width", `${caseWidth}px`, "important");
+      caseHead.style.setProperty("min-width", `${caseWidth}px`, "important");
+      caseHead.style.setProperty("max-width", `${caseWidth}px`, "important");
+    }
+    const rateHead = table.querySelector("th.pp-col-rate-head");
+    if (rateHead) {
+      rateHead.style.setProperty("width", `${rateWidth}px`, "important");
+      rateHead.style.setProperty("min-width", `${rateWidth}px`, "important");
+      rateHead.style.setProperty("max-width", `${rateWidth}px`, "important");
+    }
+    const tbody = document.createElement("tbody");
+    (card.rows || []).forEach((row, rowIndex) => {
+      const tr = document.createElement("tr");
+      const amountText = formatClientAmount(row.amount) || "¥0.00";
+      const cells = [
+        { key: "index", text: String(rowIndex + 1) },
+        { key: "customer", text: row.custName || "--" },
+      ];
+      if (showAmount) cells.push({ key: "amount", text: amountText });
+      if (showCaseCount) cells.push({ key: "case-count", text: `${row.caseCount ?? 0}件` });
+      if (showRepaymentRate) cells.push({ key: "rate", text: formatPercent(row.repaymentRate) || "--" });
+      cells.forEach((cell, colIndex) => {
+        const td = document.createElement("td");
+        td.classList.add(`pp-col-${cell.key}-cell`);
+        if (colIndex === 0) {
+          td.className = "pp-col-index-cell";
+          td.style.width = PREVIEW_INDEX_COL_WIDTH;
+          td.style.minWidth = PREVIEW_INDEX_COL_WIDTH;
+          td.style.maxWidth = PREVIEW_INDEX_COL_WIDTH;
+          td.style.setProperty("width", PREVIEW_INDEX_COL_WIDTH, "important");
+          td.style.setProperty("min-width", PREVIEW_INDEX_COL_WIDTH, "important");
+          td.style.setProperty("max-width", PREVIEW_INDEX_COL_WIDTH, "important");
+        } else if (cell.key === "amount") {
+          td.style.setProperty("width", `${amountWidth}px`, "important");
+          td.style.setProperty("min-width", `${amountWidth}px`, "important");
+          td.style.setProperty("max-width", `${amountWidth}px`, "important");
+        } else if (cell.key === "case-count") {
+          td.style.setProperty("width", `${caseWidth}px`, "important");
+          td.style.setProperty("min-width", `${caseWidth}px`, "important");
+          td.style.setProperty("max-width", `${caseWidth}px`, "important");
+        } else if (cell.key === "rate") {
+          td.style.setProperty("width", `${rateWidth}px`, "important");
+          td.style.setProperty("min-width", `${rateWidth}px`, "important");
+          td.style.setProperty("max-width", `${rateWidth}px`, "important");
+        }
+        td.textContent = cell.text;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    cardEl.appendChild(cardTitle);
+    cardEl.appendChild(table);
+    cardList.appendChild(cardEl);
+  });
+  wrapper.appendChild(cardList);
+  return wrapper;
+};
+
+const loadPreviewSoftMetrics = async ({ force = false } = {}) => {
+  const userId = props.performance?.user?.userId || props.performance?.user?.id;
+  const year = props.year;
+  if (!userId || !year) {
+    previewSoftMetricGroups.value = PREVIEW_SOFT_METRIC_GROUPS.map((item) => ({ ...item, records: [] }));
+    return;
+  }
+  const cacheKey = `${userId}-${year}`;
+  if (!force && previewSoftMetricLoadedKey.value === cacheKey && previewSoftMetricGroups.value.length) return;
+  if (previewSoftMetricsLoading.value) return;
+  previewSoftMetricsLoading.value = true;
+  try {
+    const result = await Promise.all(
+      PREVIEW_SOFT_METRIC_GROUPS.map(async (group) => {
+        const key = PREVIEW_SOFT_METRIC_CLASS_ID_MAP[group.key];
+        const res = await querySoftMetricRecords({
+          userId,
+          year,
+          key,
+          pageNo: 1,
+          pageSize: 300,
+        });
+        const rows = extractSoftMetricRows(res);
+        return {
+          key: group.key,
+          title: group.title,
+          records: rows.map(normalizeSoftMetricRecord),
+        };
+      })
+    );
+    previewSoftMetricGroups.value = result;
+    previewSoftMetricLoadedKey.value = cacheKey;
+  } catch (error) {
+    console.error("加载预览软性指标失败:", error);
+    previewSoftMetricGroups.value = PREVIEW_SOFT_METRIC_GROUPS.map((item) => ({ ...item, records: [] }));
+  } finally {
+    previewSoftMetricsLoading.value = false;
+  }
+};
+
+const loadPreviewDeveloperDetails = async ({ force = false } = {}) => {
+  const userId = props.performance?.user?.userId || props.performance?.user?.id;
+  const year = props.year;
+  if (!userId || !year) {
+    previewDeveloperDetails.value = [];
+    return;
+  }
+  const cacheKey = `${userId}-${year}`;
+  if (!force && previewDeveloperDetailLoadedKey.value === cacheKey && previewDeveloperDetails.value.length) return;
+  if (previewDeveloperDetailsLoading.value) return;
+  previewDeveloperDetailsLoading.value = true;
+  try {
+    const settled = await Promise.allSettled(
+      PREVIEW_DEVELOPER_DETAIL_CONFIGS.map(async (config) => {
+        try {
+          const res = await getPopoverDetail({
+            userId,
+            year,
+            detailType: config.detailType,
+            pageNo: 1,
+            pageSize: config.pageSize || 3,
+          });
+          // 单个接口返回异常结构（如 success/data 为空）时按空数据处理，不中断其余表格
+          const rows = extractDetailRows(res).map(normalizeDeveloperDetailRow);
+          return {
+            ...config,
+            rows,
+          };
+        } catch (error) {
+          console.warn(`加载详细数据失败，已跳过: ${config.detailType}`, error);
+          return {
+            ...config,
+            rows: [],
+          };
+        }
+      })
+    );
+    const cards = settled
+      .filter((item) => item.status === "fulfilled")
+      .map((item) => item.value);
+    previewDeveloperDetails.value = cards.filter((item) => Array.isArray(item.rows) && item.rows.length > 0);
+    previewDeveloperDetailLoadedKey.value = cacheKey;
+  } catch (error) {
+    console.error("加载客户开发人二级明细失败:", error);
+    previewDeveloperDetails.value = [];
+  } finally {
+    previewDeveloperDetailsLoading.value = false;
+  }
+};
+
+const replacePdfIframesWithImages = async (container) => {
+  if (!container) return;
+  const iframes = Array.from(container.querySelectorAll("iframe"));
+  for (const iframe of iframes) {
+    const frameSrc = iframe.getAttribute("src") || "";
+    const frameRect = iframe.getBoundingClientRect();
+    const previewPageWidth = reportPreviewRef.value?.clientWidth || 0;
+    const frameWidth = Math.max(
+      frameRect.width || iframe.clientWidth || iframe.offsetWidth || previewPageWidth || 1200,
+      1
+    );
+    const frameHeight = Math.max(frameRect.height || iframe.clientHeight || 0, 1);
+    const frameUrl = frameSrc
+      ? new URL(frameSrc, window.location.origin).toString()
+      : "";
+    if (!frameUrl) continue;
+    const pdfPages = await renderPdfPagesToDataUrls(frameUrl, frameWidth);
+    if (!pdfPages.length) continue;
+
+    const holder = document.createElement("div");
+    holder.className = "pp-report-preview-iframe-placeholder pdf-pages";
+    pdfPages.forEach((page) => {
+      const img = document.createElement("img");
+      img.className = "pp-summary-pdf-page-image";
+      img.src = page.dataUrl;
+      img.alt = `总结附件第${page.pageNum}页`;
+      holder.appendChild(img);
+    });
+
+    if (holder.childNodes.length === 0) {
+      holder.style.height = `${frameHeight}px`;
+      holder.textContent = "总结附件请在系统中查看";
+    }
+    iframe.replaceWith(holder);
+  }
+};
+
+const openReportPreview = () => {
+  reportPreviewLoading.value = true;
+  reportPreviewOpen.value = true;
+  nextTick(async () => {
+    const container = reportPreviewBodyRef.value;
+    if (!container) {
+      reportPreviewLoading.value = false;
+      return;
+    }
+    try {
+      await Promise.all([
+        loadPreviewSoftMetrics({ force: true }),
+        loadPreviewDeveloperDetails({ force: true }),
+      ]);
+      container.innerHTML = "";
+      const selectors = [
+        ".pp-panel",
+        ".pp-score-strip",
+        ".pp-score-strip.soft",
+      ];
+      const cloneWithCanvasImages = (node) => {
+        const clone = node.cloneNode(true);
+        const sourceCanvases = Array.from(node.querySelectorAll("canvas"));
+        const targetCanvases = Array.from(clone.querySelectorAll("canvas"));
+      const count = Math.min(sourceCanvases.length, targetCanvases.length);
+      for (let i = 0; i < count; i += 1) {
+        const sourceCanvas = sourceCanvases[i];
+        const targetCanvas = targetCanvases[i];
+        const img = document.createElement("img");
+        let displayWidth = Math.max(sourceCanvas.clientWidth || 0, 1);
+        let displayHeight = Math.max(sourceCanvas.clientHeight || 0, 1);
+        try {
+          const rect = sourceCanvas.getBoundingClientRect();
+          displayWidth = Math.max(rect.width || sourceCanvas.clientWidth || 0, 1);
+          displayHeight = Math.max(rect.height || sourceCanvas.clientHeight || 0, 1);
+          const sourcePixelWidth = Math.max(sourceCanvas.width || 0, 1);
+          const sourcePixelHeight = Math.max(sourceCanvas.height || 0, 1);
+          const targetPixelWidth = Math.max(sourcePixelWidth, Math.round(displayWidth * 2));
+          const targetPixelHeight = Math.max(sourcePixelHeight, Math.round(displayHeight * 2));
+          const snapshotCanvas = document.createElement("canvas");
+          snapshotCanvas.width = targetPixelWidth;
+          snapshotCanvas.height = targetPixelHeight;
+          const snapshotCtx = snapshotCanvas.getContext("2d", { alpha: true });
+          if (snapshotCtx) {
+            snapshotCtx.imageSmoothingEnabled = true;
+            snapshotCtx.imageSmoothingQuality = "high";
+            snapshotCtx.clearRect(0, 0, targetPixelWidth, targetPixelHeight);
+            snapshotCtx.drawImage(sourceCanvas, 0, 0, targetPixelWidth, targetPixelHeight);
+            img.src = snapshotCanvas.toDataURL("image/png");
+          } else {
+            img.src = sourceCanvas.toDataURL("image/png");
+          }
+        } catch (error) {
+          console.warn("预览图表导出失败:", error);
+          continue;
+        }
+        // 预览容器宽度固定时，图表快照按容器自适应，避免沿用原页面大尺寸
+        img.className = "pp-chart-snapshot";
+        img.style.width = "100%";
+        img.style.maxWidth = "100%";
+        img.style.height = "auto";
+        img.style.aspectRatio = `${Math.max(displayWidth, 1)} / ${Math.max(displayHeight, 1)}`;
+        img.style.objectFit = "contain";
+        img.style.display = "block";
+        // ECharts 会给内部容器写死像素宽度，克隆到预览后需要重置为自适应
+        const chartRoot = targetCanvas.parentElement;
+        if (chartRoot) {
+          chartRoot.style.width = "100%";
+          chartRoot.style.maxWidth = "100%";
+        }
+        const chartHost = targetCanvas.closest(".donut-body, .field-pie-body, .radar-body, .pp-performance-chart-body, .pp-coordinator-chart-body");
+        if (chartHost) {
+          chartHost.style.width = "100%";
+          chartHost.style.maxWidth = "100%";
+        }
+        targetCanvas.replaceWith(img);
+      }
+        const imgs = Array.from(clone.querySelectorAll("img"));
+        imgs.forEach((img) => {
+          const src = img.getAttribute("src");
+          if (!src) return;
+          if (/^https?:\/\//i.test(src) || src.startsWith("data:")) return;
+          img.src = `${window.location.origin}${src.startsWith("/") ? "" : "/"}${src}`;
+        });
+        return clone;
+      };
+
+      selectors.forEach((selector) => {
+        const node = document.querySelector(selector);
+        if (node) {
+          const clone = cloneWithCanvasImages(node);
+          container.appendChild(clone);
+        }
+      });
+      container.appendChild(buildPreviewSoftMetricsNode());
+      const detailNode = buildPreviewSoftDetailNode();
+      if (detailNode) {
+        container.appendChild(detailNode);
+      }
+      const summaryNode = document.querySelector(".pp-summary-pdf");
+      if (summaryNode) {
+        const summaryClone = cloneWithCanvasImages(summaryNode);
+        container.appendChild(summaryClone);
+      }
+      await nextTick();
+      await replacePdfIframesWithImages(container);
+    } catch (error) {
+      console.error("报告预览加载失败:", error);
+      ElMessage.error("报告预览加载失败，请重试");
+    } finally {
+      reportPreviewLoading.value = false;
+    }
+  });
+};
+
+const snapshotIframe = async (iframe) => {
+  try {
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc || !doc.body) return null;
+    const deviceScale = Math.max(window.devicePixelRatio || 1, 1);
+    const captureScale = Math.min(Math.max(deviceScale * 2, 3), 4);
+    const canvas = await html2canvas(doc.body, {
+      scale: captureScale,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+      scrollX: 0,
+      scrollY: 0,
+    });
+    return canvas.toDataURL("image/png");
+  } catch (error) {
+    console.warn("总结 PDF 截图失败:", error);
+    return null;
+  }
+};
+
+const renderPdfPagesToDataUrls = async (pdfUrl, targetWidth) => {
+  const safeWidth = Math.max(Math.round(targetWidth || 0), 1);
+  // 总结 PDF 页面会再参与整页截图，提升采样倍率以降低导出发糊
+  const deviceScale = Math.max(window.devicePixelRatio || 1, 1);
+  const exportScale = Math.min(Math.max(deviceScale * 2, 3), 4);
+  const loadingTask = pdfjsLib.getDocument({
+    url: pdfUrl,
+    withCredentials: true,
+  });
+  try {
+    const pdfDoc = await loadingTask.promise;
+    const pages = [];
+    for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum += 1) {
+      const page = await pdfDoc.getPage(pageNum);
+      const baseViewport = page.getViewport({ scale: 1 });
+      const pageWidth = Math.max(baseViewport.width, 1);
+      const renderScale = (safeWidth / pageWidth) * exportScale;
+      const renderViewport = page.getViewport({ scale: Math.max(renderScale, 0.1) });
+
+      const renderCanvas = document.createElement("canvas");
+      renderCanvas.width = Math.max(Math.round(renderViewport.width), 1);
+      renderCanvas.height = Math.max(Math.round(renderViewport.height), 1);
+      const renderContext = renderCanvas.getContext("2d", { alpha: false });
+      if (!renderContext) continue;
+      renderContext.fillStyle = "#ffffff";
+      renderContext.fillRect(0, 0, renderCanvas.width, renderCanvas.height);
+
+      await page.render({
+        canvasContext: renderContext,
+        viewport: renderViewport,
+      }).promise;
+
+      pages.push({
+        pageNum,
+        dataUrl: renderCanvas.toDataURL("image/png"),
+        width: Math.round(renderCanvas.width / exportScale),
+        height: Math.round(renderCanvas.height / exportScale),
+      });
+    }
+
+    pdfDoc.cleanup();
+    await pdfDoc.destroy();
+    return pages;
+  } catch (error) {
+    console.warn("PDF 渲染失败:", error);
+    return [];
+  } finally {
+    try {
+      await loadingTask.destroy();
+    } catch (error) {
+      // ignore destroy errors
+    }
+  }
+};
+
+const waitForImages = (container) => {
+  if (!container) return Promise.resolve();
+  const images = Array.from(container.querySelectorAll("img"));
+  if (images.length === 0) return Promise.resolve();
+  return Promise.all(
+    images.map(
+      (img) =>
+        new Promise((resolve) => {
+          if (img.complete) return resolve();
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+        })
+    )
+  );
+};
+
+const svgToPngDataUrl = (src, targetWidth, targetHeight) =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => {
+      try {
+        const safeTargetWidth = Math.max(Math.round(targetWidth || 0), 1);
+        const safeTargetHeight = Math.max(Math.round(targetHeight || 0), 1);
+        const exportScale = 2;
+        const canvas = document.createElement("canvas");
+        canvas.width = safeTargetWidth * exportScale;
+        canvas.height = safeTargetHeight * exportScale;
+        const context = canvas.getContext("2d");
+        if (!context) {
+          reject(new Error("canvas context unavailable"));
+          return;
+        }
+        const sourceWidth = Math.max(image.naturalWidth || image.width || 1, 1);
+        const sourceHeight = Math.max(image.naturalHeight || image.height || 1, 1);
+        const containScale = Math.min(canvas.width / sourceWidth, canvas.height / sourceHeight);
+        const drawWidth = sourceWidth * containScale;
+        const drawHeight = sourceHeight * containScale;
+        const drawX = (canvas.width - drawWidth) / 2;
+        const drawY = (canvas.height - drawHeight) / 2;
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+        resolve(canvas.toDataURL("image/png"));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    image.onerror = () => reject(new Error("svg image load failed"));
+    image.src = src;
+  });
+
+const inlineSvgImages = async (container) => {
+  if (!container) return [];
+  const images = Array.from(container.querySelectorAll("img"));
+  const replacements = [];
+  await Promise.all(
+    images.map(async (img) => {
+      const src = img.getAttribute("src");
+      if (!src) return;
+      if (src.startsWith("data:") || !src.includes(".svg")) return;
+      if (!src.includes("nocharts")) return;
+      try {
+        const rect = img.getBoundingClientRect();
+        const originalWidth = img.style.width || "";
+        const originalHeight = img.style.height || "";
+        if (!img.style.width && rect.width > 0) {
+          img.style.width = `${rect.width}px`;
+        }
+        if (!img.style.height && rect.height > 0) {
+          img.style.height = `${rect.height}px`;
+        }
+        const targetWidth = rect.width || img.clientWidth || 1;
+        const targetHeight = rect.height || img.clientHeight || 1;
+        const pngDataUrl = await svgToPngDataUrl(src, targetWidth, targetHeight);
+        replacements.push({
+          img,
+          src,
+          width: originalWidth,
+          height: originalHeight,
+          objectFit: img.style.objectFit || "",
+          objectPosition: img.style.objectPosition || "",
+        });
+        img.style.objectFit = "contain";
+        img.style.objectPosition = "center";
+        img.src = pngDataUrl;
+      } catch (error) {
+        console.warn("SVG 转 PNG 失败:", error);
+      }
+    })
+  );
+  return replacements;
+};
+
+const exportPreviewPdf = async () => {
+  if (exportingReport.value) return;
+  exportingReport.value = true;
+  let svgReplacements = [];
+  try {
+    await nextTick();
+    await Promise.all([
+      loadPreviewSoftMetrics({ force: true }),
+      loadPreviewDeveloperDetails({ force: true }),
+    ]);
+    await nextTick();
+    const element = reportPreviewRef.value;
+    if (!element) {
+      ElMessage.error("预览内容未加载");
+      return;
+    }
+    const iframeReplacements = [];
+    const iframes = Array.from(element.querySelectorAll("iframe"));
+    for (const iframe of iframes) {
+      const frameSrc = iframe.getAttribute("src") || "";
+      const frameRect = iframe.getBoundingClientRect();
+      const previewPageWidth = reportPreviewRef.value?.clientWidth || 0;
+      const frameWidth = Math.max(
+        frameRect.width || iframe.clientWidth || iframe.offsetWidth || previewPageWidth || 1200,
+        1
+      );
+      const frameHeight = Math.max(frameRect.height || iframe.clientHeight || 0, 1);
+      const frameUrl = frameSrc
+        ? new URL(frameSrc, window.location.origin).toString()
+        : "";
+      let dataUrl = null;
+      let pdfPages = [];
+      if (frameUrl) {
+        pdfPages = await renderPdfPagesToDataUrls(frameUrl, frameWidth);
+      }
+      if (!pdfPages.length) {
+        dataUrl = await snapshotIframe(iframe);
+      }
+      const holder = document.createElement("div");
+      holder.className = "pp-report-preview-iframe-placeholder";
+      if (pdfPages.length) {
+        holder.classList.add("pdf-pages");
+        pdfPages.forEach((page) => {
+          const img = document.createElement("img");
+          img.className = "pp-summary-pdf-page-image";
+          img.src = page.dataUrl;
+          img.alt = `总结附件第${page.pageNum}页`;
+          holder.appendChild(img);
+        });
+      } else if (dataUrl) {
+        holder.style.height = `${frameHeight}px`;
+        const img = document.createElement("img");
+        img.src = dataUrl;
+        img.style.width = "100%";
+        img.style.height = "100%";
+        img.style.objectFit = "contain";
+        img.style.display = "block";
+        holder.appendChild(img);
+      } else {
+        holder.textContent = "总结附件请在系统中查看";
+      }
+      iframeReplacements.push({ iframe, holder });
+      iframe.replaceWith(holder);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    svgReplacements = await inlineSvgImages(element);
+    await waitForImages(element);
+    const exportScale = 2;
+    const canvas = await html2canvas(element, {
+      scale: exportScale,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+      scrollX: 0,
+      scrollY: 0,
+    });
+    iframeReplacements.forEach(({ iframe, holder }) => {
+      holder.replaceWith(iframe);
+    });
+    const orientation = "portrait";
+    const pdf = new jsPDF({
+      orientation,
+      unit: "pt",
+      format: "a3",
+    });
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const renderWidth = pdfWidth;
+    const pageCanvasHeight = Math.max(Math.floor((pdfHeight * canvas.width) / renderWidth), 1);
+    let renderedHeight = 0;
+    let isFirstPage = true;
+    while (renderedHeight < canvas.height) {
+      const sliceHeight = Math.min(pageCanvasHeight, canvas.height - renderedHeight);
+      const pageCanvas = document.createElement("canvas");
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = sliceHeight;
+      const pageCtx = pageCanvas.getContext("2d");
+      if (!pageCtx) break;
+      pageCtx.fillStyle = "#ffffff";
+      pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+      pageCtx.drawImage(
+        canvas,
+        0,
+        renderedHeight,
+        canvas.width,
+        sliceHeight,
+        0,
+        0,
+        pageCanvas.width,
+        sliceHeight
+      );
+      const pageImg = pageCanvas.toDataURL("image/png");
+      const pageRenderHeight = (sliceHeight * renderWidth) / canvas.width;
+      if (!isFirstPage) {
+        pdf.addPage();
+      }
+      pdf.addImage(pageImg, "PNG", 0, 0, renderWidth, pageRenderHeight);
+      renderedHeight += sliceHeight;
+      isFirstPage = false;
+    }
+
+    const userName = props.performance?.user?.name || "个人";
+    const fileName = `${props.year || ""}年-${userName}-绩效报告.pdf`;
+    pdf.save(fileName);
+    ElMessage.success("PDF 已导出");
+  } catch (error) {
+    console.error("导出 PDF 失败:", error);
+    ElMessage.error("导出失败，请稍后重试");
+  } finally {
+    svgReplacements.forEach(({ img, src, width, height, objectFit, objectPosition }) => {
+      img.src = src;
+      img.style.width = width;
+      img.style.height = height;
+      img.style.objectFit = objectFit;
+      img.style.objectPosition = objectPosition;
+    });
+    exportingReport.value = false;
+  }
+};
+
+
 const summaryCards = computed(() => {
   const cards = props.performance?.hardMetrics?.summaryCards || [];
   if (cards.some(card => card && card.key === "judgments")) {
@@ -1934,6 +2873,16 @@ const softDialogType = ref("");
 const softDialogDate = ref("");
 const softDialogRecordIndex = ref(-1);
 const softDialogEditGroupIndex = ref(-1);
+const softTypeIdByMetricKey = ref({});
+
+const SOFT_METRIC_KEY_TO_NUMBER = {
+  praise: "1196",
+  team: "1197",
+  outreach: "1198",
+  publicity: "1199",
+  company: "1200",
+  department: "1201",
+};
 
 const summaryDialogOpen = ref(false);
 const summaryDialogGroupIndex = ref(-1);
@@ -4218,18 +5167,14 @@ const confirmSoftDialog = async () => {
     return;
   }
   
-  // 获取指标类型对应的数字 key
-  const SOFT_METRIC_KEY_TO_NUMBER = {
-    'praise': '1196',
-    'team': '1197',
-    'outreach': '1198',
-    'publicity': '1199',
-    'company': '1200',
-    'department': '1201',
-  };
-  
   const metricKeyNumber = SOFT_METRIC_KEY_TO_NUMBER[softDialogGroupKey.value] || '';
+  const typeIdValue = resolveSoftDialogTypeId(
+    softDialogGroupKey.value,
+    softDialogType.value,
+    group.records || []
+  );
   console.log('metricKeyNumber:', metricKeyNumber);
+  console.log('softDialogType -> typeId:', softDialogType.value, '=>', typeIdValue);
   
   if (softDialogMode.value === "add") {
     console.log('进入添加模式');
@@ -4237,7 +5182,7 @@ const confirmSoftDialog = async () => {
     console.log('准备添加软性指标记录，参数:', {
       year: props.year,
       key: metricKeyNumber,
-      type: softDialogType.value,
+      type: typeIdValue,
       content: textValue,
       occurredDate: softDialogDate.value
     });
@@ -4246,7 +5191,7 @@ const confirmSoftDialog = async () => {
       const requestData = {
         year: props.year,
         key: metricKeyNumber,
-        type: softDialogType.value || '',
+        type: typeIdValue || '',
         content: textValue,
       };
       
@@ -4263,7 +5208,8 @@ const confirmSoftDialog = async () => {
         // 添加成功后，构建记录对象并添加到列表中
         const newRecord = {
           id: String(res.data?.id || Date.now()),
-          type: softDialogType.value || '',
+          type: normalizeTypeText(softDialogType.value) || '',
+          originalType: typeIdValue || '',
           content: textValue,
           occurredDate: softDialogDate.value || null,
           createTime: new Date().toISOString(),
@@ -4301,7 +5247,7 @@ const confirmSoftDialog = async () => {
         id: recordId,
         year: props.year,
         key: metricKeyNumber,
-        type: softDialogType.value || '',
+        type: typeIdValue || '',
         content: textValue,
       };
       
@@ -4318,7 +5264,8 @@ const confirmSoftDialog = async () => {
         // 更新成功后，更新本地记录
         const updatedRecord = {
           ...record,
-          type: softDialogType.value || '',
+          type: normalizeTypeText(softDialogType.value) || '',
+          originalType: typeIdValue || '',
           content: textValue,
           occurredDate: softDialogDate.value || null,
         };
@@ -4338,12 +5285,65 @@ const confirmSoftDialog = async () => {
   softDialogOpen.value = false;
 };
 
+const normalizeTypeText = (value) => {
+  const text = value == null ? "" : String(value).trim();
+  if (!text) return "";
+  const lower = text.toLowerCase();
+  if (lower === "null" || lower === "undefined") return "";
+  return text;
+};
+
+const loadSoftTypeIdMapping = async () => {
+  const classIds = Object.values(SOFT_METRIC_KEY_TO_NUMBER).join(",");
+  try {
+    const res = await querycustSelectClass({ classId: classIds });
+    if (!(res?.success && res.data)) return;
+    const metricByClassId = Object.entries(SOFT_METRIC_KEY_TO_NUMBER).reduce((acc, [metricKey, classId]) => {
+      acc[classId] = metricKey;
+      return acc;
+    }, {});
+    const map = {};
+    Object.entries(res.data).forEach(([classId, rows]) => {
+      const metricKey = metricByClassId[classId];
+      if (!metricKey || !Array.isArray(rows)) return;
+      map[metricKey] = {};
+      rows.forEach((row) => {
+        const typeName = normalizeTypeText(row?.typeName);
+        const typeId = row?.id != null ? String(row.id) : "";
+        if (typeName && typeId) {
+          map[metricKey][typeName] = typeId;
+        }
+      });
+    });
+    softTypeIdByMetricKey.value = map;
+  } catch (error) {
+    console.warn("加载软性指标类型映射失败:", error);
+  }
+};
+
+const resolveSoftDialogTypeId = (groupKey, selectedType, groupRecords = []) => {
+  const normalized = normalizeTypeText(selectedType);
+  if (!normalized) return "";
+  if (/^\d+$/.test(normalized)) return normalized;
+  const mappedTypeId = softTypeIdByMetricKey.value?.[groupKey]?.[normalized];
+  if (mappedTypeId) return mappedTypeId;
+  const matchRecord = (Array.isArray(groupRecords) ? groupRecords : []).find((record) => {
+    if (!record || typeof record !== "object") return false;
+    const recordType = normalizeTypeText(record.type);
+    const originalType = normalizeTypeText(record.originalType);
+    return recordType === normalized && /^\d+$/.test(originalType);
+  });
+  if (matchRecord) return String(matchRecord.originalType);
+  return normalized;
+};
+
 const getRecordTag = (record, groupKey = "", recordIndex = -1) => {
   // 如果是对象格式（API 返回的数据）
   if (record && typeof record === 'object' && record !== null) {
     // 从 type 字段获取标签（type 字段直接存储中文类型标签）
-    if (record.type) {
-      return record.type;
+    const tag = normalizeTypeText(record.type);
+    if (tag) {
+      return tag;
     }
     return "";
   }
@@ -4406,10 +5406,14 @@ const getRecordTagClass = (record, groupKey = "", recordIndex = -1) => {
 const getTypeOptionsFromApi = (groupKey) => {
   const apiOptions = props.performance?.typeOptionsByMetricKey?.[groupKey];
   if (apiOptions && apiOptions.length > 0) {
-    return apiOptions;
+    return apiOptions
+      .map((item) => normalizeTypeText(item))
+      .filter(Boolean);
   }
   // 如果没有接口数据，使用默认的映射表
-  return softDialogTypeMap[groupKey] || [];
+  return (softDialogTypeMap[groupKey] || [])
+    .map((item) => normalizeTypeText(item))
+    .filter(Boolean);
 };
 
 const getTypeOptions = (groupKey) => getTypeOptionsFromApi(groupKey);
@@ -4471,8 +5475,10 @@ const getFilteredRecords = (group) => {
       // 如果 type 是数字字符串（如 "2284"），且无法匹配到中文，则显示该记录
       // 这样可以避免因为 type 映射不完整而导致数据不显示
       if (/^\d+$/.test(String(recordType))) {
-        // type 是数字，如果无法匹配到中文，默认显示
-        // 这里可以根据实际需求调整逻辑
+        return true;
+      }
+      // 如果是未知类型（不在选项中），也默认显示，避免无类型/异常类型被筛掉
+      if (!options.includes(recordType)) {
         return true;
       }
       // type 字段是中文类型标签，直接匹配
@@ -4480,6 +5486,7 @@ const getFilteredRecords = (group) => {
     }
     
     // 字符串格式：检查是否匹配选中的类型
+    if (!options.includes(tag)) return true;
     return selected.includes(tag);
   });
 };
@@ -4695,16 +5702,7 @@ const adaptCustomerOwnerDataInComponent = (data) => {
   if (data.fzrCustCount !== undefined && data.fzrCustCount !== null) {
     summary.push({
       label: '客户数',
-      value: String(data.fzrCustCount),
-      topClients: topCustomers.slice(0, 10).map(item => ({
-        name: item.name,
-        amount: typeof item.value === 'number' 
-          ? `¥${item.value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-          : `¥${item.value}`,
-        custId: item.custId,
-        cases: 0,
-        rate: '--'
-      }))
+      value: String(data.fzrCustCount)
     });
   }
   
@@ -4716,16 +5714,7 @@ const adaptCustomerOwnerDataInComponent = (data) => {
     summary.push({
       label: '账单额',
       value: billValue,
-      highlight: true,
-      topClients: topCustomers.slice(0, 10).map(item => ({
-        name: item.name,
-        amount: typeof item.value === 'number' 
-          ? `¥${item.value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-          : `¥${item.value}`,
-        custId: item.custId,
-        cases: 0,
-        rate: '--'
-      }))
+      highlight: true
     });
   }
   
@@ -4733,16 +5722,7 @@ const adaptCustomerOwnerDataInComponent = (data) => {
   if (data.fzrCaseCount !== undefined && data.fzrCaseCount !== null) {
     summary.push({
       label: '案量',
-      value: `${data.fzrCaseCount}件`,
-      topClients: topCustomers.slice(0, 10).map(item => ({
-        name: item.name,
-        amount: typeof item.value === 'number' 
-          ? `¥${item.value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-          : `¥${item.value}`,
-        custId: item.custId,
-        cases: 0,
-        rate: '--'
-      }))
+      value: `${data.fzrCaseCount}件`
     });
   }
   
@@ -4750,16 +5730,7 @@ const adaptCustomerOwnerDataInComponent = (data) => {
   if (data.collectionRate !== undefined && data.collectionRate !== null) {
     summary.push({
       label: '回款率',
-      value: data.collectionRate,
-      topClients: topCustomers.slice(0, 10).map(item => ({
-        name: item.name,
-        amount: typeof item.value === 'number' 
-          ? `¥${item.value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-          : `¥${item.value}`,
-        custId: item.custId,
-        cases: 0,
-        rate: '--'
-      }))
+      value: data.collectionRate
     });
   }
   
@@ -5358,6 +6329,7 @@ const loadSoftScoreData = async () => {
 
 onMounted(() => {
   document.addEventListener("click", handleClickOutside);
+  loadSoftTypeIdMapping();
   // 加载软性指标打分数据
   loadSoftScoreData();
   if (props.year) {
@@ -5512,6 +6484,7 @@ const fetchDetailData = async (detailType, limit = 10) => {
 
 
 // 生成报告HTML - 专业美观的样式
+// eslint-disable-next-line no-unused-vars
 const buildReportHtml = (reportData) => {
   const { user, year, businessSections, softMetricSections, summarySections, hardScore, softScore, summaryPdfLink, images } = reportData;
   
@@ -5617,7 +6590,7 @@ const buildReportHtml = (reportData) => {
     <html lang="zh-CN">
       <head>
         <meta charset="UTF-8" />
-        <title>${escapeHtml(year)}年个人绩效报告 - ${escapeHtml(user.name || "")}</title>
+        <title>${escapeHtml(year)}年个人总结报告 - ${escapeHtml(user.name || "")}</title>
         <style>
           @page { margin: 2cm; }
           body { 
@@ -5840,6 +6813,7 @@ const buildReportHtml = (reportData) => {
 };
 
 // 构建报告数据 - 按新结构组织
+// eslint-disable-next-line no-unused-vars
 const buildReportData = async () => {
   const user = props.performance?.user || {};
   const hardScore = {
@@ -6038,78 +7012,6 @@ const buildReportData = async () => {
     summaryPdfLink,
     images: {},
   };
-};
-
-const exportPerformanceReport = async () => {
-  if (exportingReport.value) return;
-  exportingReport.value = true;
-  
-  try {
-    ElMessage.info("正在生成报告，请稍候...");
-    
-    // 1. 先获取数据（包含API调用）
-    const reportData = await buildReportData();
-    
-    // 2. 尝试截取关键卡片图片（使用PC宽度）
-    const images = {};
-    const cardSelectors = {
-      revenue: ".pp-module-card:has(.pp-revenue-overview)",
-      coordinator: ".pp-module-card:has(.pp-coordinator-summary)",
-      owner: ".pp-module-card:has(.pp-owner-summary)",
-      group: ".pp-module-card:has(.pp-group-overview)",
-    };
-    
-    // 并行截取多个卡片，使用PC宽度
-    const capturePromises = Object.entries(cardSelectors).map(async ([key, selector]) => {
-      try {
-        const element = document.querySelector(selector);
-        if (element) {
-          // 获取元素实际宽度，确保使用PC宽度（至少800px）
-          const actualWidth = Math.max(element.offsetWidth, 800);
-          const canvas = await html2canvas(element, {
-            scale: 2, // 提高清晰度
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: "#ffffff",
-            logging: false,
-            width: actualWidth,
-            windowWidth: 1440, // PC屏幕宽度
-            windowHeight: 900,
-            scrollX: 0,
-            scrollY: 0,
-          });
-          images[key] = canvas.toDataURL("image/png");
-        }
-      } catch (e) {
-        console.warn(`截图${key}失败:`, e);
-      }
-    });
-    
-    await Promise.allSettled(capturePromises);
-    reportData.images = images;
-    
-    // 3. 生成HTML报告
-    const html = buildReportHtml(reportData);
-    
-    // 4. 导出为Word文档
-    const blob = new Blob([`\ufeff${html}`], { type: "application/msword;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const fileName = `${props.year || ""}年-${reportData.user?.name || "个人"}-绩效报告.doc`;
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    ElMessage.success("报告已生成并开始下载");
-  } catch (error) {
-    console.error("导出绩效报告失败:", error);
-    ElMessage.error("导出失败，请稍后重试");
-  } finally {
-    exportingReport.value = false;
-  }
 };
 
 const openSummaryDialog = async (groupIndex) => {
@@ -6544,14 +7446,6 @@ const getPublicityCellClass = (label, fieldIdx) => {
   return baseClass;
 };
 
-// 获取开发人员模块的客户列表（直接返回topClients，和其他项一样）
-const getDeveloperClients = (item) => {
-  if (item.topClients && Array.isArray(item.topClients) && item.topClients.length > 0) {
-    return item.topClients;
-  }
-  return [];
-};
-
 // 格式化金额显示（支持数字和字符串格式）
 const formatClientAmount = (amount) => {
   if (amount === null || amount === undefined) return '';
@@ -6640,37 +7534,6 @@ const formatRevenueValue = (value) => {
   }
   return String(value)
 }
-
-
-const getTotalAmount = (topClients) => {
-  if (!topClients || !Array.isArray(topClients) || topClients.length === 0) {
-    return "";
-  }
-  // 从topClients中提取金额并累加
-  const total = topClients.reduce((sum, client) => {
-    if (client.amount !== null && client.amount !== undefined) {
-      // 如果 amount 是数字，直接使用
-      if (typeof client.amount === 'number') {
-        return sum + client.amount;
-      }
-      // 如果 amount 是字符串，提取数字部分，去掉¥和逗号
-      if (typeof client.amount === 'string') {
-        const amountStr = client.amount.replace(/[¥,]/g, "");
-        const amount = parseFloat(amountStr) || 0;
-        return sum + amount;
-      }
-    }
-    return sum;
-  }, 0);
-  
-  if (total === 0) return "";
-  
-  // 格式化金额
-  if (total >= 10000) {
-    return `¥${(total / 10000).toFixed(1)}万`;
-  }
-  return `¥${total.toLocaleString()}`;
-};
 
 
 // 检查记录是否可以编辑（autoAdd === 0 时可以编辑）

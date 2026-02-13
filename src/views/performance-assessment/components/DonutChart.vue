@@ -36,6 +36,9 @@ const hoverDetailLoading = ref(new Set());
 let hideTipTimer = null;
 const currentHoverKey = ref(null);
 
+const getChartDevicePixelRatio = () =>
+  Math.min(Math.max(window.devicePixelRatio || 1, 2), 3);
+
 // 判断数据是否为空或全为0
 const isDataEmpty = computed(() => {
   if (!props.data || !Array.isArray(props.data) || props.data.length === 0) {
@@ -183,7 +186,7 @@ const formatAmountValue = (value) => {
   return "";
 };
 
-const buildHoverDetailHtml = (name, rows) => {
+const buildHoverDetailHtml = (name, amount, rows) => {
   if (!rows || rows.length === 0) {
     return `<div style="padding:4px 0">暂无数据</div>`;
   }
@@ -212,7 +215,7 @@ const buildHoverDetailHtml = (name, rows) => {
     .join("");
   return `
     <div style="padding:4px 0;min-width:280px">
-      <div style="font-weight:600;margin-bottom:8px;font-size:13px">${name}</div>
+      <div style="font-weight:600;margin-bottom:8px;font-size:13px">${name}${amount ? `（${amount}）` : ""}</div>
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead>
           <tr style="background:#f5f7fa">
@@ -315,7 +318,7 @@ const buildOption = () => {
             return `<div style="padding:4px 0">加载中...</div>`;
           }
           if (hoverDetailCache.value.has(hoverKey)) {
-            return buildHoverDetailHtml(name, hoverDetailCache.value.get(hoverKey));
+            return buildHoverDetailHtml(name, amount, hoverDetailCache.value.get(hoverKey));
           }
         }
         if (d?.bills) {
@@ -369,17 +372,16 @@ const buildOption = () => {
           show: true,
           formatter: (params) => {
             const percent = total > 0 ? ((params.value / total) * 100).toFixed(1) : 0;
-            const amount = params.data?.amount || "";
             // 如果标题包含"前十客户"，显示名称、占比和账单额
             if (props.title && props.title.includes("前十客户")) {
-              return `${params.name} ${percent}% ${amount}`;
+              return `${percent}% ${params.name}`;
             }
             if (props.showDetail) {
-              return `${params.name}\n${percent}% ${amount}`;
+              return `${percent}% ${params.name}`;
             }
             return params.name;
           },
-          fontSize: 10,
+          fontSize: 11,
           color: "#5f6f86",
           lineHeight: 14,
         },
@@ -438,7 +440,9 @@ const renderChart = () => {
 
 const initChart = () => {
   if (!chartRef.value || isDataEmpty.value) return;
-  chart.value = echarts.init(chartRef.value);
+  chart.value = echarts.init(chartRef.value, null, {
+    devicePixelRatio: getChartDevicePixelRatio(),
+  });
   renderChart();
 };
 
@@ -492,7 +496,9 @@ watch(
       // 数据有效，初始化或更新图表
       nextTick(() => {
         if (!chart.value && chartRef.value) {
-          chart.value = echarts.init(chartRef.value);
+          chart.value = echarts.init(chartRef.value, null, {
+            devicePixelRatio: getChartDevicePixelRatio(),
+          });
         }
         renderChart();
       });

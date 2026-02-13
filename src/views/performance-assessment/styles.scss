@@ -36,6 +36,12 @@
       rgba(246, 185, 76, 0.16),
       transparent 45%
     );
+  
+  @media print {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
 
 
   .pa-no-permission {
@@ -52,6 +58,22 @@
   margin: 8px 0 12px;
   align-items: center;
   justify-content: space-between;
+}
+
+@media print {
+  .partner-scroll-wrap,
+  .team-compare {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .team-compare-head,
+  .team-dim-col {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+  }
 }
 
 .pa-tabs-left {
@@ -3567,6 +3589,14 @@
   gap: 8px;
 }
 
+.pp-group-allocation-item .pp-group-label {
+  white-space: nowrap;
+}
+
+.pp-group-allocation-item .pp-group-value {
+  white-space: nowrap;
+}
+
 .pp-group-allocation-item.strong .pp-group-value {
   color: #1f2a44;
 }
@@ -3574,6 +3604,48 @@
 .pp-group-allocation-arrow {
   font-size: 16px;
   color: #8b9bb3;
+}
+
+/* 报告预览内固定上下显示（容器宽度1200场景也生效，不依赖视口宽度） */
+.pp-report-preview .pp-group-allocation-item {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.pp-report-preview .pp-group-allocation-item .pp-group-label {
+  font-size: 11px;
+  color: #7c8ba1;
+  line-height: 1.2;
+}
+
+.pp-report-preview .pp-group-allocation-item .pp-group-value {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  width: auto;
+}
+
+/* 预览区变窄时，分配前/后账单额改为上下显示，避免同一行挤压 */
+@media (max-width: 1440px) {
+  .pp-group-allocation-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .pp-group-allocation-item .pp-group-label {
+    font-size: 11px;
+    color: #7c8ba1;
+    line-height: 1.2;
+  }
+
+  .pp-group-allocation-item .pp-group-value {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.3;
+    width: auto;
+  }
 }
 
 .pp-group-chart {
@@ -5032,6 +5104,511 @@
   justify-content: center;
   color: #7a879c;
   font-size: 13px;
+}
+
+.pp-report-preview-dialog .el-dialog {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  max-width: 100vw;
+  max-height: 100vh;
+  border-radius: 0;
+}
+
+.pp-report-preview-dialog .el-dialog__header {
+  padding: 0px 20px 8px 0px;
+  border-bottom: 1px solid #e8eef7;
+}
+
+.pp-report-preview-headerbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pp-report-preview-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pp-report-preview-header-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d2a3a;
+}
+
+.pp-report-preview-close {
+  border: 1px solid #d7e2f4;
+  background: #ffffff;
+  color: #1f2a44;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  margin-left: 10px;
+  cursor: pointer;
+}
+
+.pp-report-preview-generate {
+  border: none;
+  background: #2f6bff;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.pp-report-preview-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pp-report-preview-dialog .el-dialog__body {
+  height: calc(100vh - 44px);
+  overflow: auto;
+}
+
+.pp-report-preview {
+  background: #f3f6fb;
+  padding: 12px;
+  border-radius: 12px;
+  position: relative;
+}
+
+.pp-report-preview-page {
+  width: 100%;
+  min-height: 297mm;
+  max-width: 1200px;
+  margin: 0 auto;
+  background: #ffffff;
+  border: 1px solid #e1e7f2;
+  border-radius: 14px;
+  padding: 28px 32px 32px;
+  box-shadow: 0 18px 40px rgba(14, 30, 64, 0.08);
+  box-sizing: border-box;
+}
+
+.pp-report-preview-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #edf1f7;
+}
+
+.pp-report-preview-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1d2a3a;
+}
+
+/* 仅预览内缩小账单金额卡片的金额字号，不影响主界面 */
+.pp-report-preview .pp-revenue-value {
+  font-size: 12px;
+}
+
+.pp-report-preview-subtitle {
+  font-size: 13px;
+  color: #5f6f86;
+}
+
+.pp-report-preview-section {
+  margin-top: 18px;
+}
+
+.pp-report-preview-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+.pp-report-preview-body img.pp-chart-snapshot {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+
+.pp-report-preview-body .donut-body > div,
+.pp-report-preview-body .field-pie-body > div,
+.pp-report-preview-body .radar-body > div,
+.pp-report-preview-body .pp-performance-chart-body > div,
+.pp-report-preview-body .pp-coordinator-chart-body > div {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* 预览中放大图表内容本身（不改变容器高度） */
+.pp-report-preview .donut-body img.pp-chart-snapshot,
+.pp-report-preview .field-pie-body img.pp-chart-snapshot {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  margin: 0 auto;
+  transform: translateY(10px) scale(1.2);
+  transform-origin: center top;
+}
+
+.pp-report-preview .donut-body,
+.pp-report-preview .field-pie-body {
+  overflow: hidden;
+}
+
+.pp-report-preview-loading {
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pp-report-preview > .el-loading-mask {
+  border-radius: 12px;
+}
+
+.pp-report-preview > .el-loading-mask .el-loading-spinner .el-loading-text {
+  color: #1f2a44;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.pp-report-export-loading-mask {
+  position: fixed !important;
+  top: 44px !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  z-index: 3000 !important;
+}
+
+.pp-report-export-loading-mask .el-loading-spinner .el-loading-text {
+  color: #1f2a44;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.pp-report-preview-soft {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid #e6ecf8;
+  border-radius: 12px;
+  background: #f9fbff;
+}
+
+.pp-report-preview-soft-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.pp-report-preview-soft-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d2a3a;
+}
+
+.pp-report-preview-soft-meta {
+  font-size: 12px;
+  color: #6f7f98;
+}
+
+.pp-report-preview-soft-loading {
+  font-size: 12px;
+  color: #7a879c;
+  padding: 8px 0;
+}
+
+.pp-report-preview-soft-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.pp-report-preview-soft-card {
+  border: 1px solid #dfe7f5;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.pp-report-preview-soft-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.pp-report-preview-soft-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #21304a;
+}
+
+.pp-report-preview-soft-card-count {
+  font-size: 12px;
+  color: #5f6f86;
+}
+
+.pp-report-preview-soft-card-body {
+  overflow: visible;
+}
+
+.pp-report-preview-soft-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  --pp-soft-index-col-width: 64px;
+}
+
+.pp-report-preview-soft-table th,
+.pp-report-preview-soft-table td {
+  border: 1px solid #e7edf7;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #2b3952;
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.pp-report-preview-soft-table th {
+  background: #f3f7ff;
+  font-weight: 600;
+}
+
+.pp-report-preview-soft-table th:first-child,
+.pp-report-preview-soft-table td:first-child {
+  width: var(--pp-soft-index-col-width);
+  min-width: var(--pp-soft-index-col-width);
+  max-width: var(--pp-soft-index-col-width);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pp-report-preview-soft-table th:nth-child(1),
+.pp-report-preview-soft-table td:nth-child(1),
+.pp-report-preview-soft-table-detail th:nth-child(1),
+.pp-report-preview-soft-table-detail td:nth-child(1) {
+  width: var(--pp-soft-index-col-width);
+  min-width: var(--pp-soft-index-col-width);
+  max-width: var(--pp-soft-index-col-width);
+}
+
+.pp-report-preview-soft-table col.pp-col-index,
+.pp-report-preview-soft-table-detail col.pp-col-index {
+  width: var(--pp-soft-index-col-width);
+}
+
+.pp-report-preview-soft-table col.pp-col-type {
+  width: 160px;
+}
+
+.pp-report-preview-soft-table col.pp-col-date {
+  width: 130px;
+}
+
+/* 二级明细列宽由构建时的 colgroup 行内 style 控制，避免不同表格按比例压缩后出现序号列视觉不一致 */
+
+.pp-report-preview-soft-table:not(.pp-report-preview-soft-table-detail) th:nth-child(2),
+.pp-report-preview-soft-table:not(.pp-report-preview-soft-table-detail) td:nth-child(2) {
+  width: 160px;
+}
+
+.pp-report-preview-soft-table:not(.pp-report-preview-soft-table-detail) th:nth-child(3),
+.pp-report-preview-soft-table:not(.pp-report-preview-soft-table-detail) td:nth-child(3) {
+  width: 130px;
+}
+
+.pp-report-preview-soft-table td.empty {
+  text-align: center;
+  color: #91a0b7;
+  font-style: italic;
+}
+
+.pp-report-preview-soft-table-detail col.pp-col-index {
+  width: var(--pp-soft-index-col-width);
+}
+
+.pp-report-preview-soft-table-detail col.pp-col-customer {
+  width: auto;
+}
+
+.pp-report-preview-soft-table-detail col.pp-col-amount {
+  width: 160px;
+}
+
+.pp-report-preview-soft-table-detail col.pp-col-case-count {
+  width: 110px;
+}
+
+.pp-report-preview-soft-table-detail col.pp-col-rate {
+  width: 120px;
+}
+
+.pp-report-preview-soft-detail {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid #f3dec9;
+  border-radius: 12px;
+  background: #fff9f4;
+}
+
+.pp-report-preview-soft-detail-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d2a3a;
+  margin-bottom: 10px;
+}
+
+.pp-report-preview-soft-detail-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.pp-report-preview-soft-detail-card {
+  border: 1px solid #f2dfcb;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 10px;
+}
+
+.pp-report-preview-soft-detail-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #21304a;
+  margin-bottom: 8px;
+}
+
+.pp-report-preview-soft-table-detail th {
+  background: #fff2e6;
+  color: #2b3952;
+}
+
+.pp-report-preview-soft-table-detail th.pp-col-index-head,
+.pp-report-preview-soft-table-detail td.pp-col-index-cell {
+  width: var(--pp-soft-index-col-width) !important;
+  min-width: var(--pp-soft-index-col-width) !important;
+  max-width: var(--pp-soft-index-col-width) !important;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pp-report-preview-soft-table-detail th.pp-col-customer-head,
+.pp-report-preview-soft-table-detail td.pp-col-customer-cell {
+  width: auto;
+}
+
+.pp-report-preview-soft-table-detail th:first-child,
+.pp-report-preview-soft-table-detail td:first-child {
+  width: var(--pp-soft-index-col-width) !important;
+  min-width: var(--pp-soft-index-col-width) !important;
+  max-width: var(--pp-soft-index-col-width) !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+}
+
+.pp-report-preview-soft-table .pp-col-index-cell,
+.pp-report-preview-soft-table-detail .pp-col-index-cell {
+  width: var(--pp-soft-index-col-width) !important;
+  min-width: var(--pp-soft-index-col-width) !important;
+  max-width: var(--pp-soft-index-col-width) !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+}
+
+.pp-report-preview-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d2a3a;
+  margin-bottom: 12px;
+}
+
+.pp-report-preview-empty {
+  color: #92a4bf;
+  font-size: 12px;
+}
+
+.pp-report-preview-body {
+  pointer-events: none;
+}
+
+.pp-report-preview-body .pp-hero-metric-report,
+.pp-report-preview-body .pp-hero-metric-total,
+.pp-report-preview-body .pp-score-actions {
+  display: none !important;
+}
+
+.pp-report-preview-body .pp-score-strip,
+.pp-report-preview-body .pp-soft,
+.pp-report-preview-body .pp-score-strip.soft {
+  display: none !important;
+}
+
+.pp-report-preview-body img[src*="nocharts"] {
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+.pp-report-preview-body .pp-summary-pdf-actions {
+  display: none !important;
+}
+
+.pp-report-preview-body .pp-summary-pdf-body {
+  aspect-ratio: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.pp-report-preview-body .pp-summary-pdf-frame {
+  height: auto !important;
+}
+
+.pp-report-preview-iframe-placeholder {
+  width: 100%;
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7a879c;
+  font-size: 13px;
+  background: #f7f9fd;
+  border: 1px dashed #dfe6f3;
+  border-radius: 12px;
+  box-sizing: border-box;
+}
+
+.pp-report-preview-iframe-placeholder.pdf-pages {
+  display: block;
+  min-height: 0;
+  height: auto !important;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.pp-report-preview-iframe-placeholder.pdf-pages img,
+.pp-report-preview-iframe-placeholder.pdf-pages .pp-summary-pdf-page-image {
+  width: min(100%, 1200px);
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  border: 1px solid #dfe6f3;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.pp-report-preview-iframe-placeholder.pdf-pages img + img {
+  margin-top: 12px;
 }
 
 .pp-summary-textarea {
