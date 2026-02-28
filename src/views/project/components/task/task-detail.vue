@@ -262,6 +262,18 @@
             :relatedProject="detailInfo"
           />
         </DragSidebar>
+        <DragSidebar
+          :noCloseOnEsc="false"
+          v-if="isShowPrjDetail"
+          sidebarName="project-sidebar"
+          v-model="isShowPrjDetail"
+          @close="closePrjSidebar"
+        >
+          <ProjectDetail
+            @close="closePrjSidebar"
+            :project-id="detailInfo.projectId"
+          />
+        </DragSidebar>
       </div>
     </div>
   </div>
@@ -291,6 +303,7 @@ import {
   queryUserRoleList,
   queryProjectDetail,
 } from "@/api/project";
+import ProjectDetail from "@/views/project/components/project-detail/project-detail.vue";
 import TaskBaseinfo from "./task-baseinfo.vue";
 import TaskBaseinfoEdit from "./task-baseinfo-edit.vue";
 import SubtaskList from "./subtask-list.vue";
@@ -374,9 +387,14 @@ const notesTypeList = ref([
 const switchNotesType = (value) => {
   notesType.value = value;
 };
-
-const viewProDetail = (code) => {
-  window.open(`/v2/project/project-detail/${code}`);
+const isShowPrjDetail = ref(false);
+const closePrjSidebar = () => {
+  isShowPrjDetail.value = false;
+};
+const viewProDetail = () => {
+  // window.open(`/v2/project/project-detail/${code}`);
+  isShowPrjDetail.value = true;
+  // closeSideBar()
 };
 const viewTaskDetail = (info) => {
   // 更新本地taskCode并重新调用详情接口
@@ -535,13 +553,29 @@ const fetchTaskDetail = async () => {
       taskId: localTaskId.value,
       taskCode: localTaskCode.value,
     };
-    res = await queryTaskDetail(params);
+    try {
+      res = await queryTaskDetail(params,{ showErrorMessage: false });
+    } catch (error) {
+      if (error.message?.includes("没有权限")) {
+        closeSideBar()
+      } else{
+        ElMessage.error(error.message || "请求失败");
+      }
+    }
   } else {
     const params = {
       subtaskId: localTaskId.value,
       subtaskCode: localTaskCode.value,
     };
-    res = await querySubtaskDetail(params);
+    try {
+      res = await querySubtaskDetail(params,{ showErrorMessage: false });
+    } catch (error) {
+      if (error.message?.includes("没有权限")) {
+        closeSideBar()
+      } else{
+        ElMessage.error(error.message || "请求失败");
+      }
+    }
   }
   detailInfo.value = res.data || {};
   originalOwnerInfo.value = {
@@ -561,6 +595,7 @@ const fetchTaskDetail = async () => {
         prjName: refItem?.projectName,
         taskCode: refItem?.taskCode || refItem?.subtaskCode,
         status: refItem?.status,
+        prjOwnerName: refItem?.projectOwnerName,
       };
     });
   }
@@ -611,8 +646,8 @@ const saveTaskInfo = async () => {
         "负责人变更提示",
         {
           type: "warning",
-          confirmButtonText: "确认",
-          cancelButtonText: "取消",
+          confirmButtonText: "确认并加入",
+          cancelButtonText: "仅更换负责人",
         }
       )
         .then(async () => {
@@ -682,6 +717,7 @@ const updateTaskFunc = (params) => {
         ElMessage.success("保存成功");
         isEdit.value = false;
         fetchTaskDetail();
+        checkEditPermissionFn()
       }
     });
   } else {
@@ -691,6 +727,7 @@ const updateTaskFunc = (params) => {
         ElMessage.success("保存成功");
         isEdit.value = false;
         fetchTaskDetail();
+        checkEditPermissionFn()
       }
     });
   }

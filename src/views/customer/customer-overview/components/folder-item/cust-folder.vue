@@ -19,11 +19,12 @@
           @dblclick.stop
         >
           <div class="folder-icon-content">
-            <img
-              v-if="detailInfo.userIcon"
-              :src="`/ipdoc${detailInfo.userIcon}`"
-              style="height: 48px; min-width: 48px; max-width: 108px"
-            />
+            <div v-if="detailInfo.userIcon" class="folder-img">
+              <img
+                :src="`/ipdoc${detailInfo.userIcon}`"
+                style="max-height: 48px; min-width: 48px; max-width: 120px"
+              />
+            </div>
             <i
               v-else
               class="folder-icon bx bx-buildings"
@@ -178,6 +179,11 @@ export default {
       flex-direction: column;
       width: 100%;
       padding: 0 6px;
+      .folder-img{
+        height: 48px;
+        display: flex;
+        align-items: center;
+      }
       .folder-icon {
         font-size: 48px;
         display: block;

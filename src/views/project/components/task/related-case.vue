@@ -62,25 +62,36 @@
           v-for="item in relatedCases"
           :key="item.caseId"
           class="selected-case-item"
+          :class="{ 'disabled-section': !item.isCheck }"
+          @click="handlePreviewCase(item)"
         >
           <div class="case-info">
             <div class="case-info-main">
-              <span class="case-agent">{{
-                item.agentNum || "未设置文号"
-              }}</span>
+              <span class="case-agent"
+                >{{ item.agentNum || "未设置文号" }}
+                <span v-if="!item.isCheck">🔒</span></span
+              >
             </div>
             <div class="case-info-extra">
               <span class="case-name">{{ item.appName }}</span>
             </div>
           </div>
-          <div class="case-actions">
+          <span
+            v-if="!item.isCheck"
+            class="added-tag"
+            >已受限</span
+          >
+          <div
+            class="case-actions"
+            v-else
+          >
             <i
               class="mdi mdi-eye case-view-icon"
-              @click="handlePreviewCase(item)"
+              @click.stop="handlePreviewCase(item)"
             ></i>
             <i
               class="mdi mdi-close-circle remove-case-icon"
-              @click="removeCases(item.caseId)"
+              @click.stop="removeCases(item.caseId)"
               v-if="editPermissionLevel"
             ></i>
           </div>
@@ -160,11 +171,13 @@
               disabled: isCaseAdded(item.caseId),
             }"
           >
-            <div class="case-item-left">
+            <div
+              class="case-item-left"
+            >
               <el-checkbox
                 v-if="!isCaseAdded(item.caseId)"
                 :model-value="selectedCaseIds.includes(item.caseId)"
-                :disabled="isCaseAdded(item.caseId)"
+                :disabled="isCaseAdded(item.caseId) || !item.isCheck"
                 style="margin-bottom: 0"
                 @update:model-value="(val) => toggleCaseSelection(val, item)"
               />
@@ -175,9 +188,7 @@
                   }}</span>
                 </div>
                 <div class="case-info-extra">
-                  <span class="case-name">{{
-                    item.appName || ""
-                  }}</span>
+                  <span class="case-name">{{ item.appName || "" }}</span>
                 </div>
               </div>
             </div>
@@ -188,13 +199,18 @@
               >
                 <i
                   class="mdi mdi-eye-outline case-view-icon"
-                  @click="handlePreviewCase(item)"
+                  @click.stop="handlePreviewCase(item)"
                 ></i>
               </el-tooltip>
               <span
                 v-if="isCaseAdded(item.caseId)"
                 class="added-tag"
                 >已添加</span
+              >
+              <span
+                v-if="!item.isCheck"
+                class="added-tag"
+                >已受限</span
               >
             </div>
           </div>
@@ -283,7 +299,7 @@ const handleSidebarUpdate = (value) => {
 const selectedCountInCurrentList = computed(
   () =>
     caseList.value.filter((item) => selectedCaseIds.value.includes(item.caseId))
-      .length
+      .length,
 );
 const isIndeterminate = computed(() => {
   const selectedCount = selectedCountInCurrentList.value;
@@ -301,11 +317,10 @@ watch(
   (newValue) => {
     if (newValue && newValue.length > 0) {
       console.log(newValue, "newValue");
-
-      relatedCases.value = [...newValue];
+      checkCasePermission(newValue);
     }
   },
-  { deep: true, immediate: true }
+  { deep: true, immediate: true },
 );
 
 watch(
@@ -319,8 +334,36 @@ watch(
     selectAllCases.value =
       selectedCount > 0 && selectedCount === caseList.value.length;
   },
-  { deep: true }
+  { deep: true },
 );
+
+// 查询案件是否有权限查看
+const checkCasePermission = async (newValue) => {
+  const agentNumList = newValue
+    .map((item) => item.agentNum)
+    .filter((num) => num);
+  getAllCaseInfo({ agentNums: agentNumList.join("\n") }).then((res) => {
+    //只返回isCheck===1数据的caseId
+    if (res.data && res.data?.length) {
+      const hasPermissionCaseIds =
+        res?.data
+          ?.filter((item) => item.isCheck === 1)
+          .map((item) => item.caseId) || [];
+      console.log(hasPermissionCaseIds, "hasPermissionCaseIds");
+      //给newValue加一个属性hasPermission，表示是否有权限查看
+      newValue.forEach((item) => {
+        item.isCheck = hasPermissionCaseIds.includes(item.caseId);
+      });
+      relatedCases.value = [...newValue];
+    } else {
+      //如果接口没有返回数据，说明没有权限查看所有案件
+      newValue.forEach((item) => {
+        item.isCheck = 0;
+      });
+      relatedCases.value = [...newValue];
+    }
+  });
+};
 const toggleCaseSelection = (checked, caseItem) => {
   if (checked) {
     if (!selectedCaseIds.value.includes(caseItem.caseId)) {
@@ -333,7 +376,7 @@ const toggleCaseSelection = (checked, caseItem) => {
       selectedCaseIds.value.splice(idIndex, 1);
     }
     const detailIndex = selectedCaseDetails.value.findIndex(
-      (item) => item.caseId === caseItem.caseId
+      (item) => item.caseId === caseItem.caseId,
     );
     if (detailIndex > -1) {
       selectedCaseDetails.value.splice(detailIndex, 1);
@@ -397,6 +440,13 @@ const handlePreviewCase = (caseItem) => {
   // if (!caseItem.caseId) return;
   // const targetUrl = `/#/case/case-folders?caseId=${caseItem.caseId}`;
   // window.open(targetUrl, "_blank");
+  if (!caseItem.isCheck) {
+    ElMessageBox.alert("您没有权限查看该案件，请联系负责人申请权限", "提示", {
+      confirmButtonText: "确定",
+      type: "warning",
+    });
+    return;
+  }
   caseInfo.value = caseItem;
   isCaseDetail.value = true;
 };
@@ -412,7 +462,7 @@ const handleBatchAdd = () => {
   // 获取所有选中的案件详情
   const newCases = selectedCaseDetails.value.filter(
     (item) =>
-      !relatedCases.value.some((existing) => existing.caseId === item.caseId)
+      !relatedCases.value.some((existing) => existing.caseId === item.caseId),
   );
 
   // 将新选中的案件添加到relatedCases
@@ -449,7 +499,7 @@ const removeCases = async (caseId) => {
   const res = await removeRelatedCase(params);
   if (res.success) {
     relatedCases.value = relatedCases.value.filter(
-      (item) => item.caseId !== caseId
+      (item) => item.caseId !== caseId,
     );
   }
 };
@@ -736,5 +786,9 @@ onMounted(() => {
 .case-view-icon.disabled {
   color: #c0c4cc !important;
   cursor: not-allowed;
+}
+.disabled-section {
+  opacity: 0.7;
+  background-color: #f5f7fa;
 }
 </style>

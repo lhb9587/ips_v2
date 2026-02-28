@@ -135,6 +135,8 @@
           prop="members"
           label="参与人"
           width="180"
+          :filters="memberFilters"
+          :filter-method="filterMembers"
         >
         </el-table-column>
         <el-table-column
@@ -182,7 +184,7 @@
         >
         <el-table-column
           prop="startDate"
-          label="创建日期"
+          label="开始日期"
           width="160"
           :sortable="true"
           :sort-method="sortDueDate"
@@ -515,6 +517,7 @@ const ownerFilters = ref([]);
 const custNameFilters = ref([]);
 const creatorNameFilters = ref([]);
 const startDateFilters = ref([]);
+const memberFilters = ref([]);
 const statusFilters = ref([
   { text: "待开始", value: 0 },
   { text: "进行中", value: 1 },
@@ -546,6 +549,14 @@ const filterCustName = (value, row) => {
 
 const filterCreatorName = (value, row) => {
   return row.creatorName === value;
+};
+
+const filterMembers = (value, row) => {
+  if (!row.members) return false;
+  // 将参与人字符串按分号分隔成数组
+  const membersArray = row.members.split(";").map(m => m.trim());
+  // 检查筛选值是否在参与人数组中
+  return membersArray.includes(value);
 };
 
 const filterStartDate = (value, row) => {
@@ -604,6 +615,15 @@ const updateFilters = () => {
       projectList.value.map((item) => item.creatorName).filter(Boolean)
     ),
   ];
+  // 获取所有参与人，处理多个参与人用分号分隔的情况
+  const allMembers = [];
+  projectList.value.forEach(item => {
+    if (item.members) {
+      const membersArray = item.members.split(";").map(m => m.trim()).filter(Boolean);
+      allMembers.push(...membersArray);
+    }
+  });
+  const uniqueMembers = [...new Set(allMembers)];
   const startDates = [
     ...new Set(projectList.value.map((item) => item.startDate).filter(Boolean)),
   ];
@@ -620,6 +640,10 @@ const updateFilters = () => {
   creatorNameFilters.value = creatorNames.map((name) => ({
     text: name,
     value: name,
+  }));
+  memberFilters.value = uniqueMembers.map((member) => ({
+    text: member,
+    value: member,
   }));
   startDateFilters.value = startDates.map((date) => ({
     text: date,

@@ -231,6 +231,7 @@ import {
   queryFolderViewSubtasksLevel4,
   checkEditPermission,
 } from "@/api/project.js";
+import { ElMessage } from "element-plus";
 import ProjectList from "./components/table";
 import FolderItem from "./components/folder-item.vue";
 // import ProjectSidebar from "./components/project-detail/project-sidebar.vue";
@@ -392,10 +393,17 @@ const fetchFolderViewData = () => {
         keyword: inputValue.value,
         projectId: breadcrumbList.value[breadcrumbList.value.length - 1].id,
       };
-      queryFolderViewTasks(params).then((res) => {
+      queryFolderViewTasks(params,{ showErrorMessage: false }).then((res) => {
         folderList.value = res.data || [];
         currentLevelValue.value = currentLevel.value;
-      });
+      }).catch((error) => {
+        console.log(error,'请求失败error');
+        if (error.message?.includes("没有权限")) {
+          handleGoHome()
+        } else{
+          ElMessage.error(error.message || "请求失败");
+        }
+      })
     } else if (currentLevel.value === "subtask") {
       const params = {
         keyword: inputValue.value,
@@ -424,9 +432,16 @@ const fetchFolderViewData = () => {
         keyword: inputValue.value,
         ownerId: breadcrumbList.value[breadcrumbList.value.length - 1].id,
       };
-      queryFolderViewTasks(params).then((res) => {
+      queryFolderViewTasks(params,{ showErrorMessage: false }).then((res) => {
         folderList.value = res.data || [];
         currentLevelValue.value = currentLevel.value;
+      }).catch((error) => {
+        console.log(error,'请求失败error');
+        if (error.message?.includes("没有权限")) {
+          handleGoHome()
+        } else{
+          ElMessage.error(error.message || "请求失败");
+        }
       });
     } else if (currentLevel.value === "task") {
       const params = {

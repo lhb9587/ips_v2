@@ -46,19 +46,27 @@
           :key="index"
           class="selected-task-item"
           :class="{ 'disabled-section': !item.hasPermission }"
+          @click="handlePreviewTask(item)"
         >
-          <div class="task-info">
-            <div class="task-info-main">
-              <span class="task-name"
-                >{{ item.name }}
-                <span v-if="!item.hasPermission">🔒</span></span
-              >
+          <div style="display: flex; align-items: center">
+            <div class="bx bx-link" style="margin-right: 8px;font-size: 16px;">
             </div>
-            <div class="task-info-extra">
-              <span class="task-prjName">{{ item.prjName }} •</span>
-              <span class="task-taskCode">ID:{{ item.taskCode }} •</span>
-              <span class="task-status">{{ statusListMap[item.status] }}</span>
-              <span v-if="!item.hasPermission"> • 受限访问</span>
+            <div class="task-info">
+              <div class="task-info-main">
+                <span class="task-name"
+                  >{{ item.name }}
+                  <span v-if="!item.hasPermission">🔒</span></span
+                >
+              </div>
+              <div class="task-info-extra">
+                <span class="task-prjOwnerName">{{ item.prjOwnerName }} •</span>
+                <span class="task-prjName">{{ item.prjName }} •</span>
+                <!-- <span class="task-taskCode">ID:{{ item.taskCode }} •</span> -->
+                <span class="task-status">{{
+                  statusListMap[item.status]
+                }}</span>
+                <span v-if="!item.hasPermission"> • 受限访问</span>
+              </div>
             </div>
           </div>
           <span
@@ -76,7 +84,7 @@
             >
               <i
                 class="mdi mdi-eye-outline view-icon"
-                @click="handlePreviewTask(item)"
+                @click.stop="handlePreviewTask(item)"
               ></i>
             </el-tooltip>
             <i
@@ -159,7 +167,7 @@
             :class="{
               selected: selectedTaskDetails.some(
                 (task) =>
-                  task.taskId === item.taskId && task.objType === item.objType
+                  task.taskId === item.taskId && task.objType === item.objType,
               ),
               disabled: isTaskAdded(item.taskId, item.objType),
             }"
@@ -171,7 +179,7 @@
                   selectedTaskDetails.some(
                     (task) =>
                       task.taskId === item.taskId &&
-                      task.objType === item.objType
+                      task.objType === item.objType,
                   )
                 "
                 :disabled="isTaskAdded(item.taskId, item.objType)"
@@ -183,8 +191,9 @@
                   <span class="task-name">{{ item.name }}</span>
                 </div>
                 <div class="task-info-extra">
+                  <span class="task-prjOwnerName">{{ item.prjOwnerName }}•</span>
                   <span class="task-prjName">{{ item.prjName }}•</span>
-                  <span class="task-taskCode">ID:{{ item.taskCode }}•</span>
+                  <!-- <span class="task-taskCode">ID:{{ item.taskCode }}•</span> -->
                   <span class="task-status">{{
                     statusListMap[item.status]
                   }}</span>
@@ -240,6 +249,7 @@ import {
 import { ElInfiniteScroll } from "element-plus";
 import { getAllTasklist } from "@/api/project";
 import { statusListMap } from "../../dataMap";
+import { ElMessageBox } from "element-plus";
 import { addRelatedTask, removeRelatedTask } from "@/api/project";
 
 const props = defineProps({
@@ -288,9 +298,9 @@ const selectedCountInCurrentList = computed(
   () =>
     taskList.value.filter((item) =>
       selectedTaskDetails.value.some(
-        (task) => task.taskId === item.taskId && task.objType === item.objType
-      )
-    ).length
+        (task) => task.taskId === item.taskId && task.objType === item.objType,
+      ),
+    ).length,
 );
 const isIndeterminate = computed(() => {
   const selectedCount = selectedCountInCurrentList.value;
@@ -300,7 +310,7 @@ const isIndeterminate = computed(() => {
 // 检查事项是否已添加到relatedTasks
 const isTaskAdded = (taskId, objType) => {
   return relatedTasks.value.some(
-    (item) => item.taskId === taskId && item.objType === objType
+    (item) => item.taskId === taskId && item.objType === objType,
   );
 };
 
@@ -312,7 +322,7 @@ watch(
       relatedTasks.value = [...newValue];
     }
   },
-  { deep: true, immediate: true }
+  { deep: true, immediate: true },
 );
 
 watch(
@@ -326,14 +336,14 @@ watch(
     selectAllTasks.value =
       selectedCount > 0 && selectedCount === taskList.value.length;
   },
-  { deep: true }
+  { deep: true },
 );
 const toggleTaskSelection = (checked, taskItem) => {
   if (checked) {
     if (
       !selectedTaskDetails.value.some(
         (item) =>
-          item.taskId === taskItem.taskId && item.objType === taskItem.objType
+          item.taskId === taskItem.taskId && item.objType === taskItem.objType,
       )
     ) {
       // selectedTaskIds.value.push(taskItem.taskId);
@@ -346,7 +356,7 @@ const toggleTaskSelection = (checked, taskItem) => {
     // }
     const detailIndex = selectedTaskDetails.value.findIndex(
       (item) =>
-        item.taskId === taskItem.taskId && item.objType === taskItem.objType
+        item.taskId === taskItem.taskId && item.objType === taskItem.objType,
     );
     if (detailIndex > -1) {
       selectedTaskDetails.value.splice(detailIndex, 1);
@@ -388,6 +398,9 @@ const fetchTaskList = async (isLoadMore = false) => {
     // 这里需要根据实际的API接口调整
     const res = await getAllTasklist(params);
     const list = res.data.taskList || [];
+    list.forEach((item) => {
+      item.hasPermission = true;
+    });
     if (isLoadMore) {
       taskList.value = [...taskList.value, ...list];
     } else {
@@ -413,6 +426,13 @@ const handleTaskSearch = (value) => {
 };
 
 const handlePreviewTask = (taskItem) => {
+  if (!taskItem.hasPermission) {
+    ElMessageBox.alert("您没有权限查看该事项，请联系负责人申请权限", "提示", {
+      confirmButtonText: "确定",
+      type: "warning",
+    })
+    return 
+  }
   if (!taskItem.objType) return;
   // 根据实际的路由调整
   let targetUrl;
@@ -437,8 +457,8 @@ const handleBatchAdd = async () => {
     (item) =>
       !relatedTasks.value.some(
         (existing) =>
-          existing.taskId === item.taskId && existing.objType === item.objType
-      )
+          existing.taskId === item.taskId && existing.objType === item.objType,
+      ),
   );
   newTasks.forEach((item) => {
     item.hasPermission = true;
@@ -482,7 +502,7 @@ const removeTask = async (task) => {
   const res = await removeRelatedTask(params);
   if (res.success) {
     const index = relatedTasks.value.findIndex(
-      (item) => item.taskId === task.taskId && item.objType === task.objType
+      (item) => item.taskId === task.taskId && item.objType === task.objType,
     );
     if (index !== -1) {
       relatedTasks.value.splice(index, 1);
@@ -521,7 +541,7 @@ defineExpose({
 
 onMounted(() => {
   //   fetchRelatedTasks();
-  fetchTaskList()
+  fetchTaskList();
 });
 </script>
 <style lang="scss" scoped>
@@ -759,6 +779,6 @@ onMounted(() => {
 .disabled-section {
   opacity: 0.7;
   background-color: #f5f7fa;
-  cursor: not-allowed;
+  // cursor: not-allowed;
 }
 </style>

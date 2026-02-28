@@ -15,11 +15,12 @@ export function queryFolderViewData(data) {
     data
   })
 }
-export function queryFolderViewTasks(data) {
+export function queryFolderViewTasks(data,config = {}) {
   return request({
     url: serviceApi.queryFolderViewTasks,
     method: 'post',
-    data
+    data,
+    ...config
   })
 }
 export function queryFolderViewSubtasks(data) {
@@ -92,11 +93,12 @@ export function deleteTaskUrl(data) {
     data
   })
 }
-export function queryTaskDetail(data) {
+export function queryTaskDetail(data,config = {}) {
   return request({
     url: serviceApi.queryTaskDetail,
     method: 'post',
-    data
+    data,
+    ...config
   })
 }
 export function getAllTasklist(data) {
@@ -127,11 +129,12 @@ export function deleteSubtask(data) {
     data
   })
 }
-export function querySubtaskDetail(data) {
+export function querySubtaskDetail(data,config = {}) {
   return request({
     url: serviceApi.querySubtaskDetail,
     method: 'post',
-    data
+    data,
+    ...config
   })
 }
 

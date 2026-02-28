@@ -43,6 +43,11 @@
           </div>
         </div>
       </div>
+      <el-empty
+        v-if="!histories?.length"
+        description="暂无数据"
+        style="padding: 10px"
+      />
     </div>
   </div>
 </template>

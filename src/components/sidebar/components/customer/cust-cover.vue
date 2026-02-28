@@ -512,7 +512,7 @@ const formatNumber = (num) => {
 
         .card-value {
           font-size: 26px;
-          font-weight: bold;
+          font-weight: 600;
           color: #ffffff;
           line-height: 1;
         }
@@ -604,7 +604,7 @@ const formatNumber = (num) => {
           .panel-item-value {
             font-size: 14px;
             color: #1d293d;
-            font-weight: bold;
+            font-weight: 600;
           }
         }
       }

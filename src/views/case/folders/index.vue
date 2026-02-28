@@ -250,7 +250,7 @@
           </div>
         </div>
       </div>
-      <div
+      <!-- <div
         class="more-customer"
         v-if="
           activeTab === 'customer' &&
@@ -274,7 +274,7 @@
           @click="changeCustFanwei(1)"
           >显示我的客户</el-button
         >
-      </div>
+      </div> -->
     </div>
     <div
       v-if="showType === 'list' || currentLevel === 'caseList'"
@@ -302,8 +302,6 @@ import FolderItem from "@/components/case/folder-item/index.vue";
 import { ref, nextTick, computed, watch, onUnmounted } from "vue";
 import {
   ArrowRight,
-  ArrowDownBold,
-  ArrowUpBold,
 } from "@element-plus/icons-vue";
 import { statisticCase } from "@/api/caseList";
 import Tabs from "@/components/common/tabs";
@@ -343,11 +341,6 @@ watch(showType, (newVal) => {
 const activeTab = ref("domain");
 const inputValue = ref("");
 const custFanwei = ref(1);
-
-const changeCustFanwei = (value) => {
-  custFanwei.value = value;
-  fetchFolderList();
-};
 
 const defaultBreadcrumbByTab = {
   domain: { label: "领域", value: "domain" },
@@ -462,7 +455,7 @@ const buildStatisticParams = () => {
       return {
         statisticId: 4,
         parentTypeId: caseDomainValue.value || undefined,
-        custFanwei: custFanwei.value || undefined,
+        custFanwei: casebelongValue.value === 1 ? 1 : undefined,
       };
     }
     if (currentLevel.value === "domain") {

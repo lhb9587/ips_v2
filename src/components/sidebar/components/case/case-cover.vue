@@ -1031,6 +1031,7 @@ watch(
         flex: 1;
         margin-top: 16px;
         overflow-y: auto;
+        max-height: calc(100vh - 150px);
         padding-right: 4px;
 
         .timeline-item {
