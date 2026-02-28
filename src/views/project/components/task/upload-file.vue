@@ -32,10 +32,10 @@
           <i class="mdi mdi-file-document-outline"></i>
         </div>
         <div class="file-info">
-          <div class="file-name">{{ file.name || file.materialName }}</div>
-          <div class="file-meta">
+          <span class="file-name">{{ file.name || file.materialName }}</span>
+          <span class="file-meta">
             {{ formatFileSize(file.size) }} • {{ formatDate(file.createDate) }}
-          </div>
+          </span>
         </div>
         <div class="file-actions">
           <!-- <i
@@ -345,7 +345,7 @@ defineExpose({
       border-radius: 8px;
       transition: all 0.3s;
       border: 1px solid #e2e8f0;
-      width: calc(50% - 6px);
+      width: 100%;
       box-sizing: border-box;
 
       &:hover {
@@ -373,6 +373,9 @@ defineExpose({
       .file-info {
         flex: 1;
         min-width: 0;
+        gap: 6px;
+        display: flex;
+        align-items: center;
 
         .file-name {
           font-size: 14px;
