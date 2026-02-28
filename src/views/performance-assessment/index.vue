@@ -78,6 +78,7 @@
           :summary-edit-permission="canEditSummary"
           :has-score-permission="canScore"
           :on-toggle-edit="showEditButton ? toggleEdit : null"
+          :on-soft-metrics-change="refreshPersonalSoftMetricsByKey"
         />
       </section>
 
@@ -2077,6 +2078,47 @@ const loadPersonalData = async () => {
   }
 };
 
+/** 仅重新拉取指定类型的个人软性指标并更新该组（用于新增后拿到服务端真实 id） */
+const refreshPersonalSoftMetricsByKey = async (groupKey) => {
+  if (!groupKey || groupKey === 'summary') return;
+  const metricKeys = Object.keys(SOFT_METRIC_KEY_MAP);
+  const apiKey = metricKeys.find((k) => SOFT_METRIC_KEY_MAP[k].key === groupKey) || groupKey;
+  const userId = personalInfo.value?.userId;
+  try {
+    if (Object.keys(typeMappingMap.value).length === 0) {
+      await loadTypeMapping();
+    }
+    const params = { year: activeYear.value, key: apiKey, pageNo: 1, pageSize: 1000 };
+    if (userId) params.userId = userId;
+    const res = await querySoftMetricRecords(params);
+    let recordsData = [];
+    if (res && res.success === true && Array.isArray(res.data)) recordsData = res.data;
+    else if (Array.isArray(res?.data)) recordsData = res.data;
+    const records = recordsData.map((record) => {
+      const typeText = getTypeText(record.type);
+      return {
+        id: String(record.id || ''),
+        type: typeText,
+        content: record.content || '',
+        createTime: record.createDate || record.createTime || new Date().toISOString(),
+        occurredDate: record.occurredDate || null,
+        autoAdd: record.autoAdd !== undefined ? record.autoAdd : 1,
+        originalType: record.type,
+      };
+    });
+    const list = softMetrics.value?.softMetrics;
+    if (Array.isArray(list)) {
+      const idx = list.findIndex((g) => g && g.key === groupKey);
+      if (idx >= 0) {
+        const nextList = list.map((g, i) => (i === idx ? { ...g, records } : g));
+        softMetrics.value = { ...softMetrics.value, softMetrics: nextList };
+      }
+    }
+  } catch (error) {
+    console.error('刷新软性指标数据失败:', error);
+  }
+};
+
 // 单独加载硬性指标雷达图数据
 const loadHardRadarData = async () => {
   try {
@@ -3566,6 +3608,14 @@ const loadPartnerDetailData = async (userId) => {
     // 更新个人信息
     if (infoRes.success === true && Array.isArray(infoRes.data) && infoRes.data.length > 0) {
       personalInfo.value = infoRes.data[0];
+      const info = infoRes.data[0];
+      activePartner.value = {
+        ...activePartner.value,
+        name: info.name || activePartner.value.name,
+        region: info.region || activePartner.value.region,
+        department: info.department || activePartner.value.department,
+        group: info.group || activePartner.value.group,
+      };
     }
     
     // 适配硬性指标数据格式
@@ -3672,6 +3722,9 @@ const handleRowClick = async (row) => {
     ...defaultPartnerProfile,
     name: row.name,
     userId: row.userId,
+    region: row.region || "",
+    department: row.department || "",
+    group: row.group || "",
   };
   drawerOpen.value = true;
   drawerLoading.value = true;

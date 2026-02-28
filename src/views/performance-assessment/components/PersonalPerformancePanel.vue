@@ -1951,7 +1951,12 @@ const props = defineProps({
   },
   hasScorePermission: {
     type: Boolean,
-    default: false, 
+    default: false,
+  },
+  /** 软性指标某类新增后由父组件拉取该类记录并刷新，入参为 groupKey，用于拿到服务端真实 id */
+  onSoftMetricsChange: {
+    type: Function,
+    default: null,
   },
 });
 
@@ -2535,10 +2540,8 @@ const snapshotIframe = async (iframe) => {
   try {
     const doc = iframe.contentDocument || iframe.contentWindow?.document;
     if (!doc || !doc.body) return null;
-    const deviceScale = Math.max(window.devicePixelRatio || 1, 1);
-    const captureScale = Math.min(Math.max(deviceScale * 2, 3), 4);
     const canvas = await html2canvas(doc.body, {
-      scale: captureScale,
+      scale: 2,
       useCORS: true,
       allowTaint: true,
       backgroundColor: "#ffffff",
@@ -2546,18 +2549,20 @@ const snapshotIframe = async (iframe) => {
       scrollX: 0,
       scrollY: 0,
     });
-    return canvas.toDataURL("image/png");
+    return canvas.toDataURL("image/jpeg", 0.85);
   } catch (error) {
     console.warn("总结 PDF 截图失败:", error);
     return null;
   }
 };
 
-const renderPdfPagesToDataUrls = async (pdfUrl, targetWidth) => {
+const renderPdfPagesToDataUrls = async (pdfUrl, targetWidth, options = {}) => {
   const safeWidth = Math.max(Math.round(targetWidth || 0), 1);
-  // 总结 PDF 页面会再参与整页截图，提升采样倍率以降低导出发糊
   const deviceScale = Math.max(window.devicePixelRatio || 1, 1);
-  const exportScale = Math.min(Math.max(deviceScale * 2, 3), 4);
+  const defaultScale = Math.min(Math.max(deviceScale * 2, 3), 4);
+  const exportScale = options.scale ?? defaultScale;
+  const imageFormat = options.format ?? "image/png";
+  const imageQuality = options.quality;
   const loadingTask = pdfjsLib.getDocument({
     url: pdfUrl,
     withCredentials: true,
@@ -2587,7 +2592,7 @@ const renderPdfPagesToDataUrls = async (pdfUrl, targetWidth) => {
 
       pages.push({
         pageNum,
-        dataUrl: renderCanvas.toDataURL("image/png"),
+        dataUrl: renderCanvas.toDataURL(imageFormat, imageQuality),
         width: Math.round(renderCanvas.width / exportScale),
         height: Math.round(renderCanvas.height / exportScale),
       });
@@ -2734,7 +2739,11 @@ const exportPreviewPdf = async () => {
       let dataUrl = null;
       let pdfPages = [];
       if (frameUrl) {
-        pdfPages = await renderPdfPagesToDataUrls(frameUrl, frameWidth);
+        pdfPages = await renderPdfPagesToDataUrls(frameUrl, frameWidth, {
+          scale: 2,
+          format: "image/jpeg",
+          quality: 0.85,
+        });
       }
       if (!pdfPages.length) {
         dataUrl = await snapshotIframe(iframe);
@@ -2786,6 +2795,7 @@ const exportPreviewPdf = async () => {
       orientation,
       unit: "pt",
       format: "a3",
+      compress: true,
     });
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
@@ -2813,12 +2823,12 @@ const exportPreviewPdf = async () => {
         pageCanvas.width,
         sliceHeight
       );
-      const pageImg = pageCanvas.toDataURL("image/png");
+      const pageImg = pageCanvas.toDataURL("image/jpeg", 0.80);
       const pageRenderHeight = (sliceHeight * renderWidth) / canvas.width;
       if (!isFirstPage) {
         pdf.addPage();
       }
-      pdf.addImage(pageImg, "PNG", 0, 0, renderWidth, pageRenderHeight);
+      pdf.addImage(pageImg, "JPEG", 0, 0, renderWidth, pageRenderHeight);
       renderedHeight += sliceHeight;
       isFirstPage = false;
     }
@@ -5205,18 +5215,22 @@ const confirmSoftDialog = async () => {
       console.log('addSoftMetricRecords 接口返回:', res);
       
       if (res.success) {
-        // 添加成功后，构建记录对象并添加到列表中
-        const newRecord = {
-          id: String(res.data?.id || Date.now()),
-          type: normalizeTypeText(softDialogType.value) || '',
-          originalType: typeIdValue || '',
-          content: textValue,
-          occurredDate: softDialogDate.value || null,
-          createTime: new Date().toISOString(),
-          autoAdd: 0, // 手动添加的记录，autoAdd 为 0，可以编辑删除
-        };
-        console.log('添加新记录到列表:', newRecord);
-        localSoftMetrics.value[groupIndex].records.push(newRecord);
+        // 添加成功后由父组件仅拉取当前类型的软性指标并刷新，保证该组记录使用服务端真实 id（删除/编辑依赖该 id）
+        if (props.onSoftMetricsChange) {
+          props.onSoftMetricsChange(softDialogGroupKey.value);
+          softDialogOpen.value = false;
+        } else {
+          const newRecord = {
+            id: String(res.data?.id || Date.now()),
+            type: normalizeTypeText(softDialogType.value) || '',
+            originalType: typeIdValue || '',
+            content: textValue,
+            occurredDate: softDialogDate.value || null,
+            createTime: new Date().toISOString(),
+            autoAdd: 0,
+          };
+          localSoftMetrics.value[groupIndex].records.push(newRecord);
+        }
       } else {
         console.error('添加软性指标记录失败:', res.message || res);
       }
