@@ -43,7 +43,7 @@
             <i class="bx bx-calendar metadata-icon"></i>
             <span class="metadata-label">创建日期:</span>
             <span class="deadline-text">{{
-              detailInfo?.contractUploadDate
+              dayjs(detailInfo?.createTime).format("YYYY-MM-DD")
             }}</span>
           </div>
           <div class="metadata-item">
@@ -57,7 +57,7 @@
           <el-tag
             class="task-status-tag status-pending"
             round
-            >任务</el-tag
+            >{{ detailInfo.presentTaskName }}</el-tag
           >
         </div>
         <!-- 查看详情按钮 -->
@@ -74,6 +74,7 @@
 </template>
 <script setup>
 import { ref, defineProps, defineEmits, computed } from "vue";
+import dayjs from "dayjs";
 const props = defineProps({
   selected: {
     type: Boolean,

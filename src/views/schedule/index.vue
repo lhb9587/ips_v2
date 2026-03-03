@@ -186,9 +186,9 @@
         <div class="info-item">
           <div class="left">
             <span class="icon bx bx-time-five"></span>
-            <span class="label">开始日期</span>
+            <span class="label">截止日期</span>
           </div>
-          <div class="value">{{ taskDetail.startDate }}</div>
+          <div class="value">{{ taskDetail.dueDate }}</div>
         </div>
         <div class="info-item">
           <div class="left">
@@ -243,14 +243,16 @@
             </div>
           </div>
         </div>
-        <!-- <div class="info-item-member">
+        <el-divider />
+        <div class="info-item-member">
           <div class="left">
             <span class="label">描述</span>
           </div>
-          <div>
-            {{ taskDetail.description || "暂无描述信息" }}
-          </div>
-        </div> -->
+          <div
+            v-html="taskDetail.description"
+            style="max-height: 200px; overflow-y: auto"
+          ></div>
+        </div>
       </div>
       <div class="w-100 modal-footer">
         <div class="text-end">
@@ -687,6 +689,15 @@ const updateSize = () => {
   }
 };
 
+const getEventCountForDate = (date) => {
+  const dateStr = dayjs(date).format("YYYY-MM-DD");
+  const count = eventSources.value.filter((event) => {
+    return dayjs(event.start).format("YYYY-MM-DD") === dateStr;
+  }).length;
+
+  return count;
+};
+
 watch(isSmallScreen, (val) => {
   nextTick(() => {
     updateSize();
@@ -737,6 +748,7 @@ const sidebarDrawerVisible = ref(false);
 const taskDetail = ref({});
 const selectedInfo = ref({});
 const taskDetailModelValue = ref(false);
+const currentView = ref("dayGridMonth");
 
 const createCalendarVisible = ref(false);
 const calendarForm = ref({});
@@ -825,7 +837,36 @@ const attendeesList = computed(() => {
     }),
   );
 });
+const updateListHeader = (viewEl, isListMonth) => {
+  // 1. First, search and remove ANY existing headers in the calendar to prevent persistence
+  const calendarEl = document.querySelector(".app-calendar");
+  if (calendarEl) {
+    const existingHeaders = calendarEl.querySelectorAll(".list-view-title-bar");
+    existingHeaders.forEach((h) => h.remove());
+  }
+
+  // 2. Only if it's explicitly the 'listMonth' view, add it
+  if (isListMonth && viewEl) {
+    const count = (eventSources.value && eventSources.value.length) || 0;
+    const header = document.createElement("div");
+    header.className = "list-view-title-bar";
+    viewEl.prepend(header);
+    header.innerHTML = `
+      <div class="title-left">所有事项</div>
+      <div class="title-right">
+        <span class="count-badge">共 ${count} 个事项</span>
+      </div>
+    `;
+  }
+};
+
 const handleDatesSet = (info) => {
+  const calendarApi = fullCalendar.value.getApi();
+  const viewEl = calendarApi.el.querySelector(".fc-view");
+
+  currentView.value = info.view.type;
+  nextTick(() => updateListHeader(viewEl, info.view.type === "listMonth"));
+
   const currentDate = fullCalendar.value?.getApi()?.getDate();
   if (info.view.type === "dayGridWeek") {
     startDate.value = dayjs(info.startStr).format("YYYY-MM-DD");
@@ -872,6 +913,32 @@ const calendarOptions = ref({
         sidebarDrawerVisible.value = true;
       },
     },
+  },
+  dayCellContent: function (arg) {
+    const isMonth = arg.view.type === "dayGridMonth";
+    const isWeek = arg.view.type.includes("Week");
+
+    if (!isMonth && !isWeek) return arg.dayNumberText;
+
+    // 获取当前日期的事项数量
+    const eventCount = getEventCountForDate(arg.date);
+    const dayText = isMonth
+      ? arg.dayNumberText.replace("日", "")
+      : dayjs(arg.date).format("D");
+
+    // 返回自定义的HTML内容
+    return {
+      html: `<div class="custom-day-cell">
+              <span class="date-left ${
+                arg.isToday ? "is-today" : ""
+              }">${dayText}</span>
+              ${
+                eventCount > 0
+                  ? `<span class="event-count-right">${eventCount}</span>`
+                  : ""
+              }
+             </div>`,
+    };
   },
   buttonText: {
     today: "今天",
@@ -943,14 +1010,35 @@ const calendarOptions = ref({
           return "";
         };
 
+        const tagList = props.tagList || [];
+
+        // 构建标签HTML
+        const tagsHtml = tagList
+          .map((tag) => `<span class="event-tag">${tag.tagName}</span>`)
+          .join("");
+
         return {
           html: `
             <div class="custom-list-event">
               <div class="event-header">
                 <div class="event-main-info">
                     <div class="event-title">
-                        <div class="event-title-text">${event.title || ""}</div>
+                        <div  class="d-flex gap-2">
+                          <div class="event-title-text">${
+                            event.title || ""
+                          }</div>
+                          <div class="event-tag">${
+                            props.objType === 1 ? "事项" : "子事项"
+                          }</div>
+                        </div>
                         <div class="event-title-attendees">
+                            ${
+                              priorityListMap[props.priority]
+                                ? `<div class="event-tag">${
+                                    priorityListMap[props.priority] || ""
+                                  }</div>`
+                                : ``
+                            }
                             ${
                               statusListMap[props.status]
                                 ? `<div class="event-tag">${
@@ -976,6 +1064,9 @@ const calendarOptions = ref({
                   <span class="event-time">${formatTimeRange()}</span>
                 </div>
                 <div class="event-project">${props.projectName || ""}</div>
+              </div>
+              <div class="event-tags">
+                ${tagsHtml}
               </div>
             </div>
           `,
@@ -1005,14 +1096,30 @@ const calendarOptions = ref({
           return "";
         };
 
+        const tagList = props.tagList || [];
+        // 构建标签HTML
+        const tagsHtml = tagList
+          .map((tag) => `<span class="event-tag">${tag.tagName}</span>`)
+          .join("");
+
         return {
           html: `
             <div class="custom-list-event">
               <div class="event-header">
                 <div class="event-main-info">
                     <div class="event-title">
-                        <div class="event-title-text">${event.title || ""}</div>
+                        <div  class="d-flex gap-2">
+                          <div class="event-title-text">${
+                            event.title || ""
+                          }</div>
+                          <div class="event-tag">${
+                            props.objType === 1 ? "事项" : "子事项"
+                          }</div>
+                        </div>
                         <div class="event-title-attendees">
+                            <div class="event-tag">${
+                              priorityListMap[props.priority] || ""
+                            }</div>    
                             <div class="event-tag">${
                               statusListMap[props.status] || ""
                             }</div>    
@@ -1034,6 +1141,9 @@ const calendarOptions = ref({
                   <span class="event-time">${formatTimeRange()}</span>
                 </div>
                 <div class="event-project">${props.projectName || ""}</div>
+              </div>
+              <div class="event-tags">
+                ${tagsHtml}
               </div>
             </div>
           `,
@@ -1317,6 +1427,19 @@ watch([startDate, endDate], () => {
   fetchMyTasksCount();
   fetchCalendarList();
 });
+
+watch(
+  eventSources,
+  () => {
+    if (currentView.value === "listMonth" && fullCalendar.value) {
+      const calendarApi = fullCalendar.value.getApi();
+      const viewEl = calendarApi.el.querySelector(".fc-view");
+      if (viewEl) updateListHeader(viewEl, true);
+    }
+  },
+  { deep: true },
+);
+
 watch(dateValue, (newValue, oldValue) => {
   if (newValue?.getTime() === oldValue?.getTime()) return;
   const calendarApi = fullCalendar.value.getApi();
@@ -1353,6 +1476,35 @@ onUnmounted(() => {
 .select-content {
   margin-top: 16px;
   padding: 0 12px;
+}
+
+:deep(.list-view-title-bar) {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 12px 16px !important;
+  background: #f8faff !important;
+  border: 1px solid #edf2f7 !important;
+  border-bottom: none !important;
+
+  .title-left {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: #1a202c !important;
+  }
+
+  .count-badge {
+    background-color: #ebf4ff !important;
+    color: #3182ce !important;
+    padding: 4px 12px !important;
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+  }
+}
+
+:deep(.fc-listMonth-view .fc-scroller.fc-scroller-liquid) {
+  max-height: calc(100% - 50px) !important;
 }
 
 // .section-wrapper {
@@ -1478,6 +1630,11 @@ onUnmounted(() => {
       line-height: 1.6;
       margin-bottom: 8px;
       display: flex;
+      max-height: 150px;
+      overflow-y: hidden;
+      p {
+        margin-bottom: 0 !important;
+      }
     }
   }
 
@@ -1891,5 +2048,48 @@ onUnmounted(() => {
   font-size: 12px;
   border-radius: 6px;
   border: 1px solid #e2e8f0;
+  height: 24px;
+}
+.fc .fc-daygrid-day-number {
+  width: 100% !important;
+}
+.custom-day-cell {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 6px 0 6px;
+  width: 100%;
+}
+
+.date-left {
+  font-weight: normal;
+  white-space: nowrap;
+  color: #303133;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.date-left.is-today {
+  background-color: #000;
+  color: #fff !important;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+}
+
+.event-count-right {
+  margin-left: auto;
+  font-size: 11px;
+  color: #475569;
+  background-color: #f1f5f9;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  padding: 0 4px;
+  transform: translateY(-2px);
 }
 </style>

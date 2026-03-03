@@ -171,9 +171,7 @@
               disabled: isCaseAdded(item.caseId),
             }"
           >
-            <div
-              class="case-item-left"
-            >
+            <div class="case-item-left">
               <el-checkbox
                 v-if="!isCaseAdded(item.caseId)"
                 :model-value="selectedCaseIds.includes(item.caseId)"
@@ -318,6 +316,8 @@ watch(
     if (newValue && newValue.length > 0) {
       console.log(newValue, "newValue");
       checkCasePermission(newValue);
+    } else {
+      relatedCases.value = [];
     }
   },
   { deep: true, immediate: true },

@@ -17,21 +17,36 @@
 
       <!-- 内容 -->
       <div class="history-content">
-        <div class="title">{{ item.fieldLabel }}</div>
+        <div class="d-flex justify-content-between">
+          <div class="title">{{ item.fieldLabel }}</div>
+          <!-- 右侧时间 -->
+          <div class="time">
+            {{ dayjs(item.createTime).format("YY/MM/DD HH:mm") }}
+          </div>
+        </div>
+
         <div class="desc">
           <span
-            class="old-value"
+            class="old-value is-description"
             v-if="item.fieldName === 'description' && item.oldValue"
             v-html="item.oldValue"
           ></span>
           <span
             class="old-value"
             v-else
-            >{{ item.oldValue }}</span
+            ><span
+              v-if="
+                item.fieldName !== 'materials' && item.fieldName !== 'cases'
+              "
+              >{{ item.oldValue }}</span
+            ></span
           >
-          <el-icon><Right /></el-icon>
+          <el-icon
+            v-if="item.fieldName !== 'materials' && item.fieldName !== 'cases'"
+            ><Right
+          /></el-icon>
           <span
-            class="new-value"
+            class="new-value is-description"
             v-if="item.fieldName === 'description' && item.newValue"
             v-html="item.newValue"
           ></span>
@@ -43,11 +58,6 @@
         </div>
         <div class="user">{{ item.operatorName }}</div>
       </div>
-
-      <!-- 右侧时间 -->
-      <div class="time">
-        {{ dayjs(item.createTime).format("YY/MM/DD HH:mm") }}
-      </div>
     </div>
     <el-empty
       v-if="changeHistoryList.length === 0"
@@ -58,7 +68,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, defineProps } from "vue";
+import { ref, onMounted, defineProps, defineExpose } from "vue";
 import { queryChangeHistory } from "@/api/project";
 import dayjs from "dayjs";
 import { Right } from "@element-plus/icons-vue";
@@ -83,6 +93,10 @@ const fetchChangeHistory = () => {
     changeHistoryList.value = res.data || [];
   });
 };
+// 暴露方法给父组件
+defineExpose({
+  fetchChangeHistory,
+});
 onMounted(() => {
   fetchChangeHistory();
 });
@@ -148,6 +162,7 @@ onMounted(() => {
   gap: 8px;
   .old-value {
     color: red;
+    white-space: nowrap;
   }
   .new-value {
     color: #00a63e;

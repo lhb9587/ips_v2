@@ -25,7 +25,7 @@
             <img
               v-else-if="userIcon"
               :src="`/ipdoc${userIcon}`"
-              style="height: 64px; min-width: 48px; max-width: 130px"
+              style="max-height: 48px; min-width: 48px; max-width: 120px"
             />
             <i
               v-else

@@ -91,7 +91,7 @@ const props = defineProps({
     default: 0,
   },
 });
-const emits = defineEmits(["createSubTask"]);
+const emits = defineEmits(["createSubTask", "viewSubTaskDetail"]);
 const taskList = ref([]);
 watch(
   () => props.subtaskList,
@@ -126,8 +126,7 @@ const handleDeleteTask = (values) => {
   });
 };
 const handlePreviewTask = (taskItem) => {
-  const targetUrl = `${window.location.origin}/v2/project/subtask-detail/${taskItem.subtaskCode}`;
-  window.open(targetUrl, "_blank");
+  emits("viewSubTaskDetail", taskItem, 3);
 };
 </script>
 

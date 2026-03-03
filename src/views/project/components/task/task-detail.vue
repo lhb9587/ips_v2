@@ -25,7 +25,7 @@
               /
               <span
                 class="detail-link"
-                @click="viewTaskDetail(detailInfo)"
+                @click="viewTaskDetail(detailInfo, 1)"
                 >{{ detailInfo?.taskCode }}-{{ detailInfo.taskName }}</span
               >
               /
@@ -149,8 +149,16 @@
             class="content-desc"
             v-if="!isEdit && !isDescEdit"
           >
-            <div v-html="detailInfo.description" v-if="detailInfo.description"></div>
-            <div v-else style="color:#909399">点击编辑添加描述信息</div>
+            <div
+              v-html="detailInfo.description"
+              v-if="detailInfo.description"
+            ></div>
+            <div
+              v-else
+              style="color: #909399"
+            >
+              点击编辑添加描述信息
+            </div>
           </div>
           <Editor
             v-else
@@ -163,7 +171,9 @@
         <div class="content-item">
           <div class="content-title">附件</div>
           <UploadFile
-            :objId="localTaskType === 1 ? detailInfo.taskId : detailInfo.subtaskId"
+            :objId="
+              localTaskType === 1 ? detailInfo.taskId : detailInfo.subtaskId
+            "
             :objType="localTaskType"
             :defaultMaterialList="materialList"
             :editPermissionLevel="editPermissionLevel"
@@ -174,17 +184,22 @@
           :subtaskList="subtaskList"
           :editPermissionLevel="editPermissionLevel"
           @createSubTask="createSubTask"
+          @viewSubTaskDetail="viewSubTaskDetail"
         />
         <RelatedCase
           :defaultRelatedCases="relatedCases"
           :objType="localTaskType"
-          :objId="localTaskType === 1 ? detailInfo.taskId : detailInfo.subtaskId"
+          :objId="
+            localTaskType === 1 ? detailInfo.taskId : detailInfo.subtaskId
+          "
           :editPermissionLevel="editPermissionLevel"
         />
         <RelatedTask
           :defaultRelatedTasks="relatedTasks"
           :objType="localTaskType"
-          :objId="localTaskType === 1 ? detailInfo.taskId : detailInfo.subtaskId"
+          :objId="
+            localTaskType === 1 ? detailInfo.taskId : detailInfo.subtaskId
+          "
           :editPermissionLevel="editPermissionLevel"
         />
         <Tabs
@@ -194,15 +209,20 @@
         />
         <Notes
           v-if="notesType === 'note'"
-          :objId="localTaskType === 1 ? detailInfo.taskId : detailInfo.subtaskId"
+          :objId="
+            localTaskType === 1 ? detailInfo.taskId : detailInfo.subtaskId
+          "
           :objType="localTaskType"
           :editPermissionLevel="editPermissionLevel"
           :refresh-method="fetchTaskDetail"
         />
         <Changehistory
           v-if="notesType === 'changehistory'"
-          :objId="localTaskType === 1 ? detailInfo.taskId : detailInfo.subtaskId"
+          :objId="
+            localTaskType === 1 ? detailInfo.taskId : detailInfo.subtaskId
+          "
           :objType="localTaskType"
+          ref="changeHistoryRef"
         />
       </div>
       <div class="content-right">
@@ -339,6 +359,8 @@ const closeSideBar = () => {
   emits("close");
 };
 
+const changeHistoryRef = ref(null);
+
 // 全屏功能
 const isFullscreen = ref(false);
 const taskDetailRef = ref(null);
@@ -396,16 +418,31 @@ const viewProDetail = () => {
   isShowPrjDetail.value = true;
   // closeSideBar()
 };
-const viewTaskDetail = (info) => {
+const viewTaskDetail = (info, type) => {
   // 更新本地taskCode并重新调用详情接口
-  console.log(info,'info');
-  
+  console.log(info, "info");
+
   if (info.taskCode && info.taskCode !== localTaskCode.value) {
     localTaskCode.value = info.taskCode;
-    localTaskType.value = 1;
+    localTaskType.value = type;
     // 更新taskId
     if (info.taskId) {
       localTaskId.value = info.taskId;
+    }
+    // 重新获取任务详情
+    fetchTaskDetail();
+  }
+};
+const viewSubTaskDetail = (info, type) => {
+  // 更新本地taskCode并重新调用详情接口
+  console.log(info, "info");
+
+  if (info.subtaskCode && info.subtaskCode !== localTaskCode.value) {
+    localTaskCode.value = info.subtaskCode;
+    localTaskType.value = type;
+    // 更新taskId
+    if (info.subtaskId) {
+      localTaskId.value = info.subtaskId;
     }
     // 重新获取任务详情
     fetchTaskDetail();
@@ -554,11 +591,11 @@ const fetchTaskDetail = async () => {
       taskCode: localTaskCode.value,
     };
     try {
-      res = await queryTaskDetail(params,{ showErrorMessage: false });
+      res = await queryTaskDetail(params, { showErrorMessage: false });
     } catch (error) {
       if (error.message?.includes("没有权限")) {
-        closeSideBar()
-      } else{
+        closeSideBar();
+      } else {
         ElMessage.error(error.message || "请求失败");
       }
     }
@@ -568,11 +605,11 @@ const fetchTaskDetail = async () => {
       subtaskCode: localTaskCode.value,
     };
     try {
-      res = await querySubtaskDetail(params,{ showErrorMessage: false });
+      res = await querySubtaskDetail(params, { showErrorMessage: false });
     } catch (error) {
       if (error.message?.includes("没有权限")) {
-        closeSideBar()
-      } else{
+        closeSideBar();
+      } else {
         ElMessage.error(error.message || "请求失败");
       }
     }
@@ -598,6 +635,8 @@ const fetchTaskDetail = async () => {
         prjOwnerName: refItem?.projectOwnerName,
       };
     });
+  } else {
+    relatedTasks.value = [];
   }
   if (!isEdit.value) {
     editingName.value = detailInfo.value.name || "";
@@ -635,7 +674,7 @@ const saveTaskInfo = async () => {
   delete data.materialList;
   delete data.subtaskList;
   data.name = nameValue;
-  
+
   data.description = detailInfo.value.description || undefined;
   // 如果负责人变更，需要判断原负责人角色，如果都不属于必要角色，需要提示是否将其加入参与人列表
   if (data.ownerId !== detailInfo.value.ownerId) {
@@ -648,7 +687,7 @@ const saveTaskInfo = async () => {
           type: "warning",
           confirmButtonText: "确认并加入",
           cancelButtonText: "仅更换负责人",
-        }
+        },
       )
         .then(async () => {
           data.memberList.push({
@@ -705,7 +744,7 @@ const checkParentTask = (parentInfo, ownerId) => {
   const isfatherOwner = parentInfo.ownerId === ownerId;
   const isfatherCreater = parentInfo.creatorId === ownerId;
   const isfatherMember = parentInfo.memberList?.some(
-    (item) => item.userId === ownerId
+    (item) => item.userId === ownerId,
   );
   return isfatherOwner || isfatherCreater || isfatherMember;
 };
@@ -717,7 +756,8 @@ const updateTaskFunc = (params) => {
         ElMessage.success("保存成功");
         isEdit.value = false;
         fetchTaskDetail();
-        checkEditPermissionFn()
+        checkEditPermissionFn();
+        changeHistoryRef.value && changeHistoryRef.value.fetchChangeHistory();
       }
     });
   } else {
@@ -727,7 +767,7 @@ const updateTaskFunc = (params) => {
         ElMessage.success("保存成功");
         isEdit.value = false;
         fetchTaskDetail();
-        checkEditPermissionFn()
+        checkEditPermissionFn();
       }
     });
   }
@@ -740,7 +780,7 @@ watch(
       editingName.value = val || "";
       originalName.value = val || "";
     }
-  }
+  },
 );
 watch(
   () => detailInfo.value.taskId,
@@ -748,7 +788,7 @@ watch(
     if (localTaskType.value === 1) {
       checkEditPermissionFn();
     }
-  }
+  },
 );
 watch(
   () => detailInfo.value.subtaskId,
@@ -756,7 +796,7 @@ watch(
     if (localTaskType.value !== 1) {
       checkEditPermissionFn();
     }
-  }
+  },
 );
 
 const checkEditPermissionFn = () => {

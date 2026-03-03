@@ -49,8 +49,10 @@
           @click="handlePreviewTask(item)"
         >
           <div style="display: flex; align-items: center">
-            <div class="bx bx-link" style="margin-right: 8px;font-size: 16px;">
-            </div>
+            <div
+              class="bx bx-link"
+              style="margin-right: 8px; font-size: 16px"
+            ></div>
             <div class="task-info">
               <div class="task-info-main">
                 <span class="task-name"
@@ -191,7 +193,9 @@
                   <span class="task-name">{{ item.name }}</span>
                 </div>
                 <div class="task-info-extra">
-                  <span class="task-prjOwnerName">{{ item.prjOwnerName }}•</span>
+                  <span class="task-prjOwnerName"
+                    >{{ item.prjOwnerName }}•</span
+                  >
                   <span class="task-prjName">{{ item.prjName }}•</span>
                   <!-- <span class="task-taskCode">ID:{{ item.taskCode }}•</span> -->
                   <span class="task-status">{{
@@ -320,7 +324,10 @@ watch(
   (newValue) => {
     if (newValue && newValue.length > 0) {
       relatedTasks.value = [...newValue];
+    } else {
+      relatedTasks.value = [];
     }
+    console.log(newValue, "引用事项数据@@");
   },
   { deep: true, immediate: true },
 );
@@ -430,11 +437,13 @@ const handlePreviewTask = (taskItem) => {
     ElMessageBox.alert("您没有权限查看该事项，请联系负责人申请权限", "提示", {
       confirmButtonText: "确定",
       type: "warning",
-    })
-    return 
+    });
+    return;
   }
   if (!taskItem.objType) return;
   // 根据实际的路由调整
+  console.log(taskItem, "taskItem信息");
+
   let targetUrl;
   if (taskItem.objType === 1) {
     targetUrl = `${window.location.origin}/v2/project/task-detail/${taskItem?.taskCode}`;

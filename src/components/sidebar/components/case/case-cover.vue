@@ -83,6 +83,10 @@
             <span class="panel-title">基础信息</span>
           </div>
           <div class="panel-body">
+            <div class="info-item">
+              <span class="info-label">案件名称</span>
+              <span class="info-value">{{ caseCoverInfo.caseName }}</span>
+            </div>
             <div class="info-grid">
               <div class="info-column">
                 <div class="info-item">
@@ -577,7 +581,7 @@ watch(
       fetchCaseEventList();
     }
   },
-  { immediate: true, deep: true }
+  { immediate: true, deep: true },
 );
 </script>
 <style lang="scss" scoped>

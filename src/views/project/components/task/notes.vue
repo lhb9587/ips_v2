@@ -245,7 +245,7 @@ const uploadUrl = createPrjMaterialUrl;
 
 import { getUserInfo } from "@/utils/user";
 const userId = getUserInfo()?.userId;
-console.log(userId,'userId@@');
+console.log(userId, "userId@@");
 
 const props = defineProps({
   objId: {
@@ -320,6 +320,7 @@ const normalizeNote = (note) => {
 const fetchNotesList = async () => {
   const apiSet = getNoteApiSet();
   let params = {};
+  if (!props.objId) return;
   if (apiSet.idKey === "tnoId") {
     params.taskId = props.objId;
   } else {

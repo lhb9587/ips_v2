@@ -159,7 +159,7 @@ export const menuItems = [
         link: "/workbench/technological_process/officialSubmission",
         parentId: 23,
         permissions: [19],
-        icon: "bx-detail",
+        icon: "bx bx-window-open",
       },
       {
         id: 25,
@@ -167,14 +167,14 @@ export const menuItems = [
         link: "/workbench/technological_process/officialCommunication",
         parentId: 23,
         permissions: [20],
-        icon: "bx-detail",
+        icon: "bx bx-message-dots",
       },
       {
         id: 26,
         label: "menuitems.process.list.writing",
         link: "/workbench/technological_process/trademarkWriting",
         parentId: 23,
-        icon: "bx-detail",
+        icon: "bx bx-edit-alt",
       },
     ],
   },
@@ -190,7 +190,7 @@ export const menuItems = [
         link: "/workbench/knowledgeBase/search",
         parentId: 27,
         permissions: [252],
-        icon: "bx-detail",
+        icon: "bx bx-book-open",
       },
       {
         id: 29,
@@ -198,7 +198,7 @@ export const menuItems = [
         link: "/workbench/knowledgeBase/statistics/caseTypeModel",
         parentId: 27,
         permissions: [253],
-        icon: "bx-detail",
+        icon: "bx bx-line-chart",
       },
       {
         id: 30,
@@ -206,7 +206,7 @@ export const menuItems = [
         link: "/workbench/knowledgeBase/knowledge_management",
         parentId: 27,
         permissions: [254],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 31,
@@ -214,7 +214,7 @@ export const menuItems = [
         link: "/workbench/knowledgeBase/personal_articles",
         parentId: 27,
         permissions: [255],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 32,
@@ -222,7 +222,7 @@ export const menuItems = [
         link: "/workbench/knowledgeBase/ai_knowledge_base",
         parentId: 27,
         permissions: [440],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
     ],
   },
@@ -238,7 +238,7 @@ export const menuItems = [
         link: "/workbench/material_management/material",
         parentId: 33,
         permissions: [24],
-        icon: "bx-detail",
+        icon: "bx bx-food-menu",
       },
       {
         id: 35,
@@ -246,7 +246,7 @@ export const menuItems = [
         link: "/workbench/material_management/agencyMaterial",
         parentId: 33,
         permissions: [358],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 36,
@@ -254,14 +254,14 @@ export const menuItems = [
         link: "/workbench/material_management/caseMaterial",
         parentId: 33,
         permissions: [239],
-        icon: "bx-detail",
+        icon: "bx bx-book-content",
       },
       {
         id: 37,
         label: "menuitems.filemanager.list.archive_management",
         link: "/workbench/material_management/archiveMaterial",
         parentId: 33,
-        icon: "bx-detail",
+        icon: "bx bx-columns",
       },
     ],
   },
@@ -277,7 +277,7 @@ export const menuItems = [
         link: "/workbench/platformData/new_dashboard_index",
         parentId: 23,
         permissions: [361],
-        icon: "bx-detail",
+        icon: "bx bx-money",
       },
       {
         id: 40,
@@ -285,7 +285,7 @@ export const menuItems = [
         link: "/workbench/platformData/new_dashboard_hrm",
         parentId: 23,
         permissions: [299],
-        icon: "bx-detail",
+        icon: "bx bx-sitemap",
       },
       {
         id: 41,
@@ -293,7 +293,7 @@ export const menuItems = [
         link: "/workbench/platformData/partner_weekly_report",
         parentId: 23,
         permissions: [372],
-        icon: "bx-detail",
+        icon: "bx bx-calendar-plus",
       },
       {
         id: 42,
@@ -301,7 +301,7 @@ export const menuItems = [
         link: "/workbench/platformData/lawyer_performance",
         parentId: 23,
         permissions: [384],
-        icon: "bx-detail",
+        icon: "bx bx-sort-up",
       },
       {
         id: 43,
@@ -309,7 +309,7 @@ export const menuItems = [
         link: "/workbench/platformData/company_news",
         parentId: 23,
         permissions: [393],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 44,
@@ -317,7 +317,7 @@ export const menuItems = [
         link: "/workbench/platformData/itinerary",
         parentId: 23,
         permissions: [405],
-        icon: "bx-detail",
+        icon: "bx bx-calendar",
       },
     ],
   },
@@ -333,7 +333,7 @@ export const menuItems = [
         link: "/workbench/system_management/marked_management",
         parentId: 45,
         permissions: [27],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 47,
@@ -341,7 +341,7 @@ export const menuItems = [
         link: "/workbench/system_management/department_management",
         parentId: 45,
         permissions: [29],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 48,
@@ -349,7 +349,7 @@ export const menuItems = [
         link: "/workbench/system_management/domain_management",
         parentId: 45,
         permissions: [196],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 49,
@@ -357,7 +357,7 @@ export const menuItems = [
         link: "/workbench/system_management/workingGroup_management",
         parentId: 45,
         permissions: [30],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 50,
@@ -365,7 +365,7 @@ export const menuItems = [
         link: "/workbench/system_management/staff_management",
         parentId: 45,
         permissions: [31],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 51,
@@ -373,7 +373,7 @@ export const menuItems = [
         link: "/workbench/system_management/role_management",
         parentId: 45,
         permissions: [32],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 52,
@@ -381,7 +381,7 @@ export const menuItems = [
         link: "/workbench/system_management/permission_management/permission_Modular",
         parentId: 45,
         permissions: [33],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 53,
@@ -389,7 +389,7 @@ export const menuItems = [
         link: "/workbench/system_management/webLog",
         parentId: 45,
         permissions: [0],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 54,
@@ -397,7 +397,7 @@ export const menuItems = [
         link: "/workbench/system_management/templateManagement",
         parentId: 45,
         permissions: [266],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 55,
@@ -405,7 +405,7 @@ export const menuItems = [
         link: "/workbench/system_management/feeRules",
         parentId: 45,
         permissions: [369],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
     ],
   },
@@ -427,14 +427,14 @@ export const menuItems = [
         link: "/hrm/staff-management",
         parentId: 56,
         permissions: [299],
-        icon: "bx-detail",
+        icon: "fas fa-address-book",
       },
       {
         id: 57,
         label: "menuitems.hrm.list.my_profile",
         link: "/workbench/hrm/my_profile",
         parentId: 56,
-        icon: "bx-detail",
+        icon: "bx bx-user",
       },
       {
         id: 59,
@@ -442,7 +442,7 @@ export const menuItems = [
         link: "/workbench/hrm/payroll_management",
         parentId: 56,
         permissions: [427],
-        icon: "bx-detail",
+        icon: "mdi mdi-cash-usd-outline",
       },
       {
         id: 60,
@@ -450,7 +450,7 @@ export const menuItems = [
         link: "/workbench/hrm/bonus_management",
         parentId: 56,
         permissions: [430],
-        icon: "bx-detail",
+        icon: "mdi mdi-account-cash",
       },
       {
         id: 61,
@@ -458,7 +458,7 @@ export const menuItems = [
         link: "/workbench/hrm/salary_management",
         parentId: 56,
         permissions: [429],
-        icon: "bx-detail",
+        icon: "bx bx-dollar-circle",
       },
       {
         id: 62,
@@ -466,7 +466,7 @@ export const menuItems = [
         link: "/workbench/hrm/approval_management",
         parentId: 56,
         permissions: [446],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
     ],
   },
@@ -482,7 +482,7 @@ export const menuItems = [
         link: "/finance/finance-fee",
         permissions: [23],
         parentId: 63,
-        icon: "bx-detail",
+        icon: "bx bx-dollar-circle",
       },
       {
         id: 84,
@@ -490,7 +490,7 @@ export const menuItems = [
         link: "/finance/bill-overseas",
         parentId: 63,
         permissions: [228],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 69,
@@ -498,7 +498,7 @@ export const menuItems = [
         link: "/workbench/finance_fee_detail",
         parentId: 63,
         permissions: [333],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 70,
@@ -506,7 +506,7 @@ export const menuItems = [
         link: "/workbench/finance_collect",
         parentId: 63,
         permissions: [302],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 71,
@@ -514,7 +514,7 @@ export const menuItems = [
         link: "/workbench/finance_statement",
         parentId: 63,
         permissions: [326],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 82,
@@ -522,7 +522,7 @@ export const menuItems = [
         link: "/workbench/finance_patent_fee",
         parentId: 63,
         permissions: [346],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 83,
@@ -530,7 +530,7 @@ export const menuItems = [
         link: "/workbench/finance_outside_price",
         parentId: 63,
         permissions: [291],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 85,
@@ -538,12 +538,13 @@ export const menuItems = [
         link: "/workbench/finance_exchange_rate",
         parentId: 63,
         permissions: [422],
-        icon: "bx-detail",
+        icon: "bx bx-detail",
       },
       {
         id: 72,
         label: "menuitems.finance.list.invoice_management.text",
         parentId: 63,
+        icon: "bx bx-purchase-tag",
         subItems: [
           {
             id: 73,
@@ -552,7 +553,7 @@ export const menuItems = [
             link: "/finance/invoice-management/invoice_opener",
             parentId: 72,
             permissions: [213],
-            icon: "bx-detail",
+            icon: "bx bx-duplicate",
           },
           {
             id: 74,
@@ -560,7 +561,7 @@ export const menuItems = [
               "menuitems.finance.list.invoice_management.list.borrowed_invoices",
             link: "/workbench/finance_invoice/finance_invoice_borrow",
             parentId: 72,
-            icon: "bx-detail",
+            icon: "bx bx-left-arrow-circle",
           },
           {
             id: 75,
@@ -568,7 +569,7 @@ export const menuItems = [
               "menuitems.finance.list.invoice_management.list.invoice_repository",
             link: "/workbench/finance_invoice/finance_invoice_library",
             parentId: 72,
-            icon: "bx-detail",
+            icon: "bx bx-box",
           },
         ],
       },
@@ -577,6 +578,7 @@ export const menuItems = [
         label: "menuitems.finance.list.billing_management.text",
         parentId: 63,
         permissions: [22],
+        icon: "bx bx-columns",
         subItems: [
           {
             id: 65,
@@ -584,7 +586,7 @@ export const menuItems = [
             link: "/finance/bill-management/bill",
             parentId: 64,
             permissions: [84],
-            icon: "bx-detail",
+            icon: "bx bx-calculator",
           },
           {
             id: 66,
@@ -593,7 +595,7 @@ export const menuItems = [
             link: "/finance/bill-management/bill-internal",
             parentId: 64,
             permissions: [85],
-            icon: "bx-detail",
+            icon: "bx bx-paste",
           },
           {
             id: 67,
@@ -601,7 +603,7 @@ export const menuItems = [
             link: "/workbench/finance_bill_manager/finance_traw_sheet",
             parentId: 64,
             permissions: [86],
-            icon: "bx-detail",
+            icon: "bx bx-detail",
           },
         ],
       },
@@ -609,13 +611,14 @@ export const menuItems = [
         id: 77,
         label: "menuitems.finance.list.report_center.text",
         parentId: 63,
+        icon: "bx bx-folder-plus",
         subItems: [
           {
             id: 78,
             label: "menuitems.finance.list.report_center.list.reports",
             link: "/workbench/finance_report/finance_report_form",
             parentId: 77,
-            icon: "bx-detail",
+            icon: "bx bx-file",
           },
           {
             id: 79,
@@ -623,7 +626,7 @@ export const menuItems = [
               "menuitems.finance.list.report_center.list.report_management",
             link: "/workbench/finance_report/finance_report_manage",
             parentId: 77,
-            icon: "bx-detail",
+            icon: "bx bx-detail",
           },
           {
             id: 80,
@@ -631,7 +634,7 @@ export const menuItems = [
               "menuitems.finance.list.report_center.list.entity_management",
             link: "/workbench/finance_report/finance_report_company",
             parentId: 77,
-            icon: "bx-detail",
+            icon: "bx bx-data",
           },
           {
             id: 81,
@@ -639,7 +642,7 @@ export const menuItems = [
               "menuitems.finance.list.report_center.list.account_management",
             link: "/workbench/finance_report/finance_report_account",
             parentId: 77,
-            icon: "bx-detail",
+            icon: "bx bx-credit-card",
           },
         ],
       },

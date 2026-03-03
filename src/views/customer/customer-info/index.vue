@@ -119,7 +119,6 @@ const fetchDataFunc = () => {
     ...listQuery.value,
     ...formInline.value,
     myFollow: statusValue.value,
-    carryCard: 1,
   },{isLoading:true}).then((res) => {
     gridData.value = res.data || [];
     gridData.value.forEach((item, index) => {

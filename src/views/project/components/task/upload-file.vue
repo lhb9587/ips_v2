@@ -15,7 +15,9 @@
         class="mdi mdi-cloud-upload-outline"
         style="font-size: 36px"
       ></i>
-      <div class="el-upload__text">将文件拖拽到此处以添加附件，或者浏览，最大200MB</div>
+      <div class="el-upload__text">
+        将文件拖拽到此处以添加附件，或者浏览，最大200MB
+      </div>
     </el-upload>
 
     <!-- 已上传文件列表 -->
@@ -91,9 +93,9 @@ const props = defineProps({
     type: Number,
   },
   editPermissionLevel: {
-    type:Number,
-    default: 1
-  }
+    type: Number,
+    default: 1,
+  },
 });
 // 动态构建上传参数，当 objId 有值时才添加 objInstIdList
 const attUploadFileData = computed(() => {
@@ -116,9 +118,11 @@ watch(
   (newValue) => {
     if (newValue && newValue.length > 0) {
       uploadedFiles.value = [...newValue];
+    } else {
+      uploadedFiles.value = [];
     }
   },
-  { deep: true, immediate: true }
+  { deep: true, immediate: true },
 );
 
 // 上传前检查文件大小
@@ -126,7 +130,7 @@ const beforeUpload = (file) => {
   // 200MB = 200 * 1024 * 1024 bytes
   const isLt200M = file.size / 1024 / 1024 < 200;
   if (!isLt200M) {
-    ElMessage.error('上传文件大小不能超过 200MB!');
+    ElMessage.error("上传文件大小不能超过 200MB!");
     return false;
   }
   return true;
@@ -291,10 +295,10 @@ const formatDate = (date) => {
 // 判断文件是否可预览
 const isPreviewable = (file) => {
   if (!file.name && !file.materialName) return false;
-  
+
   const fileName = file.name || file.materialName;
   const fileExt = fileName.split(".").pop().toLowerCase();
-  
+
   const previewableTypes = ["jpeg", "jpg", "png", "svg", "pdf", "doc", "docx"];
   return previewableTypes.includes(fileExt);
 };

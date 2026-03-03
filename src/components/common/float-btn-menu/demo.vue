@@ -138,7 +138,7 @@ export default {
       const menus = this.filterMenusByPermissions(menuItems, this.permissions);
       return menus;
     },
-    ...layoutComputed
+    ...layoutComputed,
   },
   methods: {
     closeSetting() {
@@ -159,7 +159,7 @@ export default {
           if (menu.subItems) {
             menu.subItems = this.filterMenusByPermissions(
               menu.subItems,
-              idList
+              idList,
             );
             // 如果子菜单被过滤后为空，可以选择移除subItems属性（可选）
             if (menu.subItems.length === 0) {
@@ -188,10 +188,10 @@ export default {
       }
       if (item.children && item.children.length > 0) {
         return;
-      }else{
+      } else {
         if (item.link) {
           this.$router.push({ path: item.link });
-        } 
+        }
       }
     },
 
@@ -249,7 +249,7 @@ export default {
         this.$nextTick(() => {
           item.enabled = false;
         });
-        this.$message.warning('最多只能启用8个功能项');
+        this.$message.warning("最多只能启用8个功能项");
         return;
       }
       if (item.enabled) {
@@ -257,7 +257,7 @@ export default {
         // 先移除，再基于“剩余数组”计算分界，避免自身参与导致偏移
         const [moved] = this.featureItems.splice(idx, 1);
         const boundaryAfterRemoval = this.featureItems.findIndex(
-          (i) => !i.enabled
+          (i) => !i.enabled,
         );
         const to =
           boundaryAfterRemoval === -1
@@ -266,7 +266,7 @@ export default {
         this.featureItems.splice(
           Math.min(to, this.featureItems.length),
           0,
-          moved
+          moved,
         );
       } else {
         // 取消启用：放到禁用区的顶部（第一个未启用项的位置）
@@ -295,7 +295,7 @@ export default {
       });
     },
     async fetchMenuFabConfigByUserId() {
-      if (this.menuBarCollapseMode === 'float' && this.leftSidebarCondensed) {
+      if (this.menuBarCollapseMode === "float" && this.leftSidebarCondensed) {
         await queryMenuFabConfigByUserId().then((res) => {
           this.checkedItemIds = res.data.menuIdList || [];
         });
@@ -340,7 +340,8 @@ export default {
               icon: msg.icon,
               label: msg.label,
               link: msg.link,
-              children: msg.subItems,
+              // 递归转换 subItems -> children
+              children: this.mapMenuChildren(msg.subItems),
             };
           });
       }
@@ -375,6 +376,17 @@ export default {
           this.showSetting = false;
         }
       });
+    },
+    // 递归处理子菜单，将 subItems 统一映射为 children 以供 FloatBtnMenu 使用
+    mapMenuChildren(items) {
+      if (!items || items.length === 0) return [];
+      return items.map((item) => ({
+        id: item.id,
+        icon: item.icon,
+        label: item.label,
+        link: item.link,
+        children: this.mapMenuChildren(item.subItems),
+      }));
     },
   },
   async beforeMount() {
