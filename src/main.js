@@ -85,6 +85,22 @@ import CaseSidebar from '@/components/sidebar/case-sidebar.vue'
 //   }
 // };
 
+// 在全局错误处理器中加入重试计数
+const MAX_RETRY = 2
+let retryCount = 0
+
+window.addEventListener('error', (event) => {
+  if (event.message.includes('Unexpected token \'<\'')) {
+    if (retryCount < MAX_RETRY) {
+      retryCount++
+      console.error(`第${retryCount}次重载...`)
+      window.location.reload()
+    } else {
+      console.error('已达最大重试次数，停止重载')
+    }
+  }
+})
+
 import VueGridLayout from 'vue-grid-layout'
 
 import { addCopyFunction,destroyCopyFunction } from "@/utils";
