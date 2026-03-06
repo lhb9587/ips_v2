@@ -583,7 +583,7 @@ const saveDescInfo = () => {
     });
   }
 };
-const fetchTaskDetail = async () => {
+const fetchTaskDetail = async (type) => {
   let res;
   if (localTaskType.value === 1) {
     const params = {
@@ -593,7 +593,7 @@ const fetchTaskDetail = async () => {
     try {
       res = await queryTaskDetail(params, { showErrorMessage: false });
     } catch (error) {
-      if (error.message?.includes("没有权限")) {
+      if (error.message?.includes("没有权限") && type === "changeOwner") {
         closeSideBar();
       } else {
         ElMessage.error(error.message || "请求失败");
@@ -607,7 +607,7 @@ const fetchTaskDetail = async () => {
     try {
       res = await querySubtaskDetail(params, { showErrorMessage: false });
     } catch (error) {
-      if (error.message?.includes("没有权限")) {
+      if (error.message?.includes("没有权限") && type === "changeOwner") {
         closeSideBar();
       } else {
         ElMessage.error(error.message || "请求失败");
@@ -642,6 +642,7 @@ const fetchTaskDetail = async () => {
     editingName.value = detailInfo.value.name || "";
     originalName.value = detailInfo.value.name || "";
   }
+  checkEditPermissionFn()
 };
 const startEdit = () => {
   editingName.value = detailInfo.value.name || "";
@@ -687,6 +688,7 @@ const saveTaskInfo = async () => {
           type: "warning",
           confirmButtonText: "确认并加入",
           cancelButtonText: "仅更换负责人",
+          showClose: false,
         },
       )
         .then(async () => {
@@ -697,7 +699,7 @@ const saveTaskInfo = async () => {
           updateTaskFunc(data);
         })
         .catch(async () => {
-          updateTaskFunc(data);
+          updateTaskFunc(data, "changeOwner");
         });
     } else {
       updateTaskFunc(data);
@@ -748,15 +750,15 @@ const checkParentTask = (parentInfo, ownerId) => {
   );
   return isfatherOwner || isfatherCreater || isfatherMember;
 };
-const updateTaskFunc = (params) => {
+const updateTaskFunc = (params, type) => {
   if (localTaskType.value === 1) {
     params.taskId = detailInfo.value.taskId;
     updateTaskUrl(params).then((res) => {
       if (res.success) {
         ElMessage.success("保存成功");
         isEdit.value = false;
-        fetchTaskDetail();
-        checkEditPermissionFn();
+        fetchTaskDetail(type);
+        // checkEditPermissionFn();
         changeHistoryRef.value && changeHistoryRef.value.fetchChangeHistory();
       }
     });
@@ -766,8 +768,8 @@ const updateTaskFunc = (params) => {
       if (res.success) {
         ElMessage.success("保存成功");
         isEdit.value = false;
-        fetchTaskDetail();
-        checkEditPermissionFn();
+        fetchTaskDetail(type);
+        // checkEditPermissionFn();
       }
     });
   }
@@ -782,22 +784,22 @@ watch(
     }
   },
 );
-watch(
-  () => detailInfo.value.taskId,
-  () => {
-    if (localTaskType.value === 1) {
-      checkEditPermissionFn();
-    }
-  },
-);
-watch(
-  () => detailInfo.value.subtaskId,
-  () => {
-    if (localTaskType.value !== 1) {
-      checkEditPermissionFn();
-    }
-  },
-);
+// watch(
+//   () => detailInfo.value.taskId,
+//   () => {
+//     if (localTaskType.value === 1) {
+//       checkEditPermissionFn();
+//     }
+//   },
+// );
+// watch(
+//   () => detailInfo.value.subtaskId,
+//   () => {
+//     if (localTaskType.value !== 1) {
+//       checkEditPermissionFn();
+//     }
+//   },
+// );
 
 const checkEditPermissionFn = () => {
   const params = {
