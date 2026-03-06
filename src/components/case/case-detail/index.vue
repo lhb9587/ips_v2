@@ -250,11 +250,17 @@ export default {
             justify-content: space-between;
           "
         >
-          <h5 style="margin-bottom: 0">
-            <i
+          <h5 style="margin-bottom: 0;display: flex;align-items: center;gap: 6px;">
+            <!-- <i
               class="mdi mdi-backspace-outline case-detail-back"
               @click="backtoList"
-            ></i>
+            ></i> -->
+            <button type="button" class="detail-close-btn" aria-label="关闭" @click="backtoList">
+              <svg class="detail-close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+              <span class="detail-close-text">关闭</span>
+            </button>
             <span v-if="caseInfo.tmName"> {{ caseInfo.tmName }}； </span>
             <span v-if="caseInfo.agentNum"> {{ caseInfo.agentNum }}； </span>
             <span v-if="caseInfo.caseType"> {{ caseInfo.caseType }}； </span>
@@ -826,5 +832,39 @@ export default {
   font-size: 18px;
   cursor: pointer;
   margin-right: 8px;
+}
+.detail-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 8px 0 8px;
+  color: var(--pa-text, #1d2a3a);
+  background: var(--pa-page-bg, #f3f6fb);
+  border: 1px solid var(--pa-border, #e1e7f2);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s, border-color 0.2s, transform 0.15s;
+  flex-shrink: 0;
+  font-size: 14px;
+}
+.detail-close-btn:hover {
+  color: var(--pa-text, #1d2a3a);
+  background: #e8ecf4;
+  border-color: #d0d8e8;
+  transform: scale(1.02);
+}
+.detail-close-btn:active {
+  transform: scale(0.98);
+}
+.detail-close-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.detail-close-text {
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 </style>

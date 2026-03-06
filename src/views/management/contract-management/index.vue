@@ -6,7 +6,12 @@ import { ElMessageBox } from "element-plus";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import ListSearch from "@/components/common/list-search/index.vue";
-import { getContractList, getToBeReviewedNumber, exportContractFlow, copyCreateContract } from "@/api/contract";
+import {
+  getContractList,
+  getToBeReviewedNumber,
+  exportContractFlow,
+  copyCreateContract,
+} from "@/api/contract";
 import { deriveList } from "@/api/caseList";
 import { saveTableConfig, downLoadAll } from "@/utils";
 import { useStore } from "vuex";
@@ -42,7 +47,7 @@ const changeBorder = (newVal) => {
     ? activeClass.value.push("Borderline")
     : activeClass.value.splice(
         activeClass.value.findIndex((i) => i === "Borderline"),
-        1
+        1,
       );
   saveTableConfig("isBorderline", gridName, newVal);
 };
@@ -51,7 +56,7 @@ const changeRowStyle = (newVal) => {
     ? activeClass.value.push("zebra")
     : activeClass.value.splice(
         activeClass.value.findIndex((i) => i === "zebra"),
-        1
+        1,
       );
   saveTableConfig("iszebra", gridName, newVal);
 };
@@ -67,7 +72,7 @@ const calculateGridHeight = () => {
   const windowHeight = document.documentElement.clientHeight;
   if (layout === "vertical") {
     return windowHeight - 235;
-  } else if(layout === 'no'){
+  } else if (layout === "no") {
     return windowHeight - 135;
   } else {
     return windowHeight - 290;
@@ -75,46 +80,44 @@ const calculateGridHeight = () => {
 };
 // 导出
 const exportData = () => {
-  ElMessageBox.confirm(
-    '是否同时导出合同流程？',
-    '提示',
-    {
-      confirmButtonText: '是',
-      cancelButtonText: '否',
-      type: 'warning',
-      distinguishCancelAndClose: true,
-    }
-  ).then(() => {
-    exportContractFlow({
-      ...formInline.value,
-      bussId: 93,
-      keywords: diminput.value || undefined,
-      toBeReviewed: selectedTab.value
-    }).then((res) => {
-      if (res.success) {
-        const data = {
-          url: `/ipdoc${res.data}`,
-        };
-        downLoadAll(data);
-      }
-    });
-  }).catch((action) => {
-    if (action === 'cancel') {
-      deriveList({
+  ElMessageBox.confirm("是否同时导出合同流程？", "提示", {
+    confirmButtonText: "是",
+    cancelButtonText: "否",
+    type: "warning",
+    distinguishCancelAndClose: true,
+  })
+    .then(() => {
+      exportContractFlow({
         ...formInline.value,
         bussId: 93,
         keywords: diminput.value || undefined,
-        toBeReviewed: selectedTab.value
+        toBeReviewed: selectedTab.value,
       }).then((res) => {
         if (res.success) {
           const data = {
-            url: `/${res.data}`,
+            url: `/ipdoc${res.data}`,
           };
           downLoadAll(data);
         }
       });
-    }
-  });
+    })
+    .catch((action) => {
+      if (action === "cancel") {
+        deriveList({
+          ...formInline.value,
+          bussId: 93,
+          keywords: diminput.value || undefined,
+          toBeReviewed: selectedTab.value,
+        }).then((res) => {
+          if (res.success) {
+            const data = {
+              url: `/${res.data}`,
+            };
+            downLoadAll(data);
+          }
+        });
+      }
+    });
 };
 const gridHeight = ref(calculateGridHeight());
 
@@ -165,20 +168,23 @@ const fuzzySearch = () => {
 };
 const fetchDataFunc = (isLoading = false) => {
   //卡片和表格的数据
-  getContractList({
-    keywords: diminput.value,
-    toBeReviewed: selectedTab.value,
-    ...listQuery.value,
-    ...formInline.value,
-  }, {
-    isLoading
-  }).then((res) => {
-    getToNumber() // 获取待审批数量
+  getContractList(
+    {
+      keywords: diminput.value,
+      toBeReviewed: selectedTab.value,
+      ...listQuery.value,
+      ...formInline.value,
+    },
+    {
+      isLoading,
+    },
+  ).then((res) => {
+    getToNumber(); // 获取待审批数量
     gridData.value = res.data || [];
     gridData.value.forEach((item, index) => {
       item.sid = index;
     });
-    isLoading && toggleSidebar({data:  gridData.value[0]})
+    isLoading && toggleSidebar({ data: gridData.value[0] });
     total.value = res.total || 0;
   });
 };
@@ -209,12 +215,12 @@ const handleSearch = (typeStr) => {
 watch(
   () => route.query,
   (query) => {
-    if (query.type === 'todo') {
+    if (query.type === "todo") {
       selectedTab.value = 1;
       fetchDataFunc();
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 const contractId = ref("");
 const isShowDetail = ref(false);
@@ -236,13 +242,13 @@ const handleFullScreenChange = () => {
 };
 onMounted(() => {
   // 检查url参数layout
-  let layoutParam = '';
+  let layoutParam = "";
   if (route && route.query && route.query.layout) {
     layoutParam = route.query.layout;
   }
-  if (layoutParam === 'no') {
-    store.dispatch('layout/changeLayoutType', {
-      layoutType: 'no',
+  if (layoutParam === "no") {
+    store.dispatch("layout/changeLayoutType", {
+      layoutType: "no",
     });
   }
   document.addEventListener("fullscreenchange", handleFullScreenChange);
@@ -331,7 +337,11 @@ const contextmenuList = ref([
                       >
                         <template #title>
                           {{ item.label }}
-                          <span v-if="item.value === 1" class="matter-number">{{ toBeReviewedNumber }}</span>
+                          <span
+                            v-if="item.value === 1"
+                            class="matter-number"
+                            >{{ toBeReviewedNumber }}</span
+                          >
                         </template>
                       </b-tab>
                     </b-tabs>
@@ -437,7 +447,7 @@ const contextmenuList = ref([
               :total="total"
               v-model:page="listQuery.pageNo"
               v-model:limit="listQuery.pageSize"
-              @pagination="fetchDataFunc"
+              @pagination="fetchDataFunc(false)"
               :pageSizes="pageSizesList"
             ></Pagination>
           </div>

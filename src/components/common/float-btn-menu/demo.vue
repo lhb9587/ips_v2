@@ -297,7 +297,7 @@ export default {
     async fetchMenuFabConfigByUserId() {
       if (this.menuBarCollapseMode === "float" && this.leftSidebarCondensed) {
         await queryMenuFabConfigByUserId().then((res) => {
-          this.checkedItemIds = res.data.menuIdList || [];
+          this.checkedItemIds = res.data?.menuIdList || [];
         });
       }
     },
@@ -363,6 +363,8 @@ export default {
         icon: "bx-cog",
         label: "设置",
       });
+      console.log(filterList, "filterList");
+
       this.menuItem = filterList;
     },
     saveSettings() {

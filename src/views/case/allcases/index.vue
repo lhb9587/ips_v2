@@ -8,7 +8,7 @@ import ListSearch from "@/components/common/list-search/index.vue";
 import CaseSidebar from "@/components/sidebar/case-sidebar";
 import Tabs from "@/components/common/tabs";
 import { getAllCaseInfo } from "@/api/caseList";
-// import { ElMessage } from "element-plus";
+import { ElMessage } from "element-plus";
 import { saveTableConfig } from "@/utils";
 import { useStore } from "vuex";
 import { useRoute, useRouter } from "vue-router";
@@ -71,6 +71,7 @@ const caseStatusTabsList = [
 ];
 const changeCaseStatusValue = (value) => {
   caseStatus.value = value;
+  console.log(value,'案件状态@');
   queryCaseListFunc();
 };
 //案件所属
@@ -101,6 +102,7 @@ const caseBelongTabsList = [
 ];
 const changeCasebelongValue = (value) => {
   casebelongValue.value = value;
+  console.log(value,'案件所属@');
   queryCaseListFunc();
 };
 //案件领域
@@ -156,7 +158,7 @@ const changeBorder = (newVal) => {
     ? activeClass.value.push("Borderline")
     : activeClass.value.splice(
         activeClass.value.findIndex((i) => i === "Borderline"),
-        1
+        1,
       );
   saveTableConfig("isBorderline", gridName, newVal);
 };
@@ -165,7 +167,7 @@ const changeRowStyle = (newVal) => {
     ? activeClass.value.push("zebra")
     : activeClass.value.splice(
         activeClass.value.findIndex((i) => i === "zebra"),
-        1
+        1,
       );
   saveTableConfig("iszebra", gridName, newVal);
 };
@@ -195,12 +197,13 @@ watch(layoutType, () => {
   gridHeight.value = calculateGridHeight();
 });
 
-watch(
-  () => defaultQueryData.value,
-  () => {
-    queryCaseListFunc();
-  }
-);
+// watch(
+//   () => defaultQueryData.value,
+//   () => {
+//     console.log(defaultQueryData.value,'筛选条件@');
+//     queryCaseListFunc();
+//   },
+// );
 
 const changeScreenSize = () => {
   const element = document.querySelector(".box");
@@ -245,6 +248,9 @@ const toggleSidebar = (params) => {
     return;
   }
   clickTimer = setTimeout(() => {
+    if (params.data.isCheck === 0) {
+      return ElMessage.warning("您没有查看该案件的权限！");
+    }
     caseId.value = params.data.caseId;
     taskType.value = params.data.taskType;
     isCaseDetail.value = true;
@@ -255,6 +261,9 @@ const rowDoubleClicked = (row) => {
   if (clickTimer) {
     clearTimeout(clickTimer);
     clickTimer = null;
+  }
+  if (row.data.isCheck === 0) {
+    return ElMessage.warning("您没有查看该案件的权限！");
   }
   router.push({
     name: "case-detail",
@@ -271,12 +280,22 @@ const formInline = ref({});
 // 模糊搜索
 const diminput = ref("");
 const gridData = ref([]);
+const gridOptions = ref({
+  getRowStyle: (params) => {
+    if (params.node.data) {
+      if (params.node.data.isCheck == 0) {
+        return { background: "#F5F7FA" };
+      }
+    }
+  },
+});
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
   formInline.value = {};
   queryCaseListFunc();
 };
 const queryCaseListFunc = () => {
+  
   //卡片和表格的数据
   getAllCaseInfo(
     {
@@ -290,7 +309,7 @@ const queryCaseListFunc = () => {
     },
     {
       isLoading: true,
-    }
+    },
   ).then((res) => {
     if (res.success) {
       // if (res.messageType == '-4') {
@@ -419,6 +438,7 @@ onUnmounted(() => {
             :rowClick="toggleSidebar"
             :activeClass="activeClass"
             :rowDoubleClicked="rowDoubleClicked"
+            :gridOptions="gridOptions"
           />
         </div>
         <div

@@ -214,7 +214,9 @@ export default {
       }
     },
     handleLink(item) {
-      this.toFirstChild(item);
+      if (item.name === "case" || item.name === "project") {
+        this.toFirstChild(item);
+      }
     },
     onAccountFilter(keyword) {
       this.accountKeyword = keyword;
@@ -225,7 +227,13 @@ export default {
     ...workbenchComputed,
     ...layoutComputed,
     matched() {
-      return useRoute()?.matched;
+      const route = useRoute()?.matched;
+      if (!route) return [];
+      // 过滤掉连续重复的title项
+      return route.filter((item, index, arr) => {
+        if (index === 0) return true;
+        return item.meta.title !== arr[index - 1].meta.title;
+      });
     },
     currentRoute(){
       return this.$route?.path
@@ -333,12 +341,12 @@ export default {
                 class="no-redirect"
                 >{{ item.meta.title }}</span
               >
-              <!-- <a
+              <a
                 v-else
                 @click.prevent="handleLink(item)"
                 >{{ item.meta.title }}</a
-              > -->
-              <a v-else>{{ item.meta.title }}</a>
+              >
+              <!-- <a v-else>{{ item.meta.title }}</a> -->
             </el-breadcrumb-item>
           </el-breadcrumb>
         </div>

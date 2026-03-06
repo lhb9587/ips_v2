@@ -17,7 +17,7 @@
             </div>
           </div>
         </div>
-        <!-- 总账单收入 - 绿色 -->
+        <!-- 总账单金额 - 绿色 -->
         <div class="summary-card card-green">
           <div class="card-content">
             <div class="card-into-top">
@@ -29,9 +29,9 @@
                 {{ formatNumber(coverData.billSum) }}
               </div>
             </div>
-            <div class="card-title">总账单收入</div>
+            <div class="card-title">总账单金额</div>
             <div class="card-subtitle">
-              账单：{{ coverData.billSumCount }}笔
+              已收：￥{{ formatNumber(coverData.paymentTotal) }}
             </div>
           </div>
         </div>
@@ -159,7 +159,7 @@
                 <span v-if="coverData.billSum">￥</span
                 >{{ formatNumber(coverData.billSum) }}
               </div>
-              <div class="label">总账单收入</div>
+              <div class="label">总账单金额</div>
             </div>
             <div class="stat-item stat-red">
               <div class="value">{{ coverData.overdueBillCount }}笔</div>
@@ -193,7 +193,7 @@
             </div>
             <div class="alert-content">
               <div class="alert-title">
-                {{ coverData.overdueBillCount }}笔账单逾期
+                {{ coverData.overdueBillCount }}笔账单坏账
               </div>
               <div class="alert-subtitle">需及时跟进催收</div>
             </div>

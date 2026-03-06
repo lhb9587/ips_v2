@@ -397,7 +397,6 @@ const fetchFolderViewData = () => {
         folderList.value = res.data || [];
         currentLevelValue.value = currentLevel.value;
       }).catch((error) => {
-        console.log(error,'请求失败error');
         if (error.message?.includes("没有权限")) {
           handleGoHome()
         } else{
@@ -412,7 +411,13 @@ const fetchFolderViewData = () => {
       queryFolderViewSubtasks(params).then((res) => {
         folderList.value = res.data || [];
         currentLevelValue.value = currentLevel.value;
-      });
+      }).catch((error) => {
+        if (error.message?.includes("没有权限")) {
+          handleGoHome()
+        } else{
+          ElMessage.error(error.message || "请求失败");
+        }
+      })
     }
   } else if (firstActiveTab.value === "owner") {
     if (currentLevel.value === "owner") {

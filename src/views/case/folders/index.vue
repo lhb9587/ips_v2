@@ -293,16 +293,14 @@
 </template>
 <script>
 export default {
-  name: 'case-folders'
-}
+  name: "case-folders",
+};
 </script>
 <script setup>
 import Layout from "@/layouts/main";
 import FolderItem from "@/components/case/folder-item/index.vue";
 import { ref, nextTick, computed, watch, onUnmounted } from "vue";
-import {
-  ArrowRight,
-} from "@element-plus/icons-vue";
+import { ArrowRight } from "@element-plus/icons-vue";
 import { statisticCase } from "@/api/caseList";
 import Tabs from "@/components/common/tabs";
 //导入所有案件列表
@@ -324,7 +322,7 @@ const showType = computed(() => {
 const showTopSearch = ref(false);
 const windowWidth = ref(window.innerWidth);
 const isSmallScreen = computed(
-  () => breadcrumbList.value?.length === 1 && windowWidth.value < 1468
+  () => breadcrumbList.value?.length === 1 && windowWidth.value < 1800,
 );
 
 watch(showType, (newVal) => {
@@ -544,7 +542,7 @@ watch(
   () => {
     initBreadcrumb();
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 watch(
@@ -556,7 +554,7 @@ watch(
       fetchFolderList();
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 //案件领域
@@ -792,6 +790,7 @@ onUnmounted(() => {
         height: 24px;
         display: flex;
         align-items: center;
+        white-space: nowrap;
       }
       :deep(.breadcrumb-clickable .el-breadcrumb__inner) {
         cursor: pointer;

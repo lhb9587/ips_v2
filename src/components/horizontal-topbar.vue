@@ -9,6 +9,7 @@ import { setToken } from "@/utils/auth";
 import CreatWorkHour from "@/components/top-nav/workhour-creat";
 import ReleaseSidebar from "@/components/sidebar/release-sidebar.vue";
 import ToolList from "@/components/top-nav/tool-list";
+import Tabs from "@/components/common/tabs";
 
 /**
  * Horizontal-topbar component
@@ -29,13 +30,16 @@ export default {
     ...userComputed,
     ...workbenchComputed,
     currentRoute(){
-      return this.$route.path
+      console.log(this.$route?.path,'this.$route?.path');
+      
+      return this.$route?.path
     }
   },
   components: {
     ReleaseSidebar,
     CreatWorkHour,
-    ToolList
+    ToolList,
+    Tabs
   },
   data() {
     return {
@@ -76,7 +80,36 @@ export default {
       accountValue: "",
       isReleaseDetail:false,
       creatwhModal: false,
-      matterNumber: 0
+      matterNumber: 0,
+      showTypeTabsList:[
+        {
+          // label: "文件夹视图",
+          value: "folder",
+          icon: "bx bx-folder-open",
+        },
+        {
+          // label: "列表视图",
+          value: "list",
+          icon: "bx bx-list-ul",
+        },
+      ],
+      custShowTypeTabsList:[
+        {
+          // label: "文件夹视图",
+          value: "folder",
+          icon: "bx bx-folder-open",
+        },
+        {
+          // label: "目录视图",
+          value: "directory",
+          icon: "mdi mdi-file-tree",
+        },
+        {
+          // label: "列表视图",
+          value: "list",
+          icon: "bx bx-list-ul",
+        },
+      ],
     };
   },
   // mounted() {
@@ -94,6 +127,18 @@ export default {
       getSumForWorkbench().then(res=>{
         this.matterNumber = res.data.matterSum || 0;
       })
+    },
+    switchCaseShowType(value){
+      this.$store.commit("layout/CHANGE_CASE_SHOWTYPE",value)
+    },
+    switchProjectShowType(value){
+      this.$store.commit("layout/CHANGE_PROJECT_SHOWTYPE",value)
+    },
+    switchCustShowType(value){
+      this.$store.commit("layout/CHANGE_CUST_SHOWTYPE",value)
+    },
+    switchMyTaskShowType(value){
+      this.$store.commit("layout/CHANGE_MYTASK_SHOWTYPE",value)
     },
     showMatter(){
       this.$store.commit("workbench/UPDATE_SHOW_MATTER", true);
@@ -315,6 +360,34 @@ export default {
             </b-link>
           </div>
         </div> -->
+        <div style="display: flex;align-items: center;" v-if="currentRoute === '/case/case-folders'">
+          <Tabs
+            :tabList="showTypeTabsList"
+            :activeTab="caseShowType"
+            @change="switchCaseShowType"
+          />
+        </div>
+        <div style="display: flex;align-items: center;" v-if="currentRoute === '/project'">
+          <Tabs
+            :tabList="showTypeTabsList"
+            :activeTab="projectShowType"
+            @change="switchProjectShowType"
+          />
+        </div>
+        <div style="display: flex;align-items: center;" v-if="currentRoute === '/customer/customer-overview'">
+          <Tabs
+            :tabList="custShowTypeTabsList"
+            :activeTab="custShowType"
+            @change="switchCustShowType"
+          />
+        </div>
+        <div style="display: flex;align-items: center;" v-if="currentRoute === '/mytask'">
+          <Tabs
+            :tabList="showTypeTabsList"
+            :activeTab="mytaskShowType"
+            @change="switchMyTaskShowType"
+          />
+        </div>
         <div class="dropdown d-none d-lg-inline-block ms-1">
           <div
             class="btn header-item noti-icon"

@@ -112,7 +112,9 @@
         </div>
         <div class="stats-grid">
           <div class="stat-card stat-total">
-            <div class="stat-number">{{ projectStatistics.totalCount || 0 }}</div>
+            <div class="stat-number">
+              {{ projectStatistics.totalCount || 0 }}
+            </div>
             <div class="stat-label">总事项</div>
           </div>
           <div class="stat-card stat-done">
@@ -217,6 +219,7 @@ import ProjectChangeHistory from "./project-change-history.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import CreateTask from "../task/create-task.vue";
 import Timeline from "./timeline.vue";
+import { useRouter } from "vue-router";
 import {
   queryProjectDetail,
   updateProject,
@@ -243,6 +246,7 @@ import clipboard3 from "vue-clipboard3";
 const { toClipboard } = clipboard3();
 
 // const userInfo = getUserInfo() || {};
+const router = useRouter();
 const emits = defineEmits(["close"]);
 const projectEditRef = ref(null);
 const timelineList = ref([]);
@@ -308,12 +312,13 @@ const props = defineProps({
   },
 });
 const detailInfo = ref({});
-const fetchProjectDetail = () => {
+const fetchProjectDetail = async () => {
   const params = {
     projectId: props.projectId,
     projectCode: props.projectCode,
   };
-  queryProjectDetail(params).then((res) => {
+  try {
+    const res = await queryProjectDetail(params, { showErrorMessage: false });
     detailInfo.value = res.data || {};
     if (!isEdit.value) {
       editingName.value = detailInfo.value.name || "";
@@ -323,7 +328,18 @@ const fetchProjectDetail = () => {
       ownerId: detailInfo.value.ownerId,
       ownerName: detailInfo.value.ownerName,
     };
-  });
+  } catch (error) {
+    if (error.message?.includes("没有权限")) {
+      ElMessageBox.alert(error.message, "提示", {
+        type: "warning",
+        callback: () => {
+          router.push("/project");
+        },
+      });
+    } else {
+      ElMessage.error(error.message || "请求失败");
+    }
+  }
 };
 //复制链接
 const copyLink = () => {
@@ -391,7 +407,7 @@ const saveProjectInfo = async () => {
   if (data.ownerId !== detailInfo.value.ownerId) {
     const isProjectAdmin = await fetchUserRole(originalOwnerInfo.value.ownerId);
     const ismember = data.memberList?.some(
-      (person) => person.userId === originalOwnerInfo.value.ownerId
+      (person) => person.userId === originalOwnerInfo.value.ownerId,
     );
     const bol =
       isProjectAdmin ||
@@ -406,7 +422,7 @@ const saveProjectInfo = async () => {
           type: "warning",
           confirmButtonText: "确认并加入",
           cancelButtonText: "仅更换负责人",
-        }
+        },
       )
         .then(async () => {
           data.memberList.push({
@@ -426,8 +442,8 @@ const saveProjectInfo = async () => {
   }
 };
 const updateProjectFunc = async (data) => {
-  console.log(data,'data@@');
-  
+  console.log(data, "data@@");
+
   const res = await updateProject(data);
   if (res.success) {
     ElMessage.success("保存成功");
@@ -466,14 +482,14 @@ watch(
       editingName.value = val || "";
       originalName.value = val || "";
     }
-  }
+  },
 );
 
 watch(
   () => detailInfo.value.prjId,
   () => {
     init();
-  }
+  },
 );
 
 const fetchProjectStatistics = () => {
@@ -635,7 +651,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
-  
+
   /* 当宽度足够时，卡片在一行显示 */
   @media (min-width: 1400px) {
     grid-template-columns: repeat(6, minmax(0, 1fr));
