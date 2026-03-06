@@ -96,6 +96,10 @@ const props = defineProps({
     type: Number,
     default: 1,
   },
+  refreshNoteList: {
+    type: Function,
+    default: null,
+  },
 });
 // 动态构建上传参数，当 objId 有值时才添加 objInstIdList
 const attUploadFileData = computed(() => {
@@ -272,6 +276,10 @@ const handleDelete = (file, index) => {
       if (res.success) {
         uploadedFiles.value.splice(index, 1);
         ElMessage.success("文件删除成功");
+        // 调用 refreshNoteList 方法刷新备注列表
+        if (props.refreshNoteList) {
+          props.refreshNoteList();
+        }
       }
     });
   });

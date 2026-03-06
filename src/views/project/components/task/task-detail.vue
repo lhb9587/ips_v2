@@ -177,6 +177,7 @@
             :objType="localTaskType"
             :defaultMaterialList="materialList"
             :editPermissionLevel="editPermissionLevel"
+            :refreshNoteList="refreshNoteList"
           />
         </div>
         <SubtaskList
@@ -208,6 +209,7 @@
           @change="switchNotesType"
         />
         <Notes
+          ref="notesRef"
           v-if="notesType === 'note'"
           :objId="
             localTaskType === 1 ? detailInfo.taskId : detailInfo.subtaskId
@@ -360,6 +362,7 @@ const closeSideBar = () => {
 };
 
 const changeHistoryRef = ref(null);
+const notesRef = ref(null);
 
 // 全屏功能
 const isFullscreen = ref(false);
@@ -433,6 +436,10 @@ const viewTaskDetail = (info, type) => {
     fetchTaskDetail();
   }
 };
+
+const refreshNoteList = () => {
+  notesRef.value && notesRef.value.fetchNotesList();
+}
 const viewSubTaskDetail = (info, type) => {
   // 更新本地taskCode并重新调用详情接口
   console.log(info, "info");

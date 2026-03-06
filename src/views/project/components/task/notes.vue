@@ -56,11 +56,17 @@
             :data="attUploadFileData"
             :show-file-list="false"
             :on-success="handleFileSuccess"
+            :before-upload="handleBeforeUpload"
             :action="uploadUrl"
           >
             <div class="attach-btn">
               <i class="mdi mdi-paperclip"></i>
-              添加附件
+              <el-icon
+                v-if="isUploading"
+                class="is-loading"
+                ><Loading
+              /></el-icon>
+              {{ isUploading ? "正在上传中" : "添加附件" }}
             </div>
           </el-upload>
         </div>
@@ -157,11 +163,17 @@
                   :data="attUploadFileData"
                   :show-file-list="false"
                   :on-success="handleEditFileSuccess"
+                  :before-upload="handleEditBeforeUpload"
                   :action="uploadUrl"
                 >
                   <div class="attach-btn">
                     <i class="mdi mdi-paperclip"></i>
-                    添加附件
+                    <el-icon
+                      v-if="isEditingUploading"
+                      class="is-loading"
+                      ><Loading
+                    /></el-icon>
+                    {{ isEditingUploading ? "正在上传中" : "添加附件" }}
                   </div>
                 </el-upload>
               </div>
@@ -227,6 +239,7 @@ import {
 import { useStore } from "vuex";
 import dayjs from "dayjs";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { Loading } from "@element-plus/icons-vue";
 import {
   addTaskNote,
   updateTaskNote,
@@ -286,6 +299,9 @@ const isEditing = ref(false);
 const editingNoteId = ref(null);
 const editingNoteInput = ref("");
 const editingAttachments = ref([]);
+// 上传状态
+const isUploading = ref(false);
+const isEditingUploading = ref(false);
 
 const currentUserName = computed(() => store.state.user?.name || "我");
 
@@ -347,6 +363,14 @@ const handleFileSuccess = (response, file) => {
     };
     pendingAttachments.value.push(uploadedFile);
   }
+  // 上传完成，重置上传状态
+  isUploading.value = false;
+};
+
+// 上传前处理
+const handleBeforeUpload = () => {
+  isUploading.value = true;
+  return true;
 };
 
 const handleEditFileSuccess = (response, file) => {
@@ -364,6 +388,14 @@ const handleEditFileSuccess = (response, file) => {
     };
     editingAttachments.value.push(uploadedFile);
   }
+  // 上传完成，重置上传状态
+  isEditingUploading.value = false;
+};
+
+// 编辑模式下上传前处理
+const handleEditBeforeUpload = () => {
+  isEditingUploading.value = true;
+  return true;
 };
 
 const clearPendingAttachments = () => {
@@ -415,6 +447,9 @@ const handleEditSubmit = async () => {
     fetchNotesList();
     // 重置编辑状态
     handleEditCancel();
+    if (props.refreshMethod) {
+      props.refreshMethod();
+    }
   }
 };
 
@@ -546,7 +581,7 @@ const isPreviewable = (file) => {
 };
 
 defineExpose({
-  getNotes: () => noteList.value,
+  fetchNotesList,
 });
 
 const handleEditNote = (note) => {
