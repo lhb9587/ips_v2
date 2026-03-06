@@ -659,7 +659,8 @@ import {
   queryTaskDetail,
   querySubtaskDetail,
 } from "@/api/project";
-import { queryCalendars, queryCalendarEvents } from "@/api/schedule";
+// import { queryCalendars, queryCalendarEvents } from "@/api/schedule";
+import { queryCalendarEvents } from "@/api/schedule";
 import { statusListMap, priorityListMap } from "../project/dataMap";
 
 import dayjs from "dayjs";
@@ -1242,41 +1243,41 @@ const handleCheckboxChange = (section, changedItem) => {
 };
 
 //获取日历列表及数量
-const fetchCalendarList = (type) => {
-  //将startDate和endDate转换为UTC时间
-  const params = {
-    startTime: dayjs(startDate.value).utc().format(),
-    endTime: dayjs(endDate.value).utc().format(),
-  };
-  queryCalendars(params).then((response) => {
-    const calendars = response.data || [];
-    if (!response.data.length) {
-      return (outlookCalendars.value = []);
-    }
-    if (type === "init" && calendars.length > 0) {
-      outlookCalendars.value = calendars.map((calendar, index) => ({
-        id: calendar.calendarId,
-        label: calendar.displayName,
-        count: calendar.eventCount || 0,
-        checked: index === 0,
-      }));
-    } else {
-      // 保留之前的选中状态，变更数量
-      outlookCalendars.value = calendars.map((calendar) => {
-        const existing = outlookCalendars.value.find(
-          (item) => item.id === calendar.calendarId,
-        );
-        return {
-          id: calendar.calendarId,
-          label: calendar.displayName,
-          count: calendar.eventCount || 0,
-          checked: existing ? existing.checked : false,
-        };
-      });
-    }
-    fetchCalendarEvents();
-  });
-};
+// const fetchCalendarList = (type) => {
+//   //将startDate和endDate转换为UTC时间
+//   const params = {
+//     startTime: dayjs(startDate.value).utc().format(),
+//     endTime: dayjs(endDate.value).utc().format(),
+//   };
+//   queryCalendars(params).then((response) => {
+//     const calendars = response.data || [];
+//     if (!response.data.length) {
+//       return (outlookCalendars.value = []);
+//     }
+//     if (type === "init" && calendars.length > 0) {
+//       outlookCalendars.value = calendars.map((calendar, index) => ({
+//         id: calendar.calendarId,
+//         label: calendar.displayName,
+//         count: calendar.eventCount || 0,
+//         checked: index === 0,
+//       }));
+//     } else {
+//       // 保留之前的选中状态，变更数量
+//       outlookCalendars.value = calendars.map((calendar) => {
+//         const existing = outlookCalendars.value.find(
+//           (item) => item.id === calendar.calendarId,
+//         );
+//         return {
+//           id: calendar.calendarId,
+//           label: calendar.displayName,
+//           count: calendar.eventCount || 0,
+//           checked: existing ? existing.checked : false,
+//         };
+//       });
+//     }
+//     fetchCalendarEvents();
+//   });
+// };
 
 const fetchCalendarEvents = () => {
   if (
@@ -1425,7 +1426,7 @@ watch([startDate, endDate], () => {
   }
   fetchProjectList();
   fetchMyTasksCount();
-  fetchCalendarList();
+  // fetchCalendarList();
 });
 
 watch(
@@ -1450,7 +1451,7 @@ watch(dateValue, (newValue, oldValue) => {
 onMounted(() => {
   fetchProjectList("init");
   fetchMyTasksCount();
-  fetchCalendarList("init");
+  // fetchCalendarList("init");
   if (fullCalendar.value) {
     fullCalendar.value.getApi().updateSize();
     if (isSmallScreen.value) {
