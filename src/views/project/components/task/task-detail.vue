@@ -590,7 +590,7 @@ const saveDescInfo = () => {
     });
   }
 };
-const fetchTaskDetail = async (type) => {
+const fetchTaskDetail = async () => {
   let res;
   if (localTaskType.value === 1) {
     const params = {
@@ -600,8 +600,13 @@ const fetchTaskDetail = async (type) => {
     try {
       res = await queryTaskDetail(params, { showErrorMessage: false });
     } catch (error) {
-      if (error.message?.includes("没有权限") && type === "changeOwner") {
-        closeSideBar();
+      if (error.message?.includes("没有权限")) {
+        ElMessageBox.alert(error.message, "提示", {
+          type: "warning",
+          callback: () => {
+            closeSideBar();
+          },
+        });
       } else {
         ElMessage.error(error.message || "请求失败");
       }
@@ -614,8 +619,13 @@ const fetchTaskDetail = async (type) => {
     try {
       res = await querySubtaskDetail(params, { showErrorMessage: false });
     } catch (error) {
-      if (error.message?.includes("没有权限") && type === "changeOwner") {
-        closeSideBar();
+      if (error.message?.includes("没有权限")) {
+        ElMessageBox.alert(error.message, "提示", {
+          type: "warning",
+          callback: () => {
+            closeSideBar();
+          },
+        });
       } else {
         ElMessage.error(error.message || "请求失败");
       }
@@ -706,7 +716,7 @@ const saveTaskInfo = async () => {
           updateTaskFunc(data);
         })
         .catch(async () => {
-          updateTaskFunc(data, "changeOwner");
+          updateTaskFunc(data);
         });
     } else {
       updateTaskFunc(data);

@@ -306,10 +306,12 @@ const isEditingUploading = ref(false);
 const currentUserName = computed(() => store.state.user?.name || "我");
 
 const canSubmit = computed(() => {
+  if (isUploading.value) return false;
   return Boolean(noteInput.value.trim()) || pendingAttachments.value.length > 0;
 });
 
 const canEditSubmit = computed(() => {
+  if (isEditingUploading.value) return false;
   return (
     Boolean(editingNoteInput.value.trim()) ||
     editingAttachments.value.length > 0

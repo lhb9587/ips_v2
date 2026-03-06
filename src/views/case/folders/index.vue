@@ -277,7 +277,7 @@
       </div> -->
     </div>
     <div
-      v-if="showType === 'list' || currentLevel === 'caseList'"
+      v-if="showType === 'list'"
       class="table-list"
     >
       <TrademarkList v-if="caseDomain === 3" />
@@ -288,6 +288,9 @@
       <CopyrightList v-if="caseDomain === 76" />
       <NonlitigationList v-if="caseDomain === 86" />
       <AllCasesList v-if="caseDomain === 0" />
+    </div>
+    <div v-if="currentLevel === 'caseList'">
+      <AllCasesList />
     </div>
   </Layout>
 </template>

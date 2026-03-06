@@ -219,7 +219,6 @@ import ProjectChangeHistory from "./project-change-history.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import CreateTask from "../task/create-task.vue";
 import Timeline from "./timeline.vue";
-import { useRouter } from "vue-router";
 import {
   queryProjectDetail,
   updateProject,
@@ -246,7 +245,6 @@ import clipboard3 from "vue-clipboard3";
 const { toClipboard } = clipboard3();
 
 // const userInfo = getUserInfo() || {};
-const router = useRouter();
 const emits = defineEmits(["close"]);
 const projectEditRef = ref(null);
 const timelineList = ref([]);
@@ -333,7 +331,7 @@ const fetchProjectDetail = async () => {
       ElMessageBox.alert(error.message, "提示", {
         type: "warning",
         callback: () => {
-          router.push("/project");
+          closeSideBar();
         },
       });
     } else {

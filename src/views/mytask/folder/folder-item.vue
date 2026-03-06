@@ -118,6 +118,9 @@ const contentList = computed(() => props.contentList);
     color: #333;
     padding: 6px;
     border-radius: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     &:hover {
       background-color: #ffffff80;
     }
