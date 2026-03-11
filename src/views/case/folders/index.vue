@@ -290,7 +290,17 @@
       <AllCasesList v-if="caseDomain === 0" />
     </div>
     <div v-if="currentLevel === 'caseList'">
-      <AllCasesList />
+      <div v-if="useIpsDataPermission === 1">
+        <TrademarkList v-if="caseDomain === 3" />
+        <PatentList v-if="caseDomain === 4" />
+        <LitigationList v-if="caseDomain === 2" />
+        <ProtectionList v-if="caseDomain === 1" />
+        <DomainList v-if="caseDomain === 75" />
+        <CopyrightList v-if="caseDomain === 76" />
+        <NonlitigationList v-if="caseDomain === 86" />
+        <AllCasesList v-if="caseDomain === 0" />
+      </div>
+      <AllCasesList v-else/>
     </div>
   </Layout>
 </template>
@@ -318,6 +328,9 @@ import AllCasesList from "@/views/case/allcases";
 import { useStore } from "vuex";
 const store = useStore();
 
+
+//是否采用ips数据权限控制
+const useIpsDataPermission = ref(1)
 //显示类型
 const showType = computed(() => {
   return store.state.layout.caseShowType;
@@ -498,6 +511,7 @@ const fetchFolderList = async (isLoadMore = false) => {
     caseOfMine: casebelongValue.value === 1 ? 1 : undefined,
     teamCase: casebelongValue.value === 2 ? 1 : undefined,
     searchKey: inputValue.value || undefined,
+    useIpsDataPermission: useIpsDataPermission.value,
   });
 
   const list = res.data || [];

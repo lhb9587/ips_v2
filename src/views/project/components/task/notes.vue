@@ -414,7 +414,7 @@ const removeEditingAttachment = (index) => {
 
 const handleCancel = () => {
   noteInput.value = "";
-  clearPendingAttachments();
+  // clearPendingAttachments();
 };
 
 const handleEditCancel = () => {
@@ -494,6 +494,7 @@ const handleSubmit = async () => {
   if (res.success) {
     fetchNotesList();
     handleCancel();
+    clearPendingAttachments()
     if (props.refreshMethod) {
       props.refreshMethod();
     }

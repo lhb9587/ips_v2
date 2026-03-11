@@ -37,6 +37,7 @@
           clearable
           :remote="true"
           :remote-method="fetchCustList"
+          :loading="custListLoading"
           class="flex-grow-1"
         >
           <el-option
@@ -225,7 +226,7 @@
 
 <script setup>
 import { ref, computed, watch, defineEmits, defineProps } from "vue";
-import { queryList } from "@/api/caseList.js";
+import { queryCustomerListNew } from "@/api/customerList";
 import { createProject } from "@/api/project.js";
 import { ElMessage } from "element-plus";
 import dayjs from "dayjs";
@@ -268,7 +269,7 @@ const addTag = () => {
   const isExist = projectForm.value.prjTagList.some(
     (tag) =>
       tag.tagName &&
-      tag.tagName.toLowerCase() === prjTag.value.trim().toLowerCase()
+      tag.tagName.toLowerCase() === prjTag.value.trim().toLowerCase(),
   );
 
   // 如果不存在相同标签，则添加
@@ -340,7 +341,7 @@ const submitFormData = () => {
   //添加客户名称
   if (params.custId) {
     const customer = customerList.value.find(
-      (customer) => customer.value === params.custId
+      (customer) => customer.value === params.custId,
     );
     params.custName = customer.label;
   }
@@ -356,14 +357,24 @@ const submitFormData = () => {
 };
 //客户列表
 const customerList = ref([]);
+const custListLoading = ref(false);
 const fetchCustList = (value) => {
   if (value) {
-    const params = { pageNo: 1, pageSize: 100, sign: 1, parameter: value };
-    queryList(params).then((res) => {
+    custListLoading.value = true;
+    const params = {
+      pageNo: 1,
+      pageSize: 100,
+      myFollow: 0,
+      keywords: value,
+    };
+    queryCustomerListNew(params).then((res) => {
       customerList.value = res.data.map((item) => ({
         value: item.custId,
         label: item.fullname,
       }));
+      custListLoading.value = false;
+    }).catch(() => {
+      custListLoading.value = false;
     });
   }
 };
@@ -380,7 +391,7 @@ watch(
       projectFormRef.value.resetFields();
       prjTag.value = "";
     }
-  }
+  },
 );
 </script>
 <style lang="scss" scoped>

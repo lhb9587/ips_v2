@@ -560,6 +560,7 @@ const fetchCustAllList = async (isLoadMore = false) => {
     pageNo: custCurrentPage.value,
     keywords: custNameText.value,
     follow: 0,
+    isCustomer: 1
   };
 
   try {

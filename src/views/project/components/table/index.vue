@@ -51,6 +51,7 @@
     </div>
     <div style="padding: 0 10px 10px">
       <el-table
+        ref="tableRef"
         :data="projectList"
         row-key="id"
         lazy
@@ -59,6 +60,7 @@
         :default-expand-all="false"
         :show-overflow-tooltip="true"
         :height="tableHeight"
+        @row-click="viewDetail"
       >
         <el-table-column
           prop="name"
@@ -76,7 +78,7 @@
                 gap: 4px;
                 cursor: pointer;
               "
-              @click="viewDetail(scope.row)"
+              @click.stop="handleNameClick(scope.row)"
             >
               <span
                 class="bx bx-folder-open"
@@ -118,7 +120,7 @@
           <template #default="scope">
             <span
               class="clickable"
-              @click="previewCust(scope.row.custId)"
+              @click.stop="previewCust(scope.row.custId)"
               >{{ scope.row.custName }}</span
             >
           </template>
@@ -321,6 +323,7 @@ import {
   queryTaskListUrl,
   querySubtaskListUrl,
 } from "@/api/project";
+import { queryCustomerListNew } from "@/api/customerList";
 import { statusListMap, priorityListMap } from "../../dataMap";
 import Pagination from "@/components/common/pagination/index.vue";
 import CreateProject from "../create-project-modal/index.vue";
@@ -328,6 +331,7 @@ import CreateProject from "../create-project-modal/index.vue";
 import ProjectDetail from "../project-detail/project-detail.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import TaskDetail from "../task/task-detail.vue";
+import { ElMessageBox } from "element-plus";
 import { useStore } from "vuex";
 const store = useStore();
 const props = defineProps({
@@ -369,6 +373,7 @@ const isCustDetail = ref(false);
 const filterVisible = ref(false);
 const queryModuleData = ref({});
 const tableHeight = ref(calculateTableHeight());
+const tableRef = ref(null);
 
 // const OpenFilters = () => {
 //   filterVisible.value = true;
@@ -413,9 +418,32 @@ const viewDetail = (values) => {
     taskDetailModelValue.value = true;
   }
 };
-const previewCust = (id) => {
-  custId.value = id;
-  isCustDetail.value = true;
+
+const handleNameClick = (row) => {
+  // 如果有子数据，展开当前行
+  if (row.hasChildren) {
+    // 使用 el-table 的 toggleRowExpansion 方法展开/折叠行
+    if (tableRef.value) {
+      tableRef.value.toggleRowExpansion(row);
+    }
+  } else {
+    // 没有子数据，打开详情
+    viewDetail(row);
+  }
+};
+const previewCust = async(id) => {
+  const res = await queryCustomerListNew({custId: id},{isLoading: true});
+  if (res.data && res.data.length > 0) {
+    custId.value = id;
+    isCustDetail.value = true;
+  }else{
+    ElMessageBox.alert("您没有权限查看该客户，请联系负责人申请权限", "提示", {
+      confirmButtonText: "确定",
+      type: "warning",
+    });
+    return;
+  }
+
 };
 
 // 获取项目列表

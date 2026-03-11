@@ -191,7 +191,8 @@
         :project-id="objId"
     /></DragSidebar>
     <DragSidebar
-      :noCloseOnEsc="false"
+      :noCloseOnEsc="true"
+      :backdrop="false"
       v-if="showCreateTaskModal"
       sidebarName="task-sidebar"
       v-model="showCreateTaskModal"
@@ -206,7 +207,8 @@
       />
     </DragSidebar>
     <DragSidebar
-      :noCloseOnEsc="false"
+      :noCloseOnEsc="true"
+      :backdrop="false"
       v-if="taskDetailModelValue"
       sidebarName="task-sidebar"
       v-model="taskDetailModelValue"

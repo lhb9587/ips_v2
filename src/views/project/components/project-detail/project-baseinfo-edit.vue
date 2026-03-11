@@ -27,6 +27,7 @@
           clearable
           :remote="true"
           :remote-method="fetchCustList"
+          :loading="custListLoading"
           class="flex-grow-1"
         >
           <el-option
@@ -237,7 +238,7 @@
 
 <script setup>
 import { ref, computed, defineProps, onMounted, defineExpose } from "vue";
-import { queryList } from "@/api/caseList.js";
+import { queryCustomerListNew } from "@/api/customerList.js";
 import { ElMessage } from "element-plus";
 import { useStore } from "vuex";
 const store = useStore();
@@ -264,17 +265,27 @@ const formatDetailInfo = () => {
 };
 
 const formData = ref(formatDetailInfo());
+const custListLoading = ref(false);
 
 //客户列表
 const customerList = ref([]);
 const fetchCustList = (value) => {
   if (value) {
-    const params = { pageNo: 1, pageSize: 100, sign: 1, parameter: value };
-    queryList(params).then((res) => {
+    custListLoading.value = true;
+    const params = {
+      pageNo: 1,
+      pageSize: 100,
+      myFollow: 0,
+      keywords: value,
+    };
+    queryCustomerListNew(params).then((res) => {
       customerList.value = res.data.map((item) => ({
         value: item.custId,
         label: item.fullname,
       }));
+      custListLoading.value = false;
+    }).catch(() => {
+      custListLoading.value = false;
     });
   }
 };
