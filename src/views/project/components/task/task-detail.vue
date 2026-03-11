@@ -70,6 +70,7 @@
         <el-tooltip
           content="复制链接"
           placement="top"
+          :teleported="false"
         >
           <div
             class="detail-header-config bx bx-link-alt"
@@ -79,6 +80,7 @@
         <el-tooltip
           content="全屏查看"
           placement="top"
+          :teleported="false"
         >
           <div
             class="detail-header-config mdi mdi-arrow-top-right-bottom-left"
@@ -88,6 +90,7 @@
         <el-tooltip
           content="删除"
           placement="top"
+          :teleported="false"
           v-if="editPermissionLevel === 1"
         >
           <div
@@ -98,6 +101,7 @@
         <el-tooltip
           content="关闭"
           placement="top"
+          :teleported="false"
         >
           <div
             class="detail-header-config mdi mdi-window-close"
@@ -271,7 +275,8 @@
           ref="taskEditRef"
         />
         <DragSidebar
-          :noCloseOnEsc="false"
+          :noCloseOnEsc="true"
+          :backdrop="false"
           v-if="showCreateTaskModal"
           sidebarName="task-sidebar"
           v-model="showCreateTaskModal"
@@ -512,7 +517,12 @@ const copyLink = () => {
     link = `${window.location.origin}/v2/project/subtask-detail/${detailInfo.value.subtaskCode}`;
   }
   toClipboard(link);
-  ElMessage.success("链接已复制");
+  // 根据全屏状态决定消息挂载位置
+  const messageOptions = {
+    message: "链接已复制",
+    appendTo: isFullscreen.value ? taskDetailRef.value : document.body
+  };
+  ElMessage.success(messageOptions);
 };
 const showCreateTaskModal = ref(false);
 const closeCreateTaskModal = () => {
@@ -546,6 +556,7 @@ const handleDeleteTask = () => {
     type: "warning",
     confirmButtonText: "删除",
     cancelButtonText: "取消",
+    appendTo: isFullscreen.value ? taskDetailRef.value : document.body
   }).then(() => {
     if (localTaskType.value === 1) {
       deleteTaskUrl(params).then((res) => {

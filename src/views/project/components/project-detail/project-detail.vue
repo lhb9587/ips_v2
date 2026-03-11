@@ -58,6 +58,7 @@
         <el-tooltip
           content="复制链接"
           placement="top"
+          :teleported="false"
         >
           <div
             class="detail-header-config bx bx-link-alt"
@@ -67,6 +68,7 @@
         <el-tooltip
           content="全屏查看"
           placement="top"
+          :teleported="false"
         >
           <div
             class="detail-header-config mdi mdi-arrow-top-right-bottom-left"
@@ -77,6 +79,7 @@
           content="删除"
           placement="top"
           v-if="editPermissionLevel === 1"
+          :teleported="false"
         >
           <div
             class="detail-header-config bx bx-trash delete-icon"
@@ -86,6 +89,7 @@
         <el-tooltip
           content="关闭"
           placement="top"
+          :teleported="false"
         >
           <div
             class="detail-header-config mdi mdi-window-close"
@@ -196,7 +200,8 @@
       </div>
     </div>
     <DragSidebar
-      :noCloseOnEsc="false"
+      :noCloseOnEsc="true"
+      :backdrop="false"
       v-if="showCreateTaskModal"
       sidebarName="task-sidebar"
       v-model="showCreateTaskModal"
@@ -344,7 +349,11 @@ const copyLink = () => {
   const link = `${window.location.origin}/v2/project/project-detail/${detailInfo.value.projectCode}`;
   console.log(link, "link@@");
   toClipboard(link);
-  ElMessage.success("链接已复制");
+  const messageOptions = {
+  message: "链接已复制",
+  appendTo: isFullscreen.value ? projectDetailRef.value : document.body
+  };
+  ElMessage.success(messageOptions);
 };
 const showCreateTaskModal = ref(false);
 const closeCreateTaskModal = () => {
@@ -360,6 +369,7 @@ const handleDeletePrj = () => {
     type: "warning",
     confirmButtonText: "删除",
     cancelButtonText: "取消",
+    appendTo: isFullscreen.value ? projectDetailRef.value : document.body
   }).then(() => {
     const params = {
       prjId: detailInfo.value.prjId,
