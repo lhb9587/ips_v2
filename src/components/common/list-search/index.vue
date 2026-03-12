@@ -558,6 +558,7 @@
                       }"
                       style="width: 100%"
                       clearable
+                      filterable
                     />
                     <el-cascader
                       v-if="item.filterType === 'cascader'&&item.property=='conTypeIdList'"
@@ -575,6 +576,7 @@
                       }"
                       style="width: 100%"
                       clearable
+                      filterable
                       @change="handleConTypeIdChange"
                     />
                     <el-cascader
@@ -593,6 +595,7 @@
                         expandTrigger: 'hover',
                       }"
                       clearable
+                      filterable
                     />
                     <el-cascader
                       v-if="item.filterType === 'cascader'&&(item.property=='sourceIds')"
@@ -610,6 +613,7 @@
                         expandTrigger: 'hover',
                       }"
                       clearable
+                      filterable
                     />
                     <el-cascader
                       v-if="item.filterType === 'cascader'&&(item.property=='feetIds')"
@@ -627,6 +631,7 @@
                         expandTrigger: 'hover',
                       }"
                       clearable
+                      filterable
                     />
                   </el-form-item>
                 </el-form>
