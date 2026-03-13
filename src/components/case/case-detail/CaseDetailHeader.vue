@@ -1,5 +1,5 @@
 <template>
-  <div :class="wrapperClass">
+  <div :class="wrapperClass" style="width: 100%;">
     <slot name="leading" />
     <div
       class="offcanvas-title"
@@ -20,7 +20,7 @@
         <span v-if="caseInfo.appFromto"> {{ caseInfo.appFromto }}； </span>
         <span v-if="caseInfo.appCnName"> {{ caseInfo.appCnName }}； </span>
       </h5>
-      <div>
+      <div class="right-action">
         <el-tooltip
           v-if="!subscribeStatus"
           placement="bottom-start"

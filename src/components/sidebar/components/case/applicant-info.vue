@@ -372,7 +372,7 @@
             </tr>
             <tr v-if="!caseInfo.usAgency">
               <th scope="row">共同申请 :</th>
-              <td colspan="3">{{ caseInfo.ifShareTm ? "是" : "否" }}</td>
+              <td colspan="3">{{ caseInfo.ifShareTm == 1 ? "是" : "否" }}</td>
             </tr>
             <tr v-if="showJoinApps">
               <th scope="row">{{ joinAppsLabel }} :</th>
@@ -624,7 +624,7 @@ export default {
       return (
         !this.caseInfo.usAgency &&
         Array.isArray(this.caseInfo.joinApps) &&
-        this.caseInfo.joinApps.length > 0
+        this.caseInfo.joinApps?.length > 0
       );
     },
     joinAppsLabel() {

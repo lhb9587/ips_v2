@@ -208,7 +208,28 @@
             </tr>
             <tr v-if="showGoodsCheckFile">
               <th scope="row">商品查对文件 :</th>
-              <td colspan="3">-</td>
+              <td
+                colspan="3"
+                class="nocopy"
+              >
+                <el-table
+                  :data="checkGoodList"
+                  :max-height="280"
+                  :show-overflow-tooltip="true"
+                >
+                  <el-table-column
+                    type="index"
+                    label="序号"
+                    width="60"
+                  />
+                  <el-table-column
+                    :prop="col.value"
+                    :label="col.title"
+                    v-for="col of checkGoodColumns"
+                    :key="col.value"
+                  />
+                </el-table>
+              </td>
             </tr>
             <tr v-if="showTmlistAgency">
               <th scope="row">原代理组织 :</th>
@@ -390,6 +411,8 @@
 </template>
 
 <script>
+import { queryImageGoodsList } from "@/api/caseList";
+
 export default {
   props: {
     caseInfo: {
@@ -442,6 +465,21 @@ export default {
         {
           title: "引证商标申请人",
           value: "quoteAppName",
+        },
+      ],
+      checkGoodList: [],
+      checkGoodColumns: [
+        {
+          title: "文件名称",
+          value: "materialName",
+        },
+        {
+          title: "上传时间",
+          value: "createDate",
+        },
+        {
+          title: "上传人",
+          value: "creater",
         },
       ],
       trademarkList: ["商标注册", "答复临时驳回/审查意见（境外）", "提供使用声明/证据（境外）", "签署代理合同协议", "商标监控总卷/协议", "咨询", "其他", "投标"],
@@ -536,6 +574,9 @@ export default {
     showGoodsCheckFile() {
       return !this.caseInfo.usAgency && this.isForeignDirection;
     },
+    canFetchCheckGoodsList() {
+      return this.showGoodsCheckFile && !!this.caseInfo.caseId;
+    },
     showQuoteTrademarkTable() {
       return !this.caseInfo.usAgency && ["异议", "无效宣告申请", "不予注册复审", "参加不予注册复审", "异议答辩", "撤销复审答辩", "无效宣告答辩"].includes(this.caseType);
     },
@@ -573,6 +614,23 @@ export default {
       return this.showChangeNameAddr && Array.isArray(this.caseInfo.joinApps) && this.caseInfo.joinApps.length > 0;
     },
   },
+  watch: {
+    canFetchCheckGoodsList: {
+      immediate: true,
+      handler(val) {
+        if (val) {
+          this.getCheckGoodsList();
+        } else {
+          this.checkGoodList = [];
+        }
+      },
+    },
+    "caseInfo.caseId"(newVal, oldVal) {
+      if (newVal && newVal !== oldVal && this.canFetchCheckGoodsList) {
+        this.getCheckGoodsList();
+      }
+    },
+  },
   methods: {
     gettyimage() {
       if (this.caseInfo.imageFile) {
@@ -585,6 +643,32 @@ export default {
     },
     toDisplay(value) {
       return value || "-";
+    },
+    getCheckGoodsList() {
+      if (!this.canFetchCheckGoodsList) return;
+      queryImageGoodsList({
+        caseId: this.caseInfo.caseId,
+        pageNo: 1,
+        pageSize: 9999,
+      })
+        .then((res) => {
+          const data = res?.data;
+          if (Array.isArray(data)) {
+            this.checkGoodList = data;
+          } else if (Array.isArray(data?.list)) {
+            this.checkGoodList = data.list;
+          } else if (Array.isArray(data?.records)) {
+            this.checkGoodList = data.records;
+          } else if (Array.isArray(data?.rows)) {
+            this.checkGoodList = data.rows;
+          } else {
+            this.checkGoodList = [];
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+          this.checkGoodList = [];
+        });
     },
   },
   created() {
