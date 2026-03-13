@@ -63,7 +63,7 @@
 </template>
 
 <script>
-const SHOW_TYPE_CASES = ["异议答辩", "无效宣告申请", "无效宣告答辩"];
+const SHOW_TYPE_CASES = ["异议", "异议答辩", "无效宣告申请", "无效宣告答辩"];
 const EXTRA_CASES = [
   "不予注册复审",
   "无效宣告复审",
@@ -96,6 +96,7 @@ export default {
       return this.showRespondentInfo && this.caseType === "异议答辩";
     },
     respondentTitle() {
+      if (this.caseType === "异议") return "被异议人信息";
       if (this.caseType === "异议答辩") return "异议人信息";
       if (["撤三答辩（提供使用证明）", "撤销通用名称答辩"].includes(this.caseType)) {
         return "被申请人(撤销人)信息";
@@ -105,6 +106,15 @@ export default {
       return "被申请人信息";
     },
     labelMap() {
+      if (this.caseType === "异议") {
+        return {
+          cnname: "被异议人中文名称",
+          enname: "被异议人英文名称",
+          cnaddr: "被异议人中文地址",
+          enaddr: "被异议人英文地址",
+          dlzz: "被异议人代理组织",
+        };
+      }
       if (this.caseType === "异议答辩") {
         return {
           cnname: "异议人中文名称",
@@ -149,11 +159,26 @@ export default {
         dlzz: "被申请人代理组织",
       };
     },
+    yyTextShowxk() {
+      return this.caseInfo.yyTextShowxk || {};
+    },
+    showCnAddrField() {
+      if (Object.prototype.hasOwnProperty.call(this.yyTextShowxk, "cnaddr")) {
+        return !!this.yyTextShowxk.cnaddr;
+      }
+      return true;
+    },
+    showDlzzField() {
+      if (Object.prototype.hasOwnProperty.call(this.yyTextShowxk, "dlzz")) {
+        return !!this.yyTextShowxk.dlzz;
+      }
+      return true;
+    },
     showAddressRow() {
-      return !this.showOpponentList && !!this.labelMap.cnaddr;
+      return !this.showOpponentList && !!this.labelMap.cnaddr && this.showCnAddrField;
     },
     showAgencyRow() {
-      return !this.showOpponentList && !!this.labelMap.dlzz;
+      return !this.showOpponentList && !!this.labelMap.dlzz && this.showDlzzField;
     },
     opponentsDisplay() {
       const opponents = this.caseInfo.opponents;
@@ -194,4 +219,3 @@ export default {
 </script>
 
 <style></style>
-

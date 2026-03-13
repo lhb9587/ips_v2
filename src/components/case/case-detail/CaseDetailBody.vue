@@ -92,7 +92,7 @@
             @click="$emit('set-component', 'RespondentInfo')"
             class="leftbar-item"
           >
-            <i class="mdi mdi-account-search-outline me-2"></i>被申请人信息
+            <i class="mdi mdi-account-search-outline me-2"></i>{{ respondentInfoNavLabel }}
           </a>
           <a
             :class="componentName == 'OverseasInfo' ? 'active' : ''"
@@ -549,7 +549,7 @@ import CopyrightBaseInfo from "@/components/sidebar/components/case/copyright/ba
 //非诉案件
 import NonlitigationBaseInfo from "@/components/sidebar/components/case/nonlitigation/base-info";
 
-const RESPONDENT_SHOW_TYPE_CASES = ["异议答辩", "无效宣告申请", "无效宣告答辩"];
+const RESPONDENT_SHOW_TYPE_CASES = ["异议", "异议答辩", "无效宣告申请", "无效宣告答辩"];
 const RESPONDENT_EXTRA_CASES = [
   "不予注册复审",
   "无效宣告复审",
@@ -656,6 +656,9 @@ export default {
         RESPONDENT_SHOW_TYPE_CASES.includes(caseType) ||
         RESPONDENT_EXTRA_CASES.includes(caseType)
       );
+    },
+    respondentInfoNavLabel() {
+      return this.caseInfo.caseType === "异议" ? "被异议人信息" : "被申请人信息";
     },
   },
   emits: [
