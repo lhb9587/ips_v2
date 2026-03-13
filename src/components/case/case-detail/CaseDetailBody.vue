@@ -71,6 +71,22 @@
             <i class="mdi mdi-account-switch-outline me-2"></i>转让人信息
           </a>
           <a
+            v-if="!caseInfo.usAgency && (caseInfo.caseType === '许可备案' || caseInfo.caseType === '许可备案提前终止')"
+            :class="componentName == 'LicenseeInfo' ? 'active' : ''"
+            @click="$emit('set-component', 'LicenseeInfo')"
+            class="leftbar-item"
+          >
+            <i class="mdi mdi-account-star-outline me-2"></i>被许可人信息
+          </a>
+          <a
+            v-if="showRespondentInfoNav"
+            :class="componentName == 'RespondentInfo' ? 'active' : ''"
+            @click="$emit('set-component', 'RespondentInfo')"
+            class="leftbar-item"
+          >
+            <i class="mdi mdi-account-search-outline me-2"></i>被申请人信息
+          </a>
+          <a
             :class="componentName == 'OverseasInfo' ? 'active' : ''"
             @click="$emit('set-component', 'OverseasInfo')"
             class="leftbar-item"
@@ -495,6 +511,8 @@ import Trademark from "@/components/sidebar/components/case/trademark-info";
 import Customer from "@/components/sidebar/components/case/customer-info";
 import ApplicantInfo from "@/components/sidebar/components/case/applicant-info";
 import TransferorInfo from "@/components/sidebar/components/case/transferor-info";
+import LicenseeInfo from "@/components/sidebar/components/case/licensee-info";
+import RespondentInfo from "@/components/sidebar/components/case/respondent-info";
 import OverseasInfo from "@/components/sidebar/components/case/overseas-info";
 
 //诉讼案件
@@ -522,6 +540,18 @@ import CopyrightBaseInfo from "@/components/sidebar/components/case/copyright/ba
 //非诉案件
 import NonlitigationBaseInfo from "@/components/sidebar/components/case/nonlitigation/base-info";
 
+const RESPONDENT_SHOW_TYPE_CASES = ["异议答辩", "无效宣告申请", "无效宣告答辩"];
+const RESPONDENT_EXTRA_CASES = [
+  "不予注册复审",
+  "无效宣告复审",
+  "撤销商标复审",
+  "撤销复审答辩",
+  "撤三答辩（提供使用证明）",
+  "撤销通用名称答辩",
+  "撤销三年停止使用申请",
+  "参加不予注册复审",
+];
+
 export default {
   components: {
     Cover,
@@ -539,6 +569,8 @@ export default {
     Customer,
     ApplicantInfo,
     TransferorInfo,
+    LicenseeInfo,
+    RespondentInfo,
     OverseasInfo,
     LgBaseInfo,
     LgCustInfo,
@@ -602,6 +634,15 @@ export default {
     colClass: {
       type: String,
       default: "col-12 h-100 p-0",
+    },
+  },
+  computed: {
+    showRespondentInfoNav() {
+      const caseType = this.caseInfo.caseType || "";
+      return !this.caseInfo.usAgency && (
+        RESPONDENT_SHOW_TYPE_CASES.includes(caseType) ||
+        RESPONDENT_EXTRA_CASES.includes(caseType)
+      );
     },
   },
   emits: [
