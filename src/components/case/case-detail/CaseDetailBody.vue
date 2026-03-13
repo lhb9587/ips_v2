@@ -126,6 +126,14 @@
           >
             <i class="mdi mdi-account-group-outline me-2"></i>异议人信息
           </a>
+          <a
+            v-if="showBaseRegisterInfoNav"
+            :class="componentName == 'BaseRegisterInfo' ? 'active' : ''"
+            @click="$emit('set-component', 'BaseRegisterInfo')"
+            class="leftbar-item"
+          >
+            <i class="mdi mdi-table-large me-2"></i>基础注册信息
+          </a>
         </div>
 
         <div
@@ -550,6 +558,7 @@ import SupplementEvidenceInfo from "@/components/sidebar/components/case/supplem
 import RespondentInfo from "@/components/sidebar/components/case/respondent-info";
 import OpponentInfo from "@/components/sidebar/components/case/opponent-info";
 import OverseasInfo from "@/components/sidebar/components/case/overseas-info";
+import BaseRegisterInfo from "@/components/sidebar/components/case/base-register-info";
 
 //诉讼案件
 import LgBaseInfo from "@/components/sidebar/components/case/litigation/base-info";
@@ -612,6 +621,7 @@ export default {
     RespondentInfo,
     OpponentInfo,
     OverseasInfo,
+    BaseRegisterInfo,
     LgBaseInfo,
     LgCustInfo,
     LgTmInfo,
@@ -688,6 +698,17 @@ export default {
     },
     showOpponentInfoNav() {
       return !this.caseInfo.usAgency && this.caseInfo.caseType === "异议答辩";
+    },
+    showBaseRegisterInfoNav() {
+      const appFromto = this.caseInfo.appFromto || "";
+      const isMadridRegister =
+        this.caseInfo.madrid === true ||
+        this.caseInfo.madrid === 1 ||
+        this.caseInfo.madrid === "1";
+      return !this.caseInfo.usAgency &&
+        ["内-外", "外-外"].includes(appFromto) &&
+        isMadridRegister &&
+        this.caseInfo.caseType !== "出具优先权证明文件";
     },
     showRespondentInfoNav() {
       const caseType = this.caseInfo.caseType || "";
