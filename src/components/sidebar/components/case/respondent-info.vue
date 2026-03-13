@@ -63,7 +63,7 @@
 </template>
 
 <script>
-const SHOW_TYPE_CASES = ["异议", "异议答辩", "无效宣告申请", "无效宣告答辩"];
+const SHOW_TYPE_CASES = ["异议", "无效宣告申请", "无效宣告答辩"];
 const EXTRA_CASES = [
   "不予注册复审",
   "无效宣告复审",

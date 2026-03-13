@@ -1,7 +1,8 @@
 <template>
-  <div class="card">
-    <div class="card-body">
-      <h4 class="card-title mb-2">商标信息</h4>
+  <div>
+    <div class="card">
+      <div class="card-body">
+        <h4 class="card-title mb-2">商标信息</h4>
 
       <div class="table-responsive">
         <table
@@ -334,6 +335,56 @@
           </tbody>
         </table>
       </div>
+
+      </div>
+    </div>
+
+    <div
+      v-if="showQuoteTrademarkTable"
+      class="card mt-2"
+    >
+      <div class="card-body">
+        <h4 class="card-title mb-2">引证商标信息</h4>
+        <div class="table-responsive">
+          <table
+            class="table table-nowrap mb-0"
+            style="width: 100%"
+          >
+            <tbody>
+              <tr>
+                <!-- <th
+                  scope="row"
+                  style="width: 10%"
+                >
+                  引证商标列表 :
+                </th> -->
+                <td
+                  colspan="3"
+                  class="nocopy"
+                >
+                  <el-table
+                    :data="quoteTableData"
+                    :max-height="280"
+                    :show-overflow-tooltip="true"
+                  >
+                    <el-table-column
+                      type="index"
+                      label="序号"
+                      width="60"
+                    />
+                    <el-table-column
+                      :prop="col.value"
+                      :label="col.title"
+                      v-for="col of quoteColumns"
+                      :key="col.value"
+                    />
+                  </el-table>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -373,6 +424,24 @@ export default {
         {
           title: "商品日文名称",
           value: "goodJpName",
+        },
+      ],
+      quoteColumns: [
+        {
+          title: "引证商标号",
+          value: "quoteRegNumber",
+        },
+        {
+          title: "引证商标名称",
+          value: "quoteTm",
+        },
+        {
+          title: "引证商标类别",
+          value: "quoteTmClass",
+        },
+        {
+          title: "引证商标申请人",
+          value: "quoteAppName",
         },
       ],
       trademarkList: ["商标注册", "答复临时驳回/审查意见（境外）", "提供使用声明/证据（境外）", "签署代理合同协议", "商标监控总卷/协议", "咨询", "其他", "投标"],
@@ -466,6 +535,12 @@ export default {
     },
     showGoodsCheckFile() {
       return !this.caseInfo.usAgency && this.isForeignDirection;
+    },
+    showQuoteTrademarkTable() {
+      return !this.caseInfo.usAgency && ["异议", "无效宣告申请", "不予注册复审", "参加不予注册复审", "异议答辩", "撤销复审答辩", "无效宣告答辩"].includes(this.caseType);
+    },
+    quoteTableData() {
+      return Array.isArray(this.caseInfo.quotes) ? this.caseInfo.quotes : [];
     },
     showTmlistAgency() {
       return !this.caseInfo.usAgency && this.tmlist.includes(this.caseType);

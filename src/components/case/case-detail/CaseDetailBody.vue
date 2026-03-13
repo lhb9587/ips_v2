@@ -87,6 +87,22 @@
             <i class="mdi mdi-account-star-outline me-2"></i>被许可人信息
           </a>
           <a
+            v-if="showLawReasonInfoNav"
+            :class="componentName == 'LawReasonInfo' ? 'active' : ''"
+            @click="$emit('set-component', 'LawReasonInfo')"
+            class="leftbar-item"
+          >
+            <i class="mdi mdi-scale-balance me-2"></i>法律条款和事实理由
+          </a>
+          <a
+            v-if="showSupplementEvidenceInfoNav"
+            :class="componentName == 'SupplementEvidenceInfo' ? 'active' : ''"
+            @click="$emit('set-component', 'SupplementEvidenceInfo')"
+            class="leftbar-item"
+          >
+            <i class="mdi mdi-folder-multiple-image me-2"></i>补充证据
+          </a>
+          <a
             v-if="showRespondentInfoNav"
             :class="componentName == 'RespondentInfo' ? 'active' : ''"
             @click="$emit('set-component', 'RespondentInfo')"
@@ -101,6 +117,14 @@
             v-if="!(caseInfo.appFromto == '内-内' || caseInfo.appFromto == '外-内')"
           >
             <i class="mdi mdi-earth me-2"></i>境外信息
+          </a>
+          <a
+            v-if="showOpponentInfoNav"
+            :class="componentName == 'OpponentInfo' ? 'active' : ''"
+            @click="$emit('set-component', 'OpponentInfo')"
+            class="leftbar-item"
+          >
+            <i class="mdi mdi-account-group-outline me-2"></i>异议人信息
           </a>
         </div>
 
@@ -521,7 +545,10 @@ import AliMonthlyReportInfo from "@/components/sidebar/components/case/ali-month
 import ApplicantInfo from "@/components/sidebar/components/case/applicant-info";
 import TransferorInfo from "@/components/sidebar/components/case/transferor-info";
 import LicenseeInfo from "@/components/sidebar/components/case/licensee-info";
+import LawReasonInfo from "@/components/sidebar/components/case/law-reason-info";
+import SupplementEvidenceInfo from "@/components/sidebar/components/case/supplement-evidence-info";
 import RespondentInfo from "@/components/sidebar/components/case/respondent-info";
+import OpponentInfo from "@/components/sidebar/components/case/opponent-info";
 import OverseasInfo from "@/components/sidebar/components/case/overseas-info";
 
 //诉讼案件
@@ -549,7 +576,7 @@ import CopyrightBaseInfo from "@/components/sidebar/components/case/copyright/ba
 //非诉案件
 import NonlitigationBaseInfo from "@/components/sidebar/components/case/nonlitigation/base-info";
 
-const RESPONDENT_SHOW_TYPE_CASES = ["异议", "异议答辩", "无效宣告申请", "无效宣告答辩"];
+const RESPONDENT_SHOW_TYPE_CASES = ["异议", "无效宣告申请", "无效宣告答辩"];
 const RESPONDENT_EXTRA_CASES = [
   "不予注册复审",
   "无效宣告复审",
@@ -580,7 +607,10 @@ export default {
     ApplicantInfo,
     TransferorInfo,
     LicenseeInfo,
+    LawReasonInfo,
+    SupplementEvidenceInfo,
     RespondentInfo,
+    OpponentInfo,
     OverseasInfo,
     LgBaseInfo,
     LgCustInfo,
@@ -649,6 +679,15 @@ export default {
   computed: {
     showAliMonthlyReportInfoNav() {
       return !!this.caseInfo.custName && this.caseInfo.custName.includes("阿里");
+    },
+    showLawReasonInfoNav() {
+      return !this.caseInfo.usAgency && this.caseInfo.caseType === "异议";
+    },
+    showSupplementEvidenceInfoNav() {
+      return !this.caseInfo.usAgency && this.caseInfo.caseType === "异议";
+    },
+    showOpponentInfoNav() {
+      return !this.caseInfo.usAgency && this.caseInfo.caseType === "异议答辩";
     },
     showRespondentInfoNav() {
       const caseType = this.caseInfo.caseType || "";
