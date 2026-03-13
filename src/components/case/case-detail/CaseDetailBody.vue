@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div :class="rootClass">
     <div :class="colClass">
       <div
@@ -54,6 +54,21 @@
             class="leftbar-item"
           >
             <i class="mdi mdi-account-plus-outline me-2"></i>客户信息
+          </a>
+          <a
+            :class="componentName == 'ApplicantInfo' ? 'active' : ''"
+            @click="$emit('set-component', 'ApplicantInfo')"
+            class="leftbar-item"
+          >
+            <i class="mdi mdi-account-outline me-2"></i>申请人信息
+          </a>
+          <a
+            v-if="!caseInfo.usAgency && caseInfo.caseType === '转让/移转'"
+            :class="componentName == 'TransferorInfo' ? 'active' : ''"
+            @click="$emit('set-component', 'TransferorInfo')"
+            class="leftbar-item"
+          >
+            <i class="mdi mdi-account-switch-outline me-2"></i>转让人信息
           </a>
           <a
             :class="componentName == 'OverseasInfo' ? 'active' : ''"
@@ -478,6 +493,8 @@ import Fee from "@/components/sidebar/components/case/fee";
 import OutsideBill from "@/components/sidebar/components/case/outsideBill";
 import Trademark from "@/components/sidebar/components/case/trademark-info";
 import Customer from "@/components/sidebar/components/case/customer-info";
+import ApplicantInfo from "@/components/sidebar/components/case/applicant-info";
+import TransferorInfo from "@/components/sidebar/components/case/transferor-info";
 import OverseasInfo from "@/components/sidebar/components/case/overseas-info";
 
 //诉讼案件
@@ -520,6 +537,8 @@ export default {
     OutsideBill,
     Trademark,
     Customer,
+    ApplicantInfo,
+    TransferorInfo,
     OverseasInfo,
     LgBaseInfo,
     LgCustInfo,
