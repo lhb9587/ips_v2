@@ -56,6 +56,14 @@
             <i class="mdi mdi-account-plus-outline me-2"></i>客户信息
           </a>
           <a
+            v-if="showAliMonthlyReportInfoNav"
+            :class="componentName == 'AliMonthlyReportInfo' ? 'active' : ''"
+            @click="$emit('set-component', 'AliMonthlyReportInfo')"
+            class="leftbar-item"
+          >
+            <i class="mdi mdi-file-chart-outline me-2"></i>阿里月报信息
+          </a>
+          <a
             :class="componentName == 'ApplicantInfo' ? 'active' : ''"
             @click="$emit('set-component', 'ApplicantInfo')"
             class="leftbar-item"
@@ -509,6 +517,7 @@ import Fee from "@/components/sidebar/components/case/fee";
 import OutsideBill from "@/components/sidebar/components/case/outsideBill";
 import Trademark from "@/components/sidebar/components/case/trademark-info";
 import Customer from "@/components/sidebar/components/case/customer-info";
+import AliMonthlyReportInfo from "@/components/sidebar/components/case/ali-monthly-report-info";
 import ApplicantInfo from "@/components/sidebar/components/case/applicant-info";
 import TransferorInfo from "@/components/sidebar/components/case/transferor-info";
 import LicenseeInfo from "@/components/sidebar/components/case/licensee-info";
@@ -567,6 +576,7 @@ export default {
     OutsideBill,
     Trademark,
     Customer,
+    AliMonthlyReportInfo,
     ApplicantInfo,
     TransferorInfo,
     LicenseeInfo,
@@ -637,6 +647,9 @@ export default {
     },
   },
   computed: {
+    showAliMonthlyReportInfoNav() {
+      return !!this.caseInfo.custName && this.caseInfo.custName.includes("阿里");
+    },
     showRespondentInfoNav() {
       const caseType = this.caseInfo.caseType || "";
       return !this.caseInfo.usAgency && (
