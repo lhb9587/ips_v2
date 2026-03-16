@@ -102,17 +102,42 @@
           <th scope="row">许可使用合同终止日期 :</th>
           <td>{{ caseInfo.permitInvalidDate }}</td>
         </tr>
-        <tr v-if="showIntlRejectReview">
+        <tr v-if="showIntlDelay">
           <th scope="row">是否延期 :</th>
           <td>{{ caseInfo.delay ? "是" : "否" }}</td>
           <th scope="row">之后是否交补充材料 :</th>
           <td>{{ caseInfo.supplement ? "是" : "否" }}</td>
+        </tr>
+        <tr v-else-if="showIntlRejectReview">
+          <th scope="row">之后是否交补充材料 :</th>
+          <td colspan="3">{{ caseInfo.supplement ? "是" : "否" }}</td>
         </tr>
         <tr v-if="showIntlRejectReview">
           <th scope="row">是否分割 :</th>
           <td>{{ caseInfo.isDivision == 1 ? "是" : "否" }}</td>
           <th scope="row">阐述事实与理由 :</th>
           <td>{{ caseInfo.applicationMarks }}</td>
+        </tr>
+        <tr v-if="showIntlRejectReview">
+          <th scope="row">分割申请书 :</th>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('301535')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showIntlRejectReview">
           <th scope="row">事实与理由 :</th>
@@ -623,6 +648,9 @@ export default {
         !this.caseInfo.usAgency &&
         ["国际注册驳回复审", "注册驳回复审"].includes(this.caseType)
       );
+    },
+    showIntlDelay() {
+      return !this.caseInfo.usAgency && this.caseType === "国际注册驳回复审";
     },
     showChangeAgency() {
       return (

@@ -14,7 +14,7 @@
                 申请人中文名称 :
               </th>
               <td style="width: 40%">
-                {{ normalizeText(caseInfo.appCnName) }}
+                {{ caseInfo.appCnName }}
               </td>
               <th
                 scope="row"
@@ -26,7 +26,7 @@
             </tr>
             <tr v-if="!caseInfo.usAgency && showIsChangeName">
               <th scope="row">是否变更名义 :</th>
-              <td>{{ caseInfo.isChangeName }}</td>
+              <td>{{ isChangeNameDisplay }}</td>
               <th
                 v-if="showPreChangeName"
                 scope="row"
@@ -38,7 +38,7 @@
               </td>
             </tr>
             <tr
-              v-if="!caseInfo.usAgency && showIsChangeName && showPreChangeName"
+              v-if="!caseInfo.usAgency && showPreChangeMaterial"
             >
               <th scope="row">{{ preChangeMaterialLabel }}</th>
               <td
@@ -80,7 +80,7 @@
             </tr>
             <tr v-if="!caseInfo.usAgency">
               <th scope="row">申请人地址 :</th>
-              <td>{{ caseInfo.appRegionalism }}</td>
+              <td>{{ removeSpecial(caseInfo.appRegionalism) }}</td>
               <th scope="row">申请人详细地址 :</th>
               <td>{{ caseInfo.appCnAddr }}</td>
             </tr>
@@ -102,7 +102,7 @@
             </tr>
             <tr v-if="showIsIpAgent">
               <th scope="row">经营范围是否包括知识产权代理 :</th>
-              <td colspan="3">{{ caseInfo.isIpAgent }}</td>
+              <td colspan="3">{{ caseInfo.isIpAgent ? "是" : "否" }}</td>
             </tr>
             <tr v-if="showAgentPerson">
               <th scope="row">代理人姓名 :</th>
@@ -187,7 +187,7 @@
                 </p>
               </td>
             </tr>
-            <tr v-if="showLicenseCaseFiles">
+            <tr v-if="showLicenseCaseFiles && showSubjectFile">
               <th scope="row">申请人（许可人）主体资格证明（中文） :</th>
               <td class="nocopy">
                 <p
@@ -247,13 +247,13 @@
                 </p>
               </td>
               <th
-                v-if="showForeignFileUpload"
+                v-if="showLicenseIdFileForeign"
                 scope="row"
               >
                 申请人（许可人）身份证明原文件(外文) :
               </th>
               <td
-                v-if="showForeignFileUpload"
+                v-if="showLicenseIdFileForeign"
                 class="nocopy"
               >
                 <p
@@ -377,7 +377,7 @@
               >
                 要求优先权声明 :
               </th>
-              <td v-if="showPriorityDetail">{{ caseInfo.priorityType }}</td>
+              <td v-if="showPriorityDetail">{{ priorityDeclarationText }}</td>
             </tr>
             <tr v-if="showPriorityDetail">
               <th scope="row">优先权国家 :</th>
@@ -443,7 +443,7 @@
                 class="nocopy"
               >
                 <el-table
-                  :data="caseInfo.joinApps"
+                  :data="joinAppsData"
                   :max-height="260"
                 >
                   <el-table-column
@@ -453,30 +453,70 @@
                   />
                   <el-table-column
                     v-if="caseInfo.caseType === '转让/移转'"
-                    prop="type"
                     label="类型"
                     width="100"
-                  />
+                  >
+                    <template #default="scope">
+                      {{ scope.row.typeStr || scope.row.type || "-" }}
+                    </template>
+                  </el-table-column>
                   <el-table-column
-                    prop="cnName"
                     label="中文名称"
-                  />
+                  >
+                    <template #default="scope">
+                      {{ scope.row.cnName || scope.row.nameCn || "-" }}
+                    </template>
+                  </el-table-column>
                   <el-table-column
-                    prop="enName"
                     label="英文名称"
-                  />
+                  >
+                    <template #default="scope">
+                      {{ scope.row.enName || scope.row.nameEn || "-" }}
+                    </template>
+                  </el-table-column>
                   <el-table-column
-                    prop="cardType"
                     label="证件名称"
-                  />
+                  >
+                    <template #default="scope">
+                      {{ scope.row.cardType || scope.row.cardName || "-" }}
+                    </template>
+                  </el-table-column>
                   <el-table-column
-                    prop="cardNo"
                     label="证件号"
-                  />
+                  >
+                    <template #default="scope">
+                      {{ scope.row.cardNo || scope.row.cardId || "-" }}
+                    </template>
+                  </el-table-column>
                   <el-table-column
-                    prop="proofFile"
                     label="证明文件"
-                  />
+                  >
+                    <template #default="scope">
+                      <template
+                        v-if="
+                          Array.isArray(scope.row.materialArray) &&
+                          scope.row.materialArray.length > 0
+                        "
+                      >
+                        <span
+                          v-for="item in scope.row.materialArray"
+                          :key="item.address"
+                          style="margin-right: 8px"
+                        >
+                          <a
+                            style="color: #409eff"
+                            target="_blank"
+                            :href="`/ipdoc${item.address}`"
+                          >
+                            {{ item.materialName || item.name }}
+                          </a>
+                        </span>
+                      </template>
+                      <template v-else>
+                        {{ scope.row.proofFile || "-" }}
+                      </template>
+                    </template>
+                  </el-table-column>
                 </el-table>
               </td>
             </tr>
@@ -563,6 +603,13 @@ export default {
         ["国际注册驳回复审", "注册驳回复审"].includes(this.caseInfo.caseType)
       );
     },
+    isChangeNameDisplay() {
+      const val = Number(this.caseInfo.isChangeName);
+      if (val === 1) return "申请人名义";
+      if (val === 2) return "本业务商标代表人";
+      if (val === 3) return "其他";
+      return "否";
+    },
     showPreChangeName() {
       const val = Number(this.caseInfo.isChangeName);
       return (
@@ -571,11 +618,18 @@ export default {
         [1, 2, 3].includes(val)
       );
     },
+    showPreChangeMaterial() {
+      return (
+        this.showIsChangeName &&
+        Boolean(this.caseInfo.isChangeName) &&
+        this.caseInfo.submitType === "网上申请"
+      );
+    },
     preChangeNameLabel() {
       const map = {
-        1: "变更前名义",
-        2: "变更前代表人",
-        3: "变更前其他信息",
+        1: "申请人变更名称",
+        2: "代表人变更名称",
+        3: "复审申请人变更名称",
       };
       return map[Number(this.caseInfo.isChangeName)] || "变更前信息";
     },
@@ -646,12 +700,22 @@ export default {
       );
     },
     showSubjectFile() {
-      return this.caseInfo.legalNature !== "自然人";
+      return (
+        (this.caseInfo.legalNature === "自然人" &&
+          this.caseInfo.appGJdq === "中国") ||
+        this.caseInfo.legalNature !== "自然人"
+      );
     },
     showForeignFileUpload() {
+      if (this.caseInfo.appGJdq === "中国") return false;
       return (
-        this.caseInfo.uploadFileLanguage === "外文" ||
-        this.caseInfo.appCertFileIsCn === "否"
+        this.caseInfo.appCertFileIsCn === "否" ||
+        this.caseInfo.uploadFileLanguage === "外文"
+      );
+    },
+    showLicenseIdFileForeign() {
+      return (
+        this.showLicenseCaseFiles && this.caseInfo.uploadFileLanguage === "外文"
       );
     },
     showLicenseCaseFiles() {
@@ -694,19 +758,30 @@ export default {
     showJoinApps() {
       return (
         !this.caseInfo.usAgency &&
-        Array.isArray(this.caseInfo.joinApps) &&
-        this.caseInfo.joinApps?.length > 0
+        Array.isArray(this.caseInfo.joinApps)
       );
+    },
+    joinAppsData() {
+      if (!Array.isArray(this.caseInfo.joinApps)) return [];
+      return this.caseInfo.joinApps.filter((item) => item.type != 4);
     },
     joinAppsLabel() {
       return this.caseInfo.caseType === "变名变址"
         ? "变更后共同申请人"
         : "共同申请人";
     },
+    priorityDeclarationText() {
+      if (String(this.caseInfo.priorityType) === "1") return "基于第一次申请的优先权";
+      if (String(this.caseInfo.priorityType) === "2") return "基于展会的优先权";
+      return "";
+    },
   },
   methods: {
-    normalizeText(value) {
-      return value ? String(value).replace(/\s+/g, "") : "";
+    removeSpecial(text) {
+      if (text && text !== "undefined") {
+        return String(text).replace(/#/g, "");
+      }
+      return "";
     },
     getAddressAndName(materialTypeId) {
       if (this.caseInfo.materials) {
