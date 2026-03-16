@@ -35,14 +35,12 @@
                     alt=""
                   />
                 </td>
-                <th scope="row">商标设计说明 :</th>
-                <td>
-                  {{
-                    toDisplay(
-                      showTmDesignDeclare ? caseInfo.tmDesignDeclare : "",
-                    )
-                  }}
-                </td>
+                <template v-if="showTmDesignDeclare">
+                  <th scope="row">商标设计说明 :</th>
+                  <td>
+                    {{ caseInfo.tmDesignDeclare }}
+                  </td>
+                </template>
               </tr>
               <tr v-if="showMadridToCn">
                 <th scope="row">国际注册号 :</th>
@@ -266,19 +264,64 @@
                 <th scope="row">集体/证明商标使用管理规则 :</th>
                 <td>{{ caseInfo.memberRule }}</td>
                 <th scope="row">集体/证明商标使用管理规则(附件) :</th>
-                <td>-</td>
+                <td class="nocopy">
+                  <p
+                    v-for="item in getAddressAndName('1005')"
+                    :key="item.address"
+                    style="margin-bottom: 0"
+                  >
+                    <a
+                      style="color: #409eff"
+                      target="_blank"
+                      :href="`/ipdoc${item.address}`"
+                    >
+                      {{ item.name }}
+                    </a>
+                  </p>
+                </td>
               </tr>
               <tr v-if="showMemberList">
                 <th scope="row">集体成员名单 :</th>
                 <td>{{ caseInfo.memberNamelist }}</td>
                 <th scope="row">集体成员名单(附件) :</th>
-                <td>-</td>
+                <td class="nocopy">
+                  <p
+                    v-for="item in getAddressAndName('1006')"
+                    :key="item.address"
+                    style="margin-bottom: 0"
+                  >
+                    <a
+                      style="color: #409eff"
+                      target="_blank"
+                      :href="`/ipdoc${item.address}`"
+                    >
+                      {{ item.name }}
+                    </a>
+                  </p>
+                </td>
               </tr>
               <tr v-if="showDetectAbility">
                 <th scope="row">申请人是否具备检测能力 :</th>
                 <td>{{ caseInfo.isAppWithDetectAbility ? "是" : "否" }}</td>
                 <th scope="row">申请人检测资质证书（附件） :</th>
-                <td>{{ toDisplay(showDetectAttach ? "-" : "") }}</td>
+                <td
+                  v-if="showDetectAttach"
+                  class="nocopy"
+                >
+                  <p
+                    v-for="item in getAddressAndName('1007')"
+                    :key="item.address"
+                    style="margin-bottom: 0"
+                  >
+                    <a
+                      style="color: #409eff"
+                      target="_blank"
+                      :href="`/ipdoc${item.address}`"
+                    >
+                      {{ item.name }}
+                    </a>
+                  </p>
+                </td>
               </tr>
               <tr v-if="showDetectAttach">
                 <th scope="row">申请人专业检测设备清单 :</th>
@@ -305,7 +348,24 @@
                 >
                   声音文件 :
                 </th>
-                <td v-if="caseInfo.tmVoice == '1'">-</td>
+                <td
+                  v-if="caseInfo.tmVoice == '1'"
+                  class="nocopy"
+                >
+                  <p
+                    v-for="item in getAddressAndName('1016')"
+                    :key="item.address"
+                    style="margin-bottom: 0"
+                  >
+                    <a
+                      style="color: #409eff"
+                      target="_blank"
+                      :href="`/ipdoc${item.address}`"
+                    >
+                      {{ item.name }}
+                    </a>
+                  </p>
+                </td>
               </tr>
               <tr v-if="showChangeNameAddr">
                 <th scope="row">变更类型 :</th>
@@ -818,15 +878,14 @@ export default {
     },
     showMemberRule() {
       return (
-        !this.caseInfo.usAgency &&
-        ["2", "3", 2, 3].includes(this.caseInfo.tmType)
+        !this.caseInfo.usAgency && ["2", "3"].includes(this.caseInfo.tmType)
       );
     },
     showMemberList() {
-      return !this.caseInfo.usAgency && ["2", 2].includes(this.caseInfo.tmType);
+      return !this.caseInfo.usAgency && this.caseInfo.tmType == "2";
     },
     showDetectAbility() {
-      return !this.caseInfo.usAgency && ["3", 3].includes(this.caseInfo.tmType);
+      return !this.caseInfo.usAgency && this.caseInfo.tmType == "3";
     },
     showDetectAttach() {
       return (
@@ -907,6 +966,14 @@ export default {
           console.log(err);
           this.checkGoodList = [];
         });
+    },
+    getAddressAndName(materialTypeId) {
+      if (this.caseInfo.materials) {
+        return this.caseInfo.materials.filter(
+          (item) => item.materialTypeId == materialTypeId,
+        );
+      }
+      return [];
     },
   },
   created() {

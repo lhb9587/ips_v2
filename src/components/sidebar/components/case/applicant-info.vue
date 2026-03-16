@@ -1,8 +1,6 @@
 <template>
   <div class="card mb-0">
-    <div
-      class="card-body"
-    >
+    <div class="card-body">
       <h4 class="card-title mb-2">{{ appSectionTitle }}</h4>
 
       <div class="table-responsive">
@@ -122,11 +120,13 @@
               <th scope="row">统一社会信用代码 :</th>
               <td colspan="3">{{ caseInfo.certCode }}</td>
             </tr>
-            <tr v-if="showAppCertLang">
+            <tr v-if="showAppCertFileIsCn">
               <th scope="row">主体/身份证明文件是否为中文 :</th>
-              <td>{{ caseInfo.appCertFileIsCn }}</td>
+              <td colspan="3">{{ caseInfo.appCertFileIsCn }}</td>
+            </tr>
+            <tr v-if="showUploadFileLanguage">
               <th scope="row">申请人上传文件的语言类型 :</th>
-              <td>{{ caseInfo.uploadFileLanguage }}</td>
+              <td colspan="3">{{ caseInfo.uploadFileLanguage }}</td>
             </tr>
             <tr v-if="showIdFileCn">
               <th scope="row">身份证明文件(中文) :</th>
@@ -298,9 +298,37 @@
             </tr>
             <tr v-if="showTransferExtraFiles">
               <th scope="row">自然人死亡/企业或其他组织注销证明 :</th>
-              <td>-</td>
+              <td class="nocopy">
+                <p
+                  v-for="item in getAddressAndName('1023')"
+                  :key="item.address"
+                  style="margin-bottom: 0"
+                >
+                  <a
+                    style="color: #409eff"
+                    target="_blank"
+                    :href="`/ipdoc${item.address}`"
+                  >
+                    {{ item.name }}
+                  </a>
+                </p>
+              </td>
               <th scope="row">同意转让声明或商标转移证明 :</th>
-              <td>-</td>
+              <td class="nocopy">
+                <p
+                  v-for="item in getAddressAndName('1028')"
+                  :key="item.address"
+                  style="margin-bottom: 0"
+                >
+                  <a
+                    style="color: #409eff"
+                    target="_blank"
+                    :href="`/ipdoc${item.address}`"
+                  >
+                    {{ item.name }}
+                  </a>
+                </p>
+              </td>
             </tr>
             <tr v-if="showDescriptionFiles">
               <th scope="row">有关说明文件 :</th>
@@ -557,8 +585,17 @@ export default {
         this.agentPersonCaseTypes.includes(this.caseInfo.caseType)
       );
     },
-    showAppCertLang() {
-      return !this.caseInfo.usAgency;
+    showAppCertFileIsCn() {
+      return (
+        !this.caseInfo.usAgency &&
+        this.trademarkList.includes(this.caseInfo.caseType)
+      );
+    },
+    showUploadFileLanguage() {
+      return (
+        !this.caseInfo.usAgency &&
+        !this.trademarkList.includes(this.caseInfo.caseType)
+      );
     },
     showIdFileCn() {
       return (

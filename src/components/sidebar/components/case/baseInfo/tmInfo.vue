@@ -23,7 +23,7 @@
         </tr>
         <tr v-if="caseInfo.usAgency && isForeignDirection">
           <th scope="row">合作所评分 :</th>
-          <td>{{ caseInfo.score }}</td>
+          <td>{{ caseInfo.score }}分</td>
           <th scope="row">合作所评价 :</th>
           <td>{{ caseInfo.evaluate }}</td>
         </tr>
@@ -68,17 +68,19 @@
         </tr>
         <tr v-if="!caseInfo.usAgency">
           <th scope="row">他所代交 :</th>
-          <td>{{ caseInfo.otherAgency == '1' ? "是" : "否" }}</td>
+          <td>{{ caseInfo.otherAgency == "1" ? "是" : "否" }}</td>
           <th scope="row">案件等级 :</th>
           <td>{{ caseInfo.caseLevelStr }}</td>
         </tr>
         <tr v-if="!caseInfo.usAgency && caseInfo.otherAgency == '1'">
           <th scope="row">代交所名称 :</th>
-          <td colspan="3">{{ caseInfo.replaceAgencyName || caseInfo.otherAgencyName }}</td>
+          <td colspan="3">
+            {{ caseInfo.replaceAgencyName || caseInfo.otherAgencyName }}
+          </td>
         </tr>
         <tr v-if="!caseInfo.usAgency && isForeignDirection">
           <th scope="row">合作所评分 :</th>
-          <td>{{ caseInfo.score }}</td>
+          <td>{{ caseInfo.score }}分</td>
           <th scope="row">合作所评价 :</th>
           <td>{{ caseInfo.evaluate }}</td>
         </tr>
@@ -135,12 +137,16 @@
         <tr v-if="showChangeAgency">
           <th scope="row">是否填写变更后代理机构名称 :</th>
           <td>{{ caseInfo.isPreChangeAgencyName == 1 ? "是" : "否" }}</td>
-          <th scope="row">变更后代理机构名称 :</th>
-          <td>{{ toDisplay(showPreChangeAgencyName ? caseInfo.preChangeAgencyName : '') }}</td>
+          <template v-if="showPreChangeAgencyName">
+            <th scope="row">变更后代理机构名称 :</th>
+            <td>
+              {{ caseInfo.preChangeAgencyName }}
+            </td>
+          </template>
         </tr>
         <tr v-if="showCorrectionCase">
           <th scope="row">更正事项 :</th>
-          <td>{{ toDisplay(showCorrection ? caseInfo.correction : '') }}</td>
+          <td>{{ toDisplay(showCorrection ? caseInfo.correction : "") }}</td>
           <th scope="row">更正前信息 :</th>
           <td>{{ caseInfo.beforeChangeMessage }}</td>
         </tr>
@@ -182,7 +188,9 @@
           <th scope="row">申请补证理由 :</th>
           <td>{{ caseInfo.reason }}</td>
           <th scope="row">证明类型 :</th>
-          <td>{{ toDisplay(showReissueProofType ? caseInfo.reissueType : '') }}</td>
+          <td>
+            {{ toDisplay(showReissueProofType ? caseInfo.reissueType : "") }}
+          </td>
         </tr>
         <tr v-if="showReissueChangeProof">
           <th scope="row">变更前注册人名义/地址 :</th>
@@ -200,29 +208,59 @@
           <th scope="row">撤回理由 :</th>
           <td>{{ caseInfo.withdraw }}</td>
           <th scope="row">{{ withdrawAppNoLabel }} :</th>
-          <td>{{ toDisplay(showWithdrawParentAppNo ? caseInfo.parentAppNumber : '') }}</td>
+          <td>
+            {{
+              toDisplay(showWithdrawParentAppNo ? caseInfo.parentAppNumber : "")
+            }}
+          </td>
         </tr>
         <tr v-if="showWithdrawTmApp">
           <th scope="row">原转让申请号 :</th>
-          <td>{{ toDisplay(showWithdrawTransferAppNo ? caseInfo.parentAppNumber : '') }}</td>
+          <td>
+            {{
+              toDisplay(
+                showWithdrawTransferAppNo ? caseInfo.parentAppNumber : "",
+              )
+            }}
+          </td>
           <th scope="row">撤回理由描述 :</th>
           <td>{{ caseInfo.reason }}</td>
         </tr>
         <tr v-if="showWithdrawTmApp">
           <th scope="row">原撤销申请日期 :</th>
-          <td>{{ toDisplay(showWithdrawParentAppDate ? caseInfo.parentAppDate : '') }}</td>
+          <td>
+            {{
+              toDisplay(showWithdrawParentAppDate ? caseInfo.parentAppDate : "")
+            }}
+          </td>
           <th scope="row">申请人名称是否已变更 :</th>
           <td>{{ caseInfo.isDlbz }}</td>
         </tr>
         <tr v-if="showWithdrawTmApp">
           <th scope="row">转让人中文名称 :</th>
-          <td colspan="3">{{ toDisplay(showWithdrawTransferorName ? caseInfo.transferorCnName : '') }}</td>
+          <td colspan="3">
+            {{
+              toDisplay(
+                showWithdrawTransferorName ? caseInfo.transferorCnName : "",
+              )
+            }}
+          </td>
         </tr>
         <tr v-if="showNeedFamousMark">
           <th scope="row">请求驰名商标保护 :</th>
           <td>{{ caseInfo.chiming ? "是" : "否" }}</td>
           <th scope="row">仅涉及绝对理由 :</th>
-          <td>{{ toDisplay(showAbsoluteReason ? (caseInfo.absoluteReason ? "是" : "否") : '') }}</td>
+          <td>
+            {{
+              toDisplay(
+                showAbsoluteReason
+                  ? caseInfo.absoluteReason
+                    ? "是"
+                    : "否"
+                  : "",
+              )
+            }}
+          </td>
         </tr>
         <tr v-if="showCommonApplicationMarks">
           <th scope="row">申请书标注 :</th>
@@ -315,110 +353,166 @@ export default {
   },
   computed: {
     caseType() {
-      return this.caseInfo.caseType || ""
+      return this.caseInfo.caseType || "";
     },
     isForeignDirection() {
-      return ["内-外", "外-外"].includes(this.caseInfo.appFromto)
+      return ["内-外", "外-外"].includes(this.caseInfo.appFromto);
     },
     caseTypeStr() {
-      return this.caseInfo.caseType_str || this.caseInfo.caseTypeStr || this.caseType
+      return (
+        this.caseInfo.caseType_str || this.caseInfo.caseTypeStr || this.caseType
+      );
     },
     showLicensingBase() {
-      return !this.caseInfo.usAgency && this.caseType === "许可备案"
+      return !this.caseInfo.usAgency && this.caseType === "许可备案";
     },
     showIntlRejectReview() {
-      return !this.caseInfo.usAgency && ["国际注册驳回复审", "注册驳回复审"].includes(this.caseType)
+      return (
+        !this.caseInfo.usAgency &&
+        ["国际注册驳回复审", "注册驳回复审"].includes(this.caseType)
+      );
     },
     showChangeAgency() {
-      return !this.caseInfo.usAgency && this.caseType === "变更注册申请代理机构"
+      return (
+        !this.caseInfo.usAgency && this.caseType === "变更注册申请代理机构"
+      );
     },
     showPreChangeAgencyName() {
-      return this.showChangeAgency && Number(this.caseInfo.isPreChangeAgencyName) === 1
+      return (
+        this.showChangeAgency &&
+        Number(this.caseInfo.isPreChangeAgencyName) === 1
+      );
     },
     showCorrectionCase() {
-      return !this.caseInfo.usAgency && this.caseType === "更正商标申请事项"
+      return !this.caseInfo.usAgency && this.caseType === "更正商标申请事项";
     },
     showCorrection() {
-      return this.showCorrectionCase && this.caseInfo.submitType === "线下申请"
+      return this.showCorrectionCase && this.caseInfo.submitType === "线下申请";
     },
     showIssueRegCert() {
-      return !this.caseInfo.usAgency && this.caseType === "出具商标注册证明"
+      return !this.caseInfo.usAgency && this.caseType === "出具商标注册证明";
     },
     showTmCancel() {
-      return !this.caseInfo.usAgency && this.caseType === "商标注销"
+      return !this.caseInfo.usAgency && this.caseType === "商标注销";
     },
     showWithdrawReview() {
-      return !this.caseInfo.usAgency && this.caseType === "撤回商标评审"
+      return !this.caseInfo.usAgency && this.caseType === "撤回商标评审";
     },
     showReissueReason() {
-      return !this.caseInfo.usAgency && ["补发商标注册证", "补发商标变转续证明"].includes(this.caseType)
+      return (
+        !this.caseInfo.usAgency &&
+        ["补发商标注册证", "补发商标变转续证明"].includes(this.caseType)
+      );
     },
     showReissueProofType() {
-      return !this.caseInfo.usAgency && this.caseType === "补发商标变转续证明"
+      return !this.caseInfo.usAgency && this.caseType === "补发商标变转续证明";
     },
     showReissueChangeProof() {
-      return this.showReissueProofType && this.caseInfo.reissueType === "变更证明"
+      return (
+        this.showReissueProofType && this.caseInfo.reissueType === "变更证明"
+      );
     },
     showReissueTransferProof() {
-      return this.showReissueProofType && this.caseInfo.reissueType === "转让证明"
+      return (
+        this.showReissueProofType && this.caseInfo.reissueType === "转让证明"
+      );
     },
     showWithdrawTmApp() {
-      return !this.caseInfo.usAgency && this.caseType === "撤回商标申请"
+      return !this.caseInfo.usAgency && this.caseType === "撤回商标申请";
     },
     showWithdrawParentAppNo() {
-      return this.showWithdrawTmApp && this.caseTypeStr !== "撤回商标异议" && this.caseInfo.changeType !== "转让/移转商标"
+      return (
+        this.showWithdrawTmApp &&
+        this.caseTypeStr !== "撤回商标异议" &&
+        this.caseInfo.changeType !== "转让/移转商标"
+      );
     },
     showWithdrawTransferAppNo() {
-      return this.showWithdrawTmApp && this.caseTypeStr !== "撤回商标异议" && this.caseInfo.changeType === "转让/移转商标"
+      return (
+        this.showWithdrawTmApp &&
+        this.caseTypeStr !== "撤回商标异议" &&
+        this.caseInfo.changeType === "转让/移转商标"
+      );
     },
     showWithdrawParentAppDate() {
-      return this.showWithdrawTmApp && this.caseTypeStr === "撤回撤销三年不使用注册商标"
+      return (
+        this.showWithdrawTmApp &&
+        this.caseTypeStr === "撤回撤销三年不使用注册商标"
+      );
     },
     showWithdrawTransferorName() {
-      return this.showWithdrawTmApp && this.caseInfo.changeType === "转让/移转商标"
+      return (
+        this.showWithdrawTmApp && this.caseInfo.changeType === "转让/移转商标"
+      );
     },
     withdrawAppNoLabel() {
-      return this.caseTypeStr === "撤回撤销三年不使用注册商标" ? "原撤销申请号" : "原申请号"
+      return this.caseTypeStr === "撤回撤销三年不使用注册商标"
+        ? "原撤销申请号"
+        : "原申请号";
     },
     showNeedFamousMark() {
-      return !this.caseInfo.usAgency && ["异议", "无效宣告申请", "不予注册复审"].includes(this.caseType)
+      return (
+        !this.caseInfo.usAgency &&
+        ["异议", "无效宣告申请", "不予注册复审"].includes(this.caseType)
+      );
     },
     showAbsoluteReason() {
-      return !this.caseInfo.usAgency && this.caseType === "无效宣告申请"
+      return !this.caseInfo.usAgency && this.caseType === "无效宣告申请";
     },
     showCommonApplicationMarks() {
-      return !this.caseInfo.usAgency && !["国际注册驳回复审", "注册驳回复审"].includes(this.caseType)
+      return (
+        !this.caseInfo.usAgency &&
+        !["国际注册驳回复审", "注册驳回复审"].includes(this.caseType)
+      );
     },
     showCommonSupplement() {
-      return !this.caseInfo.usAgency && ["异议", "异议答辩", "无效宣告申请", "无效宣告答辩", "不予注册复审", "撤销商标复审", "无效宣告复审", "撤销复审答辩", "撤三答辩（提供使用证明）", "撤销三年停止使用申请"].includes(this.caseType)
+      return (
+        !this.caseInfo.usAgency &&
+        [
+          "异议",
+          "异议答辩",
+          "无效宣告申请",
+          "无效宣告答辩",
+          "不予注册复审",
+          "撤销商标复审",
+          "无效宣告复审",
+          "撤销复审答辩",
+          "撤三答辩（提供使用证明）",
+          "撤销三年停止使用申请",
+        ].includes(this.caseType)
+      );
     },
     showOverseaEvidenceCase() {
-      return !this.caseInfo.usAgency && this.caseType === "提供使用声明/证据（境外）"
+      return (
+        !this.caseInfo.usAgency && this.caseType === "提供使用声明/证据（境外）"
+      );
     },
     showCancelThreeYears() {
-      return !this.caseInfo.usAgency && this.caseType === "撤销三年停止使用申请"
+      return (
+        !this.caseInfo.usAgency && this.caseType === "撤销三年停止使用申请"
+      );
     },
     showTransferCase() {
-      return !this.caseInfo.usAgency && this.caseType === "转让/移转"
+      return !this.caseInfo.usAgency && this.caseType === "转让/移转";
     },
     showInvalidationApply() {
-      return !this.caseInfo.usAgency && this.caseType === "无效宣告申请"
+      return !this.caseInfo.usAgency && this.caseType === "无效宣告申请";
     },
   },
   methods: {
     isYes(value) {
-      return value === "是" || value === 1 || value === "1" || value === true
+      return value === "是" || value === 1 || value === "1" || value === true;
     },
     toDisplay(value) {
-      return value || "-"
+      return value || "-";
     },
   },
   created() {
-    this.$addCopy()
+    this.$addCopy();
   },
-  beforeUnmount(){
-    this.$destroyCopy()
-  }
+  beforeUnmount() {
+    this.$destroyCopy();
+  },
 };
 </script>
 
