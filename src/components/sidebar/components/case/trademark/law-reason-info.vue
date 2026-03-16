@@ -45,7 +45,24 @@
               >
                 涉商业机密证据材料 :
               </th>
-              <td v-if="showBusinessSecretsMaterial">-</td>
+              <td
+                v-if="showBusinessSecretsMaterial"
+                class="nocopy"
+              >
+                <p
+                  v-for="item in getAddressAndName('301677')"
+                  :key="item.address"
+                  style="margin-bottom: 0"
+                >
+                  <a
+                    style="color: #409eff"
+                    target="_blank"
+                    :href="`/ipdoc${item.address}`"
+                  >
+                    {{ item.name }}
+                  </a>
+                </p>
+              </td>
             </tr>
             <tr>
               <th scope="row">其他说明文件 :</th>
