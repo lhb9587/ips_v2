@@ -9,7 +9,7 @@
 </template>
 
 <script>
-import TMInfo from "./baseInfo/tmInfo";
+import TMInfo from "../baseInfo/tmInfo";
 export default {
   components: {
     TMInfo,

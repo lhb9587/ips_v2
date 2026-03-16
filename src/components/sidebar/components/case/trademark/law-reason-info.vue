@@ -19,7 +19,9 @@
               >
                 是否引用其他异议申请证据材料 :
               </th>
-              <td style="width: 40%">{{ yesNoDisplay(caseInfo.quotedOthersMaterial) }}</td>
+              <td style="width: 40%">
+                {{ yesNoDisplay(caseInfo.quotedOthersMaterial) }}
+              </td>
               <th
                 v-if="showQuotedAppNumber"
                 scope="row"
@@ -27,7 +29,12 @@
               >
                 引证异议申请号 :
               </th>
-              <td v-if="showQuotedAppNumber" style="width: 40%">{{ caseInfo.quotedAppNumber }}</td>
+              <td
+                v-if="showQuotedAppNumber"
+                style="width: 40%"
+              >
+                {{ caseInfo.quotedAppNumber }}
+              </td>
             </tr>
             <tr v-if="showSubBusinessSecrets">
               <th scope="row">是否提交涉商业机密证据材料 :</th>
@@ -42,7 +49,24 @@
             </tr>
             <tr>
               <th scope="row">其他说明文件 :</th>
-              <td colspan="3">-</td>
+              <td
+                colspan="3"
+                class="nocopy"
+              >
+                <p
+                  v-for="item in getAddressAndName('1020')"
+                  :key="item.address"
+                  style="margin-bottom: 0"
+                >
+                  <a
+                    style="color: #409eff"
+                    target="_blank"
+                    :href="`/ipdoc${item.address}`"
+                  >
+                    {{ item.name }}
+                  </a>
+                </p>
+              </td>
             </tr>
             <tr>
               <th scope="row">法律条款和事实理由列表 :</th>
@@ -72,7 +96,9 @@
                     >
                       <template v-if="normalizeMaterials(row.material).length">
                         <p
-                          v-for="(item, idx) in normalizeMaterials(row.material)"
+                          v-for="(item, idx) in normalizeMaterials(
+                            row.material,
+                          )"
                           :key="`${item.name}-${idx}`"
                           style="margin-bottom: 0"
                         >
@@ -137,16 +163,23 @@ export default {
       return !this.caseInfo.quotedOthersMaterial;
     },
     showBusinessSecretsMaterial() {
-      return this.showSubBusinessSecrets && String(this.caseInfo.subBusinessSecrets) === "1";
+      return (
+        this.showSubBusinessSecrets &&
+        String(this.caseInfo.subBusinessSecrets) === "1"
+      );
     },
     lawReasonTableData() {
-      return Array.isArray(this.caseInfo.demurCaseLaws) ? this.caseInfo.demurCaseLaws : [];
+      return Array.isArray(this.caseInfo.demurCaseLaws)
+        ? this.caseInfo.demurCaseLaws
+        : [];
     },
   },
   methods: {
     yesNoDisplay(value) {
-      if (value === true || value === 1 || value === "1" || value === "是") return "是";
-      if (value === false || value === 0 || value === "0" || value === "否") return "否";
+      if (value === true || value === 1 || value === "1" || value === "是")
+        return "是";
+      if (value === false || value === 0 || value === "0" || value === "否")
+        return "否";
       return value || "-";
     },
     normalizeMaterials(material) {
@@ -166,14 +199,22 @@ export default {
           item.filename ||
           "-";
         const path =
-          item.address ||
-          item.url ||
-          item.materialPath ||
-          item.fileUrl ||
-          "";
-        const href = path ? (path.startsWith("http") ? path : `/ipdoc${path}`) : "";
+          item.address || item.url || item.materialPath || item.fileUrl || "";
+        const href = path
+          ? path.startsWith("http")
+            ? path
+            : `/ipdoc${path}`
+          : "";
         return { name, href };
       });
+    },
+    getAddressAndName(materialTypeId) {
+      if (this.caseInfo.materials) {
+        return this.caseInfo.materials.filter(
+          (item) => item.materialTypeId == materialTypeId,
+        );
+      }
+      return [];
     },
   },
   created() {
@@ -186,4 +227,3 @@ export default {
 </script>
 
 <style></style>
-

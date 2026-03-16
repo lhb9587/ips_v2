@@ -537,7 +537,7 @@
 
 <script>
 import Cover from "@/components/sidebar/components/case/case-cover.vue";
-import Info from "@/components/sidebar/components/case/info";
+import Info from "@/components/sidebar/components/case/trademark/info";
 import TimeLimit from "@/components/sidebar/components/case/time-limit";
 import Documents from "@/components/sidebar/components/case/document";
 import Instruct from "@/components/sidebar/components/case/instruct";
@@ -547,18 +547,18 @@ import Bill from "@/components/sidebar/components/case/bill";
 import InsideBill from "@/components/sidebar/components/case/insideBill";
 import Fee from "@/components/sidebar/components/case/fee";
 import OutsideBill from "@/components/sidebar/components/case/outsideBill";
-import Trademark from "@/components/sidebar/components/case/trademark-info";
-import Customer from "@/components/sidebar/components/case/customer-info";
+import Trademark from "@/components/sidebar/components/case/trademark/trademark-info";
+import Customer from "@/components/sidebar/components/case/trademark/customer-info";
 import AliMonthlyReportInfo from "@/components/sidebar/components/case/ali-monthly-report-info";
-import ApplicantInfo from "@/components/sidebar/components/case/applicant-info";
-import TransferorInfo from "@/components/sidebar/components/case/transferor-info";
-import LicenseeInfo from "@/components/sidebar/components/case/licensee-info";
-import LawReasonInfo from "@/components/sidebar/components/case/law-reason-info";
-import SupplementEvidenceInfo from "@/components/sidebar/components/case/supplement-evidence-info";
-import RespondentInfo from "@/components/sidebar/components/case/respondent-info";
-import OpponentInfo from "@/components/sidebar/components/case/opponent-info";
-import OverseasInfo from "@/components/sidebar/components/case/overseas-info";
-import BaseRegisterInfo from "@/components/sidebar/components/case/base-register-info";
+import ApplicantInfo from "@/components/sidebar/components/case/trademark/applicant-info";
+import TransferorInfo from "@/components/sidebar/components/case/trademark/transferor-info";
+import LicenseeInfo from "@/components/sidebar/components/case/trademark/licensee-info";
+import LawReasonInfo from "@/components/sidebar/components/case/trademark/law-reason-info";
+import SupplementEvidenceInfo from "@/components/sidebar/components/case/trademark/supplement-evidence-info";
+import RespondentInfo from "@/components/sidebar/components/case/trademark/respondent-info";
+import OpponentInfo from "@/components/sidebar/components/case/trademark/opponent-info";
+import OverseasInfo from "@/components/sidebar/components/case/trademark/overseas-info";
+import BaseRegisterInfo from "@/components/sidebar/components/case/trademark/base-register-info";
 
 //诉讼案件
 import LgBaseInfo from "@/components/sidebar/components/case/litigation/base-info";
