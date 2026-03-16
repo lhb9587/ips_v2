@@ -549,7 +549,7 @@ import Fee from "@/components/sidebar/components/case/fee";
 import OutsideBill from "@/components/sidebar/components/case/outsideBill";
 import Trademark from "@/components/sidebar/components/case/trademark/trademark-info";
 import Customer from "@/components/sidebar/components/case/trademark/customer-info";
-import AliMonthlyReportInfo from "@/components/sidebar/components/case/ali-monthly-report-info";
+import AliMonthlyReportInfo from "@/components/sidebar/components/case/trademark/ali-monthly-report-info";
 import ApplicantInfo from "@/components/sidebar/components/case/trademark/applicant-info";
 import TransferorInfo from "@/components/sidebar/components/case/trademark/transferor-info";
 import LicenseeInfo from "@/components/sidebar/components/case/trademark/licensee-info";
