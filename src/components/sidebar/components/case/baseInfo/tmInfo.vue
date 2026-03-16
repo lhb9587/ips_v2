@@ -116,7 +116,24 @@
         </tr>
         <tr v-if="showIntlRejectReview">
           <th scope="row">事实与理由 :</th>
-          <td colspan="3">-</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('327')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showIntlRejectReview">
           <th scope="row">证据目录 :</th>
@@ -145,8 +162,10 @@
           </template>
         </tr>
         <tr v-if="showCorrectionCase">
-          <th scope="row">更正事项 :</th>
-          <td>{{ toDisplay(showCorrection ? caseInfo.correction : "") }}</td>
+          <template v-if="showCorrection">
+            <th scope="row">更正事项 :</th>
+            <td>{{ caseInfo.correction }}</td>
+          </template>
           <th scope="row">更正前信息 :</th>
           <td>{{ caseInfo.beforeChangeMessage }}</td>
         </tr>
@@ -187,10 +206,10 @@
         <tr v-if="showReissueReason">
           <th scope="row">申请补证理由 :</th>
           <td>{{ caseInfo.reason }}</td>
-          <th scope="row">证明类型 :</th>
-          <td>
-            {{ toDisplay(showReissueProofType ? caseInfo.reissueType : "") }}
-          </td>
+          <template v-if="showReissueProofType">
+            <th scope="row">证明类型 :</th>
+            <td>{{ caseInfo.reissueType }}</td>
+          </template>
         </tr>
         <tr v-if="showReissueChangeProof">
           <th scope="row">变更前注册人名义/地址 :</th>
@@ -207,60 +226,38 @@
         <tr v-if="showWithdrawTmApp">
           <th scope="row">撤回理由 :</th>
           <td>{{ caseInfo.withdraw }}</td>
-          <th scope="row">{{ withdrawAppNoLabel }} :</th>
-          <td>
-            {{
-              toDisplay(showWithdrawParentAppNo ? caseInfo.parentAppNumber : "")
-            }}
-          </td>
+          <template v-if="showWithdrawParentAppNo">
+            <th scope="row">{{ withdrawAppNoLabel }} :</th>
+            <td>{{ caseInfo.parentAppNumber }}</td>
+          </template>
         </tr>
         <tr v-if="showWithdrawTmApp">
-          <th scope="row">原转让申请号 :</th>
-          <td>
-            {{
-              toDisplay(
-                showWithdrawTransferAppNo ? caseInfo.parentAppNumber : "",
-              )
-            }}
-          </td>
+          <template v-if="showWithdrawTransferAppNo">
+            <th scope="row">原转让申请号 :</th>
+            <td>{{ caseInfo.parentAppNumber }}</td>
+          </template>
           <th scope="row">撤回理由描述 :</th>
           <td>{{ caseInfo.reason }}</td>
         </tr>
         <tr v-if="showWithdrawTmApp">
-          <th scope="row">原撤销申请日期 :</th>
-          <td>
-            {{
-              toDisplay(showWithdrawParentAppDate ? caseInfo.parentAppDate : "")
-            }}
-          </td>
+          <template v-if="showWithdrawParentAppDate">
+            <th scope="row">原撤销申请日期 :</th>
+            <td>{{ caseInfo.parentAppDate }}</td>
+          </template>
           <th scope="row">申请人名称是否已变更 :</th>
           <td>{{ caseInfo.isDlbz }}</td>
         </tr>
-        <tr v-if="showWithdrawTmApp">
+        <tr v-if="showWithdrawTmApp && showWithdrawTransferorName">
           <th scope="row">转让人中文名称 :</th>
-          <td colspan="3">
-            {{
-              toDisplay(
-                showWithdrawTransferorName ? caseInfo.transferorCnName : "",
-              )
-            }}
-          </td>
+          <td colspan="3">{{ caseInfo.transferorCnName }}</td>
         </tr>
         <tr v-if="showNeedFamousMark">
           <th scope="row">请求驰名商标保护 :</th>
           <td>{{ caseInfo.chiming ? "是" : "否" }}</td>
-          <th scope="row">仅涉及绝对理由 :</th>
-          <td>
-            {{
-              toDisplay(
-                showAbsoluteReason
-                  ? caseInfo.absoluteReason
-                    ? "是"
-                    : "否"
-                  : "",
-              )
-            }}
-          </td>
+          <template v-if="showAbsoluteReason">
+            <th scope="row">仅涉及绝对理由 :</th>
+            <td>{{ caseInfo.absoluteReason ? "是" : "否" }}</td>
+          </template>
         </tr>
         <tr v-if="showCommonApplicationMarks">
           <th scope="row">申请书标注 :</th>
@@ -503,8 +500,13 @@ export default {
     isYes(value) {
       return value === "是" || value === 1 || value === "1" || value === true;
     },
-    toDisplay(value) {
-      return value || "-";
+    getAddressAndName(materialTypeId) {
+      if (this.caseInfo.materials) {
+        return this.caseInfo.materials.filter(
+          (item) => item.materialTypeId == materialTypeId,
+        );
+      }
+      return [];
     },
   },
   created() {
