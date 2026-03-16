@@ -137,19 +137,87 @@
         </tr>
         <tr v-if="showIntlRejectReview">
           <th scope="row">证据目录 :</th>
-          <td colspan="3">-</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('326')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showIntlRejectReview">
           <th scope="row">证据内容 :</th>
-          <td colspan="3">-</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('300012')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showIntlRejectReview">
           <th scope="row">送达证据 :</th>
-          <td colspan="3">-</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('300013')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showIntlRejectReview">
           <th scope="row">评审网申国际商标需上传材料 :</th>
-          <td colspan="3">-</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('301600')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showChangeAgency">
           <th scope="row">是否填写变更后代理机构名称 :</th>
@@ -191,11 +259,45 @@
         </tr>
         <tr v-if="showTmCancel && caseInfo.appCertFileIsCn == '是'">
           <th scope="row">变更证明文件（中文） :</th>
-          <td colspan="3">{{ caseInfo.appCertFileIsCn }}</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('1032')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showTmCancel && caseInfo.appCertFileIsCn == '否'">
           <th scope="row">变更证明文件原件彩色扫描件 :</th>
-          <td colspan="3">{{ caseInfo.appCertFileIsCn }}</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('1033')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showWithdrawReview">
           <th scope="row">原申请日期 :</th>
@@ -283,19 +385,87 @@
         </tr>
         <tr v-if="showCancelThreeYears">
           <th scope="row">理由 :</th>
-          <td colspan="3">-</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('327')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showCancelThreeYears">
           <th scope="row">证据材料 :</th>
-          <td colspan="3">-</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('322')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showCancelThreeYears">
           <th scope="row">材料目录/证据目录 :</th>
-          <td colspan="3">-</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('326')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showCancelThreeYears">
           <th scope="row">相关说明文件 :</th>
-          <td colspan="3">-</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('1020')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showTransferCase">
           <th scope="row">转让/移转 :</th>
@@ -309,19 +479,87 @@
         </tr>
         <tr v-if="showInvalidationApply">
           <th scope="row">事实理由 :</th>
-          <td colspan="3">-</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('327')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showInvalidationApply">
           <th scope="row">证据目录 :</th>
-          <td colspan="3">-</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('326')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showInvalidationApply">
           <th scope="row">证据内容 :</th>
-          <td colspan="3">-</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('300012')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showInvalidationApply">
           <th scope="row">有关说明文件 :</th>
-          <td colspan="3">-</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('1020')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="showInvalidationApply">
           <th scope="row">正副本是否一致 :</th>
@@ -329,7 +567,24 @@
         </tr>
         <tr v-if="showInvalidationApply && !caseInfo.justNegativeAgre">
           <th scope="row">涉密证据材料 :</th>
-          <td colspan="3">-</td>
+          <td
+            colspan="3"
+            class="nocopy"
+          >
+            <p
+              v-for="item in getAddressAndName('301677')"
+              :key="item.address"
+              style="margin-bottom: 0"
+            >
+              <a
+                style="color: #409eff"
+                target="_blank"
+                :href="`/ipdoc${item.address}`"
+              >
+                {{ item.name }}
+              </a>
+            </p>
+          </td>
         </tr>
         <tr v-if="!caseInfo.usAgency">
           <th scope="row">案件备注 :</th>

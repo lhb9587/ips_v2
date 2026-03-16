@@ -41,7 +41,24 @@
               v-if="!caseInfo.usAgency && showIsChangeName && showPreChangeName"
             >
               <th scope="row">{{ preChangeMaterialLabel }}</th>
-              <td colspan="3">-</td>
+              <td
+                colspan="3"
+                class="nocopy"
+              >
+                <p
+                  v-for="item in getAddressAndName('1032')"
+                  :key="item.address"
+                  style="margin-bottom: 0"
+                >
+                  <a
+                    style="color: #409eff"
+                    target="_blank"
+                    :href="`/ipdoc${item.address}`"
+                  >
+                    {{ item.name }}
+                  </a>
+                </p>
+              </td>
             </tr>
             <tr v-if="!caseInfo.usAgency">
               <th scope="row">申请人英文名称 :</th>
@@ -376,7 +393,24 @@
             </tr>
             <tr v-if="showPriorityDetail">
               <th scope="row">优先权证明文件 :</th>
-              <td colspan="3">-</td>
+              <td
+                colspan="3"
+                class="nocopy"
+              >
+                <p
+                  v-for="item in getAddressAndName('1017')"
+                  :key="item.address"
+                  style="margin-bottom: 0"
+                >
+                  <a
+                    style="color: #409eff"
+                    target="_blank"
+                    :href="`/ipdoc${item.address}`"
+                  >
+                    {{ item.name }}
+                  </a>
+                </p>
+              </td>
             </tr>
             <tr v-if="showCorrection">
               <th scope="row">更正事项 :</th>
@@ -673,9 +707,6 @@ export default {
   methods: {
     normalizeText(value) {
       return value ? String(value).replace(/\s+/g, "") : "";
-    },
-    toDisplay(value) {
-      return value || "-";
     },
     getAddressAndName(materialTypeId) {
       if (this.caseInfo.materials) {

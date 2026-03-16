@@ -56,7 +56,24 @@
               </tr>
               <tr v-if="showMadridToCn">
                 <th scope="row">国际注销通知书 :</th>
-                <td colspan="3">-</td>
+                <td
+                  colspan="3"
+                  class="nocopy"
+                >
+                  <p
+                    v-for="item in getAddressAndName('300454')"
+                    :key="item.address"
+                    style="margin-bottom: 0"
+                  >
+                    <a
+                      style="color: #409eff"
+                      target="_blank"
+                      :href="`/ipdoc${item.address}`"
+                    >
+                      {{ item.name }}
+                    </a>
+                  </p>
+                </td>
               </tr>
               <tr v-if="showPriorityProof">
                 <th scope="row">商标号 :</th>
@@ -302,14 +319,47 @@
               </tr>
               <tr v-if="showDetectAbility">
                 <th scope="row">申请人是否具备检测能力 :</th>
-                <td>{{ caseInfo.isAppWithDetectAbility ? "是" : "否" }}</td>
-                <th scope="row">申请人检测资质证书（附件） :</th>
-                <td
-                  v-if="showDetectAttach"
-                  class="nocopy"
-                >
+                <td>{{ caseInfo.isAppWithDetectAbility === "是" ? "是" : "否" }}</td>
+                <template v-if="showDetectAttach">
+                  <th scope="row">申请人检测资质证书（附件） :</th>
+                  <td class="nocopy">
+                    <p
+                      v-for="item in getAddressAndName('1007')"
+                      :key="item.address"
+                      style="margin-bottom: 0"
+                    >
+                      <a
+                        style="color: #409eff"
+                        target="_blank"
+                        :href="`/ipdoc${item.address}`"
+                      >
+                        {{ item.name }}
+                      </a>
+                    </p>
+                  </td>
+                </template>
+              </tr>
+              <tr v-if="showDetectAttach">
+                <th scope="row">申请人专业检测设备清单 :</th>
+                <td class="nocopy">
                   <p
-                    v-for="item in getAddressAndName('1007')"
+                    v-for="item in getAddressAndName('1008')"
+                    :key="item.address"
+                    style="margin-bottom: 0"
+                  >
+                    <a
+                      style="color: #409eff"
+                      target="_blank"
+                      :href="`/ipdoc${item.address}`"
+                    >
+                      {{ item.name }}
+                    </a>
+                  </p>
+                </td>
+                <th scope="row">申请人专业技术人员名单（附件） :</th>
+                <td class="nocopy">
+                  <p
+                    v-for="item in getAddressAndName('1009')"
                     :key="item.address"
                     style="margin-bottom: 0"
                   >
@@ -324,14 +374,25 @@
                 </td>
               </tr>
               <tr v-if="showDetectAttach">
-                <th scope="row">申请人专业检测设备清单 :</th>
-                <td>-</td>
-                <th scope="row">申请人专业技术人员名单（附件） :</th>
-                <td>-</td>
-              </tr>
-              <tr v-if="showDetectAttach">
                 <th scope="row">申请人技术人员证书 :</th>
-                <td colspan="3">-</td>
+                <td
+                  colspan="3"
+                  class="nocopy"
+                >
+                  <p
+                    v-for="item in getAddressAndName('1010')"
+                    :key="item.address"
+                    style="margin-bottom: 0"
+                  >
+                    <a
+                      style="color: #409eff"
+                      target="_blank"
+                      :href="`/ipdoc${item.address}`"
+                    >
+                      {{ item.name }}
+                    </a>
+                  </p>
+                </td>
               </tr>
               <tr v-if="showColorVoice">
                 <th scope="row">是否颜色组合 :</th>
@@ -376,28 +437,48 @@
               <tr v-if="showChangeNameAddr">
                 <th scope="row">变更前名称（英文） :</th>
                 <td>{{ caseInfo.preChangeEnName }}</td>
-                <th scope="row">变更证明文件是否为中文（网申） :</th>
-                <td>
-                  {{
-                    toDisplay(
-                      showChangeCertLang
-                        ? caseInfo.appCertFileIsCn
-                          ? "是"
-                          : "否"
-                        : "",
-                    )
-                  }}
-                </td>
+                <template v-if="showChangeCertLang">
+                  <th scope="row">变更证明文件是否为中文（网申） :</th>
+                  <td>{{ caseInfo.appCertFileIsCn }}</td>
+                </template>
               </tr>
               <tr
                 v-if="showChangeNameAddr && caseInfo.changeType !== '变更地址'"
               >
-                <th scope="row">变更证明文件（英文） :</th>
-                <td>
-                  {{ toDisplay(caseInfo.appCertFileIsCn === "否" ? "-" : "") }}
-                </td>
+                <template v-if="caseInfo.appCertFileIsCn === '否'">
+                  <th scope="row">变更证明文件（英文） :</th>
+                  <td class="nocopy">
+                    <p
+                      v-for="item in getAddressAndName('1033')"
+                      :key="item.address"
+                      style="margin-bottom: 0"
+                    >
+                      <a
+                        style="color: #409eff"
+                        target="_blank"
+                        :href="`/ipdoc${item.address}`"
+                      >
+                        {{ item.name }}
+                      </a>
+                    </p>
+                  </td>
+                </template>
                 <th scope="row">变更证明文件（中文） :</th>
-                <td>-</td>
+                <td class="nocopy">
+                  <p
+                    v-for="item in getAddressAndName('1032')"
+                    :key="item.address"
+                    style="margin-bottom: 0"
+                  >
+                    <a
+                      style="color: #409eff"
+                      target="_blank"
+                      :href="`/ipdoc${item.address}`"
+                    >
+                      {{ item.name }}
+                    </a>
+                  </p>
+                </td>
               </tr>
               <tr v-if="showJoinApps">
                 <th scope="row">变更前共同申请人 :</th>
@@ -937,9 +1018,6 @@ export default {
           this.tyimage = `/ipdoc${this.caseInfo.imageFile}`;
         }
       }
-    },
-    toDisplay(value) {
-      return value || "-";
     },
     getCheckGoodsList() {
       if (!this.canFetchCheckGoodsList) return;
