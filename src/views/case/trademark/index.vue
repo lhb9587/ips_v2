@@ -68,6 +68,7 @@ const caseStatusTabsList = [
 ];
 const changeCaseStatusValue = (value) => {
   caseStatus.value = value;
+  listQuery.value.pageNo = 1;
   queryCaseListFunc()
 };
 //案件所属
@@ -98,6 +99,7 @@ const caseBelongTabsList = [
 ];
 const changeCasebelongValue = (value) => {
   casebelongValue.value = value;
+  listQuery.value.pageNo = 1;
   queryCaseListFunc()
 };
 //案件领域
@@ -297,6 +299,7 @@ const requestData = ref(undefined);
 const handleSearch = (typeStr) => {
   diminput.value = "";
   // if (firstLoad.value) return
+  listQuery.value.pageNo = 1;
   formInline.value = { ...typeStr.data };
   tagList.value = typeStr.tagList || [];
   queryCaseListFunc();

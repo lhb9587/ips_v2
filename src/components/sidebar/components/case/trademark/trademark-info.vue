@@ -90,15 +90,16 @@
               <tr v-if="showParentAppDateBase">
                 <th scope="row">原注册申请日期 :</th>
                 <td>{{ caseInfo.parentAppDate }}</td>
-                <th
-                  v-if="showRejectReviewBaseRegNumber"
-                  scope="row"
-                >
-                  {{ rejectReviewLabel }} :
-                </th>
-                <td v-if="showRejectReviewBaseRegNumber">
+              </tr>
+              <tr v-if="showRejectReviewBaseRegNumber">
+                <th scope="row">{{ rejectReviewLabel }} :</th>
+                <td :colspan="showRejectReviewParentAppDate ? 1 : 3">
                   {{ caseInfo.regNumber }}
                 </td>
+                <template v-if="showRejectReviewParentAppDate">
+                  <th scope="row">原注册申请日期 :</th>
+                  <td>{{ caseInfo.parentAppDate }}</td>
+                </template>
               </tr>
               <tr v-if="showRefBasic">
                 <th scope="row">引证商标名称 :</th>
@@ -132,13 +133,10 @@
               <tr v-if="showGeneralSubmitDate">
                 <th scope="row">申请号 :</th>
                 <td>{{ caseInfo.appNumber }}</td>
-                <th
-                  v-if="showApprovalSet"
-                  scope="row"
-                >
-                  初审公告号 :
-                </th>
-                <td v-if="showApprovalSet">{{ caseInfo.approvalNo }}</td>
+              </tr>
+              <tr v-if="showApprovalSet">
+                <th scope="row">初审公告号 :</th>
+                <td colspan="3">{{ caseInfo.approvalNo }}</td>
               </tr>
               <tr v-if="showApprovalSet">
                 <th scope="row">初审公告日期 :</th>
@@ -185,8 +183,13 @@
                 <td colspan="3">{{ caseInfo.reason }}</td>
               </tr>
               <tr v-if="showRegDate">
-                <th scope="row">注册日期 :</th>
-                <td>{{ caseInfo.regDate }}</td>
+                <th
+                  v-if="!showJoinReviewApprovalNo"
+                  scope="row"
+                >
+                  注册日期 :
+                </th>
+                <td v-if="!showJoinReviewApprovalNo">{{ caseInfo.regDate }}</td>
                 <th
                   v-if="showJoinReviewApprovalNo"
                   scope="row"
@@ -746,6 +749,9 @@ export default {
         ["国际注册驳回复审", "注册驳回复审"].includes(this.caseType)
       );
     },
+    showRejectReviewParentAppDate() {
+      return this.showRejectReviewBaseRegNumber && this.caseType === "注册驳回复审";
+    },
     rejectReviewLabel() {
       return this.caseType === "注册驳回复审"
         ? "原申请号/国际注册号"
@@ -857,7 +863,6 @@ export default {
           "国际注册驳回复审",
           "撤回商标申请",
           "撤回商标评审",
-          "参加不予注册复审",
         ].includes(this.caseType)
       );
     },

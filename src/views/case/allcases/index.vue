@@ -71,6 +71,7 @@ const caseStatusTabsList = [
 ];
 const changeCaseStatusValue = (value) => {
   caseStatus.value = value;
+  listQuery.value.pageNo = 1;
   console.log(value,'案件状态@');
   queryCaseListFunc();
 };
@@ -102,6 +103,7 @@ const caseBelongTabsList = [
 ];
 const changeCasebelongValue = (value) => {
   casebelongValue.value = value;
+  listQuery.value.pageNo = 1;
   console.log(value,'案件所属@');
   queryCaseListFunc();
 };
@@ -327,6 +329,7 @@ const handleSearch = (typeStr) => {
   // if (firstLoad.value) return
   formInline.value = { ...typeStr.data };
   tagList.value = typeStr.tagList || [];
+  listQuery.value.pageNo = 1;
   queryCaseListFunc();
   requestData.value = {
     ...typeStr.data,
