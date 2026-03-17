@@ -217,18 +217,7 @@
                   colspan="3"
                   class="nocopy"
                 >
-                  <el-table
-                    :data="caseInfo.goods"
-                    :max-height="280"
-                    :show-overflow-tooltip="true"
-                  >
-                    <el-table-column
-                      :prop="col.value"
-                      :label="col.title"
-                      v-for="col of goodColumns"
-                      :key="col.value"
-                    />
-                  </el-table>
+                  <GoodsLiteTable :goods-list="caseInfo.goods" :app-fromto="caseInfo.appFromto" />
                 </td>
               </tr>
               <tr v-if="showGoodsCheckFile">
@@ -593,8 +582,12 @@
 
 <script>
 import { queryImageGoodsList } from "@/api/caseList";
+import GoodsLiteTable from "./goods-lite-table.vue";
 
 export default {
+  components: {
+    GoodsLiteTable,
+  },
   props: {
     caseInfo: {
       type: Object,
@@ -604,32 +597,6 @@ export default {
   data() {
     return {
       tyimage: "",
-      goodColumns: [
-        {
-          title: "类别",
-          value: "goodClass",
-        },
-        {
-          title: "商品类似群组",
-          value: "similarGroup",
-        },
-        {
-          title: "商品代码",
-          value: "goodCode",
-        },
-        {
-          title: "商品中文名称",
-          value: "goodName",
-        },
-        {
-          title: "商品英文名称",
-          value: "goodEnName",
-        },
-        {
-          title: "商品日文名称",
-          value: "goodJpName",
-        },
-      ],
       quoteColumns: [
         {
           title: "引证商标号",

@@ -91,6 +91,18 @@
                 colspan="3"
                 class="nocopy"
               >
+                <div
+                  style="
+                    display: flex;
+                    flex: flex-end;
+                    justify-content: flex-end;
+                  "
+                  v-if="caseInfo.yyzjFileSize"
+                >
+                  <span style="color: #9099a4; font-size: 12px">
+                    附件大小：{{ caseInfo.yyzjFileSize }}
+                  </span>
+                </div>
                 <el-table
                   :data="lawReasonTableData"
                   :max-height="280"

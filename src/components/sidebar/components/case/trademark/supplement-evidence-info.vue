@@ -4,8 +4,15 @@
     class="card mb-0 mt-2"
   >
     <div class="card-body">
-      <h4 class="card-title mb-2">补充证据</h4>
-
+      <div style="display: flex; justify-content: space-between">
+        <h4 class="card-title mb-2">补充证据</h4>
+        <span
+          style="color: #9099a4; font-size: 12px"
+          v-if="caseInfo.yybcFileSize"
+        >
+          附件大小：{{ caseInfo.yybcFileSize }}
+        </span>
+      </div>
       <div class="table-responsive">
         <table
           class="table table-nowrap mb-0"
@@ -39,7 +46,9 @@
                     >
                       <template v-if="normalizeMaterials(row.material).length">
                         <p
-                          v-for="(item, idx) in normalizeMaterials(row.material)"
+                          v-for="(item, idx) in normalizeMaterials(
+                            row.material,
+                          )"
                           :key="`${item.name}-${idx}`"
                           style="margin-bottom: 0"
                         >
@@ -125,12 +134,12 @@ export default {
           item.filename ||
           "-";
         const path =
-          item.address ||
-          item.url ||
-          item.materialPath ||
-          item.fileUrl ||
-          "";
-        const href = path ? (path.startsWith("http") ? path : `/ipdoc${path}`) : "";
+          item.address || item.url || item.materialPath || item.fileUrl || "";
+        const href = path
+          ? path.startsWith("http")
+            ? path
+            : `/ipdoc${path}`
+          : "";
         return { name, href };
       });
     },
