@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="card">
+    <div class="card mb-0">
       <div class="card-body">
         <h4 class="card-title mb-2">商标信息</h4>
 
@@ -471,7 +471,7 @@
               </tr>
               <tr v-if="showJoinApps">
                 <th scope="row">变更前共同申请人 :</th>
-                <td colspan="3">
+                <td colspan="3" class="nocopy">
                   <el-table
                     :data="caseInfo.joinApps"
                     :max-height="280"

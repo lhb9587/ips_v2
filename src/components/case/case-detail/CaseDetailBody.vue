@@ -49,6 +49,14 @@
             <i class="mdi mdi-alpha-a-circle-outline me-2"></i>商标信息
           </a>
           <a
+            v-if="showTrademarkApplicationInfoNav"
+            :class="componentName == 'TrademarkApplicationInfo' ? 'active' : ''"
+            @click="$emit('set-component', 'TrademarkApplicationInfo')"
+            class="leftbar-item"
+          >
+            <i class="mdi mdi-note-text-outline me-2"></i>商标申请说明
+          </a>
+          <a
             :class="componentName == 'Customer' ? 'active' : ''"
             @click="$emit('set-component', 'Customer')"
             class="leftbar-item"
@@ -548,6 +556,7 @@ import InsideBill from "@/components/sidebar/components/case/insideBill";
 import Fee from "@/components/sidebar/components/case/fee";
 import OutsideBill from "@/components/sidebar/components/case/outsideBill";
 import Trademark from "@/components/sidebar/components/case/trademark/trademark-info";
+import TrademarkApplicationInfo from "@/components/sidebar/components/case/trademark/trademark-application-info";
 import Customer from "@/components/sidebar/components/case/trademark/customer-info";
 import AliMonthlyReportInfo from "@/components/sidebar/components/case/trademark/ali-monthly-report-info";
 import ApplicantInfo from "@/components/sidebar/components/case/trademark/applicant-info";
@@ -611,6 +620,7 @@ export default {
     Fee,
     OutsideBill,
     Trademark,
+    TrademarkApplicationInfo,
     Customer,
     AliMonthlyReportInfo,
     ApplicantInfo,
@@ -689,6 +699,12 @@ export default {
   computed: {
     showAliMonthlyReportInfoNav() {
       return !!this.caseInfo.custName && this.caseInfo.custName.includes("阿里");
+    },
+    showTrademarkApplicationInfoNav() {
+      return (
+        !this.caseInfo.usAgency &&
+        this.caseInfo.caseType === "马德里商标转国内注册"
+      );
     },
     showLawReasonInfoNav() {
       return !this.caseInfo.usAgency && this.caseInfo.caseType === "异议";

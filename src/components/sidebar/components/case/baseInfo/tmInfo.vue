@@ -48,6 +48,10 @@
           </th>
           <td style="width: 40%">{{ caseInfo.appFromto }}</td>
         </tr>
+        <tr v-if="showWithdrawCaseType">
+          <th scope="row">撤回案件类型 :</th>
+          <td colspan="3">{{ caseInfo.changeType }}</td>
+        </tr>
         <tr v-if="!caseInfo.usAgency">
           <th scope="row">所属项目 :</th>
           <td>{{ caseInfo.project }}</td>
@@ -380,7 +384,7 @@
         </tr>
         <tr v-if="showNeedFamousMark">
           <th scope="row">请求驰名商标保护 :</th>
-          <td>{{ caseInfo.chiming ? "是" : "否" }}</td>
+          <td>{{ caseInfo.chiming }}</td>
           <template v-if="showAbsoluteReason">
             <th scope="row">仅涉及绝对理由 :</th>
             <td>{{ caseInfo.absoluteReason ? "是" : "否" }}</td>
@@ -677,6 +681,12 @@ export default {
     },
     showWithdrawReview() {
       return !this.caseInfo.usAgency && this.caseType === "撤回商标评审";
+    },
+    showWithdrawCaseType() {
+      return (
+        !this.caseInfo.usAgency &&
+        ["撤回商标申请", "撤回商标评审"].includes(this.caseType)
+      );
     },
     showReissueReason() {
       return (
