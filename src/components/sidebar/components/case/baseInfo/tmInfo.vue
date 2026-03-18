@@ -282,9 +282,11 @@
         </tr>
         <tr v-if="showTmCancel && isYes(caseInfo.isDlbz)">
           <th scope="row">变更证明文件类型 :</th>
-          <td>{{ caseInfo.appCertFileIsCn }}</td>
+          <td colspan="3">{{ caseInfo.appCertFileIsCn }}</td>
+        </tr>
+        <tr v-if="showTmCancel">
           <th scope="row">未交回原注册证原因 :</th>
-          <td>{{ caseInfo.reason }}</td>
+          <td colspan="3">{{ caseInfo.reason }}</td>
         </tr>
         <tr v-if="showTmCancel && caseInfo.appCertFileIsCn == '是'">
           <th scope="row">变更证明文件（中文） :</th>
