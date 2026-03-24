@@ -1087,11 +1087,11 @@ const doSubmitForm = (isSave, continueCreate = false) => {
 
   submitting.value = true; // 设置提交状态
 
-  if (contractFileList.value.length < 1) {
-    ElMessage.warning("请上传合同");
-    submitting.value = false;
-    return;
-  }
+  // if (contractFileList.value.length < 1) {
+  //   ElMessage.warning("请上传合同");
+  //   submitting.value = false;
+  //   return;
+  // }
 
   // 无论是保存还是提交，都需要验证提交人和呈批人是否为同一人
   if (contractForm.value.projectInfo.undertaker != store.state.user.userId) {

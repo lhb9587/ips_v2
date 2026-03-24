@@ -383,6 +383,7 @@
                       <span
                         class="bx bx-download"
                         style="font-size: 18px"
+                        v-if="contractInfo.sourceFile?.fileName"
                         @click="
                           downLoad(
                             contractInfo.sourceFile?.filePath,

@@ -111,6 +111,14 @@
             <i class="mdi mdi-folder-multiple-image me-2"></i>补充证据
           </a>
           <a
+            v-if="showFactReasonEvidenceNav"
+            :class="componentName == 'FactReasonEvidence' ? 'active' : ''"
+            @click="$emit('set-component', 'FactReasonEvidence')"
+            class="leftbar-item"
+          >
+            <i class="mdi mdi-file-document-edit-outline me-2"></i>事实理由和证据
+          </a>
+          <a
             v-if="showRespondentInfoNav"
             :class="componentName == 'RespondentInfo' ? 'active' : ''"
             @click="$emit('set-component', 'RespondentInfo')"
@@ -564,6 +572,7 @@ import TransferorInfo from "@/components/sidebar/components/case/trademark/trans
 import LicenseeInfo from "@/components/sidebar/components/case/trademark/licensee-info";
 import LawReasonInfo from "@/components/sidebar/components/case/trademark/law-reason-info";
 import SupplementEvidenceInfo from "@/components/sidebar/components/case/trademark/supplement-evidence-info";
+import FactReasonEvidence from "@/components/sidebar/components/case/trademark/fact-reason-evidence";
 import RespondentInfo from "@/components/sidebar/components/case/trademark/respondent-info";
 import OpponentInfo from "@/components/sidebar/components/case/trademark/opponent-info";
 import OverseasInfo from "@/components/sidebar/components/case/trademark/overseas-info";
@@ -628,6 +637,7 @@ export default {
     LicenseeInfo,
     LawReasonInfo,
     SupplementEvidenceInfo,
+    FactReasonEvidence,
     RespondentInfo,
     OpponentInfo,
     OverseasInfo,
@@ -711,6 +721,10 @@ export default {
     },
     showSupplementEvidenceInfoNav() {
       return !this.caseInfo.usAgency && this.caseInfo.caseType === "异议";
+    },
+    showFactReasonEvidenceNav() {
+      return !this.caseInfo.usAgency &&
+        ["国际注册驳回复审", "注册驳回复审"].includes(this.caseInfo.caseType);
     },
     showOpponentInfoNav() {
       return !this.caseInfo.usAgency && this.caseInfo.caseType === "异议答辩";
