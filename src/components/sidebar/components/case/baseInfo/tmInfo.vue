@@ -244,11 +244,7 @@
         </tr>
         <tr v-if="showNeedFamousMark">
           <th scope="row">请求驰名商标保护 :</th>
-          <td>{{ caseInfo.chiming }}</td>
-          <template v-if="showAbsoluteReason">
-            <th scope="row">仅涉及绝对理由 :</th>
-            <td>{{ caseInfo.absoluteReason ? "是" : "否" }}</td>
-          </template>
+          <td colspan="3">{{ caseInfo.chiming }}</td>
         </tr>
         <tr v-if="showCommonApplicationMarks">
           <th scope="row">申请书标注 :</th>
@@ -256,7 +252,7 @@
         </tr>
         <tr v-if="showCommonSupplement">
           <th scope="row">之后是否交补充材料 :</th>
-          <td>{{ caseInfo.supplement ? "是" : "否" }}</td>
+          <td colspan="3">{{ caseInfo.supplement ? "是" : "否" }}</td>
         </tr>
         <tr v-if="showOverseaEvidenceCase">
           <th scope="row">使用声明/证据类型 :</th>
@@ -359,121 +355,6 @@
         <tr v-if="showTransferCase">
           <th scope="row">转让/移转 :</th>
           <td colspan="3">{{ caseInfo.transfer }}</td>
-        </tr>
-        <tr v-if="showInvalidationApply">
-          <th scope="row">法律条款 :</th>
-          <td>{{ caseInfo.lawList }}</td>
-          <th scope="row">同意通讯地址延及本案后续程序 :</th>
-          <td>{{ caseInfo.empowerAddrCase ? "是" : "否" }}</td>
-        </tr>
-        <tr v-if="showInvalidationApply">
-          <th scope="row">事实理由 :</th>
-          <td
-            colspan="3"
-            class="nocopy"
-          >
-            <p
-              v-for="item in getAddressAndName('327')"
-              :key="item.address"
-              style="margin-bottom: 0"
-            >
-              <a
-                style="color: #409eff"
-                target="_blank"
-                :href="`/ipdoc${item.address}`"
-              >
-                {{ item.name }}
-              </a>
-            </p>
-          </td>
-        </tr>
-        <tr v-if="showInvalidationApply">
-          <th scope="row">证据目录 :</th>
-          <td
-            colspan="3"
-            class="nocopy"
-          >
-            <p
-              v-for="item in getAddressAndName('326')"
-              :key="item.address"
-              style="margin-bottom: 0"
-            >
-              <a
-                style="color: #409eff"
-                target="_blank"
-                :href="`/ipdoc${item.address}`"
-              >
-                {{ item.name }}
-              </a>
-            </p>
-          </td>
-        </tr>
-        <tr v-if="showInvalidationApply">
-          <th scope="row">证据内容 :</th>
-          <td
-            colspan="3"
-            class="nocopy"
-          >
-            <p
-              v-for="item in getAddressAndName('300012')"
-              :key="item.address"
-              style="margin-bottom: 0"
-            >
-              <a
-                style="color: #409eff"
-                target="_blank"
-                :href="`/ipdoc${item.address}`"
-              >
-                {{ item.name }}
-              </a>
-            </p>
-          </td>
-        </tr>
-        <tr v-if="showInvalidationApply">
-          <th scope="row">有关说明文件 :</th>
-          <td
-            colspan="3"
-            class="nocopy"
-          >
-            <p
-              v-for="item in getAddressAndName('1020')"
-              :key="item.address"
-              style="margin-bottom: 0"
-            >
-              <a
-                style="color: #409eff"
-                target="_blank"
-                :href="`/ipdoc${item.address}`"
-              >
-                {{ item.name }}
-              </a>
-            </p>
-          </td>
-        </tr>
-        <tr v-if="showInvalidationApply">
-          <th scope="row">正副本是否一致 :</th>
-          <td colspan="3">{{ caseInfo.justNegativeAgre ? "是" : "否" }}</td>
-        </tr>
-        <tr v-if="showInvalidationApply && !caseInfo.justNegativeAgre">
-          <th scope="row">涉密证据材料 :</th>
-          <td
-            colspan="3"
-            class="nocopy"
-          >
-            <p
-              v-for="item in getAddressAndName('301677')"
-              :key="item.address"
-              style="margin-bottom: 0"
-            >
-              <a
-                style="color: #409eff"
-                target="_blank"
-                :href="`/ipdoc${item.address}`"
-              >
-                {{ item.name }}
-              </a>
-            </p>
-          </td>
         </tr>
         <tr v-if="!caseInfo.usAgency">
           <th scope="row">案件备注 :</th>
@@ -594,16 +475,13 @@ export default {
     showNeedFamousMark() {
       return (
         !this.caseInfo.usAgency &&
-        ["异议", "无效宣告申请", "不予注册复审"].includes(this.caseType)
+        ["异议", "不予注册复审"].includes(this.caseType)
       );
-    },
-    showAbsoluteReason() {
-      return !this.caseInfo.usAgency && this.caseType === "无效宣告申请";
     },
     showCommonApplicationMarks() {
       return (
         !this.caseInfo.usAgency &&
-        !["国际注册驳回复审", "注册驳回复审"].includes(this.caseType)
+        !["国际注册驳回复审", "注册驳回复审", "无效宣告申请"].includes(this.caseType)
       );
     },
     showCommonSupplement() {
@@ -612,7 +490,6 @@ export default {
         [
           "异议",
           "异议答辩",
-          "无效宣告申请",
           "无效宣告答辩",
           "不予注册复审",
           "撤销商标复审",
@@ -635,9 +512,6 @@ export default {
     },
     showTransferCase() {
       return !this.caseInfo.usAgency && this.caseType === "转让/移转";
-    },
-    showInvalidationApply() {
-      return !this.caseInfo.usAgency && this.caseType === "无效宣告申请";
     },
   },
   methods: {

@@ -103,6 +103,14 @@
             <i class="mdi mdi-scale-balance me-2"></i>法律条款和事实理由
           </a>
           <a
+            v-if="showInvalidationLawReasonInfoNav"
+            :class="componentName == 'InvalidationLawReasonInfo' ? 'active' : ''"
+            @click="$emit('set-component', 'InvalidationLawReasonInfo')"
+            class="leftbar-item"
+          >
+            <i class="mdi mdi-scale-balance me-2"></i>法律条款和事实理由
+          </a>
+          <a
             v-if="showSupplementEvidenceInfoNav"
             :class="componentName == 'SupplementEvidenceInfo' ? 'active' : ''"
             @click="$emit('set-component', 'SupplementEvidenceInfo')"
@@ -571,6 +579,7 @@ import ApplicantInfo from "@/components/sidebar/components/case/trademark/applic
 import TransferorInfo from "@/components/sidebar/components/case/trademark/transferor-info";
 import LicenseeInfo from "@/components/sidebar/components/case/trademark/licensee-info";
 import LawReasonInfo from "@/components/sidebar/components/case/trademark/law-reason-info";
+import InvalidationLawReasonInfo from "@/components/sidebar/components/case/trademark/invalidation-law-reason-info";
 import SupplementEvidenceInfo from "@/components/sidebar/components/case/trademark/supplement-evidence-info";
 import FactReasonEvidence from "@/components/sidebar/components/case/trademark/fact-reason-evidence";
 import RespondentInfo from "@/components/sidebar/components/case/trademark/respondent-info";
@@ -636,6 +645,7 @@ export default {
     TransferorInfo,
     LicenseeInfo,
     LawReasonInfo,
+    InvalidationLawReasonInfo,
     SupplementEvidenceInfo,
     FactReasonEvidence,
     RespondentInfo,
@@ -718,6 +728,9 @@ export default {
     },
     showLawReasonInfoNav() {
       return !this.caseInfo.usAgency && this.caseInfo.caseType === "异议";
+    },
+    showInvalidationLawReasonInfoNav() {
+      return !this.caseInfo.usAgency && this.caseInfo.caseType === "无效宣告申请";
     },
     showSupplementEvidenceInfoNav() {
       return !this.caseInfo.usAgency && this.caseInfo.caseType === "异议";
