@@ -26,6 +26,23 @@ import { getAllCaseInfo } from "@/api/caseList";
 import { fetchList } from "@/api/billApi";
 import { setSidebarWidth,getSidebarWidth } from "@/utils/user";
 
+const componentMap = {
+  Cover,
+  Info,
+  Address,
+  Case,
+  Bill,
+  Contacts,
+  Activities,
+  OurSideContact,
+  Affiliates,
+  Conflict,
+  Industry,
+  Business,
+  MajorEvents,
+  BranchOffices,
+};
+
 export default {
   name: "CustomerSidebar",
   props: {
@@ -56,13 +73,13 @@ export default {
     Industry,
     Business,
     BranchOffices,
-    isFullWidth: false,
     MajorEvents,
   },
   data() {
     return {
       show: false,
       isExpanded: true,
+      isFullWidth: false,
       componentName: this.defaultComponent,
       customerInfo: {},
       customerAddrList: [],
@@ -84,6 +101,9 @@ export default {
   computed:{
     isnotPc(){
       return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    },
+    currentComponent() {
+      return componentMap[this.componentName] || Cover;
     }
   },
   created() {
@@ -196,7 +216,7 @@ export default {
       this.$emit("update:showSidebar", false);
     },
     checkComponent(name) {
-      this.componentName = name;
+      this.componentName = componentMap[name] ? name : "Cover";
     },
     handleExpanded() {
       this.isExpanded = !this.isExpanded;
@@ -501,7 +521,7 @@ export default {
               :caseCount="caseCount"
               :billCount="billCount"
               :activeList="activeList"
-              :is="componentName"
+              :is="currentComponent"
               @change-component="checkComponent"
             ></component>
           </div>

@@ -659,8 +659,7 @@ import {
   queryTaskDetail,
   querySubtaskDetail,
 } from "@/api/project";
-// import { queryCalendars, queryCalendarEvents } from "@/api/schedule";
-import { queryCalendarEvents } from "@/api/schedule";
+import { queryCalendars, queryCalendarEvents } from "@/api/schedule";
 import { statusListMap, priorityListMap } from "../project/dataMap";
 
 import dayjs from "dayjs";
@@ -772,8 +771,6 @@ const disabledDate = (date) => {
   return dayjs(date).month() !== dayjs(dateValue.value).month();
 };
 const eventClick = (info) => {
-  console.log(info, "info");
-
   const detail = info.event.extendedProps;
   selectedInfo.value = detail;
   if (detail.type === "task") {
@@ -831,6 +828,7 @@ const priorityType = computed(() => {
   }
 });
 const attendeesList = computed(() => {
+  if (!selectedInfo.value?.attendeesMap) return [];
   return Object.entries(selectedInfo.value.attendeesMap).map(
     ([email, name]) => ({
       email,
@@ -1000,19 +998,19 @@ const calendarOptions = ref({
           const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
           return `${date.format("M月D日")}周${weekdays[date.day()]}`;
         };
-
-        // 格式化时间范围
+        console.log(props,'props');
+        
+        // outlook格式化时间范围
         const formatTimeRange = () => {
           if (props.startTime && props.endTime) {
             const start = dayjs(props.startTime);
             const end = dayjs(props.endTime);
-            return `${start.format("HH:mm")} - ${end.format("HH:mm")}`;
+            return `${start.format("M月D日 HH:mm")} - ${end.format("M月D日 HH:mm")}`;
           }
           return "";
         };
 
         const tagList = props.tagList || [];
-
         // 构建标签HTML
         const tagsHtml = tagList
           .map((tag) => `<span class="event-tag">${tag.tagName}</span>`)
@@ -1028,9 +1026,13 @@ const calendarOptions = ref({
                           <div class="event-title-text">${
                             event.title || ""
                           }</div>
-                          <div class="event-tag">${
-                            props.objType === 1 ? "事项" : "子事项"
-                          }</div>
+                          ${
+                            (props.objType === 1 || props.objType === 3)
+                              ? `<div class="event-tag">${
+                                  props.objType === 1 ? "事项" : "子事项"
+                                }</div>`
+                              : ""
+                          }
                         </div>
                         <div class="event-title-attendees">
                             ${
@@ -1048,7 +1050,7 @@ const calendarOptions = ref({
                                 : ``
                             }
                             <div class="event-owner">${
-                              props.ownerName || ""
+                              props.ownerName || props.organizerEmail || ""
                             }</div>    
                         </div>
                     </div>
@@ -1059,9 +1061,13 @@ const calendarOptions = ref({
               </div>
               <div class="event-meta">
                 <div class="event-date-time">
-                  <span class="event-date">
-                    <i class="bx bx-calendar"></i> ${formatDate(event.start)}
-                  </span>
+                  ${
+                    props.startTime && props.endTime
+                      ? ""
+                      : `<span class="event-date">
+                          <i class="bx bx-calendar"></i> ${formatDate(event.start)}
+                        </span>`
+                  }
                   <span class="event-time">${formatTimeRange()}</span>
                 </div>
                 <div class="event-project">${props.projectName || ""}</div>
@@ -1092,12 +1098,13 @@ const calendarOptions = ref({
           if (props.startTime && props.endTime) {
             const start = dayjs(props.startTime);
             const end = dayjs(props.endTime);
-            return `${start.format("HH:mm")} - ${end.format("HH:mm")}`;
+            return `${start.format("M月D日 HH:mm")} - ${end.format("M月D日 HH:mm")}`;
           }
           return "";
         };
 
         const tagList = props.tagList || [];
+        
         // 构建标签HTML
         const tagsHtml = tagList
           .map((tag) => `<span class="event-tag">${tag.tagName}</span>`)
@@ -1113,19 +1120,31 @@ const calendarOptions = ref({
                           <div class="event-title-text">${
                             event.title || ""
                           }</div>
-                          <div class="event-tag">${
-                            props.objType === 1 ? "事项" : "子事项"
-                          }</div>
+                          ${
+                            (props.objType === 1 || props.objType === 3)
+                              ? `<div class="event-tag">${
+                                  props.objType === 1 ? "事项" : "子事项"
+                                }</div>`
+                              : ""
+                          }
                         </div>
                         <div class="event-title-attendees">
-                            <div class="event-tag">${
-                              priorityListMap[props.priority] || ""
-                            }</div>    
-                            <div class="event-tag">${
-                              statusListMap[props.status] || ""
-                            }</div>    
+                            ${
+                              priorityListMap[props.priority]
+                                ? `<div class="event-tag">${
+                                    priorityListMap[props.priority] || ""
+                                  }</div>`
+                                : ``
+                            }
+                            ${
+                              statusListMap[props.status]
+                                ? `<div class="event-tag">${
+                                    statusListMap[props.status] || ""
+                                  }</div>`
+                                : ``
+                            }  
                             <div class="event-owner">${
-                              props.ownerName || ""
+                              props.ownerName || props.organizerEmail || ""
                             }</div>    
                         </div>
                     </div>
@@ -1136,9 +1155,13 @@ const calendarOptions = ref({
               </div>
               <div class="event-meta">
                 <div class="event-date-time">
-                  <span class="event-date">
-                    <i class="bx bx-calendar"></i> ${formatDate(event.start)}
-                  </span>
+                  ${
+                    props.startTime && props.endTime
+                      ? ""
+                      : `<span class="event-date">
+                          <i class="bx bx-calendar"></i> ${formatDate(event.start)}
+                        </span>`
+                  }
                   <span class="event-time">${formatTimeRange()}</span>
                 </div>
                 <div class="event-project">${props.projectName || ""}</div>
@@ -1243,41 +1266,41 @@ const handleCheckboxChange = (section, changedItem) => {
 };
 
 //获取日历列表及数量
-// const fetchCalendarList = (type) => {
-//   //将startDate和endDate转换为UTC时间
-//   const params = {
-//     startTime: dayjs(startDate.value).utc().format(),
-//     endTime: dayjs(endDate.value).utc().format(),
-//   };
-//   queryCalendars(params).then((response) => {
-//     const calendars = response.data || [];
-//     if (!response.data.length) {
-//       return (outlookCalendars.value = []);
-//     }
-//     if (type === "init" && calendars.length > 0) {
-//       outlookCalendars.value = calendars.map((calendar, index) => ({
-//         id: calendar.calendarId,
-//         label: calendar.displayName,
-//         count: calendar.eventCount || 0,
-//         checked: index === 0,
-//       }));
-//     } else {
-//       // 保留之前的选中状态，变更数量
-//       outlookCalendars.value = calendars.map((calendar) => {
-//         const existing = outlookCalendars.value.find(
-//           (item) => item.id === calendar.calendarId,
-//         );
-//         return {
-//           id: calendar.calendarId,
-//           label: calendar.displayName,
-//           count: calendar.eventCount || 0,
-//           checked: existing ? existing.checked : false,
-//         };
-//       });
-//     }
-//     fetchCalendarEvents();
-//   });
-// };
+const fetchCalendarList = (type) => {
+  //将startDate和endDate转换为UTC时间
+  const params = {
+    startTime: dayjs(startDate.value).utc().format(),
+    endTime: dayjs(endDate.value).utc().format(),
+  };
+  queryCalendars(params).then((response) => {
+    const calendars = response.data || [];
+    if (!response.data.length) {
+      return (outlookCalendars.value = []);
+    }
+    if (type === "init" && calendars.length > 0) {
+      outlookCalendars.value = calendars.map((calendar, index) => ({
+        id: calendar.calendarId,
+        label: calendar.displayName,
+        count: calendar.eventCount || 0,
+        checked: index === 0,
+      }));
+    } else {
+      // 保留之前的选中状态，变更数量
+      outlookCalendars.value = calendars.map((calendar) => {
+        const existing = outlookCalendars.value.find(
+          (item) => item.id === calendar.calendarId,
+        );
+        return {
+          id: calendar.calendarId,
+          label: calendar.displayName,
+          count: calendar.eventCount || 0,
+          checked: existing ? existing.checked : false,
+        };
+      });
+    }
+    fetchCalendarEvents();
+  });
+};
 
 const fetchCalendarEvents = () => {
   if (
@@ -1301,7 +1324,7 @@ const fetchCalendarEvents = () => {
         title: item.subject,
         className: "bg-outlook text-outlook",
         start: dayjs.utc(item.startTime).local().format("YYYY-MM-DD HH:mm"),
-        end: dayjs.utc(item.endTime).local().format("YYYY-MM-DD HH:mm"),
+        // end: dayjs.utc(item.endTime).local().format("YYYY-MM-DD HH:mm"),
         extendedProps: {
           ...item,
           type: "outlook",
@@ -1426,7 +1449,7 @@ watch([startDate, endDate], () => {
   }
   fetchProjectList();
   fetchMyTasksCount();
-  // fetchCalendarList();
+  fetchCalendarList();
 });
 
 watch(
@@ -1451,7 +1474,7 @@ watch(dateValue, (newValue, oldValue) => {
 onMounted(() => {
   fetchProjectList("init");
   fetchMyTasksCount();
-  // fetchCalendarList("init");
+  fetchCalendarList("init");
   if (fullCalendar.value) {
     fullCalendar.value.getApi().updateSize();
     if (isSmallScreen.value) {
