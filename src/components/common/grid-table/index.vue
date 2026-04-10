@@ -98,6 +98,10 @@ const props = defineProps({
     type: Object,
     default: () => {},
   },
+  statusBar: {
+    type: Object,
+    default: () => {},
+  },
   detailCellRendererParams: {
     type: Object,
     default: () => {},
@@ -704,12 +708,7 @@ defineExpose({
       :enableRangeSelection="true"
       :suppressCopyRowsToClipboard="true"
       @bodyScrollEnd="onBodyScrollEnd"
-      :statusBar="{
-        // statusPanels: [
-        //   // { statusPanel: 'agTotalAndFilteredRowCountComponent', align: 'left' },
-        //   // { statusPanel: 'agSelectedRowCountComponent', align: 'left' }
-        // ],
-      }"
+      :statusBar="props.statusBar"
       :gridOptions="props.gridOptions"
       :getContextMenuItems="getContextMenuItems"
       @sortChanged="refreshEvenRowsCurrencyData"

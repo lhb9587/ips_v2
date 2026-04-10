@@ -403,7 +403,7 @@ const getFormData = () => {
         const owner = userList.value.find(
           (user) => user.value === formatData.ownerId
         );
-        formatData.ownerName = owner.label;
+        formatData.ownerName = owner ? owner.label : "管理员";
 
         //添加客户名称
         if (formatData.custId) {

@@ -336,7 +336,7 @@ const submitFormData = () => {
   }
   //添加负责人的ownerName
   const owner = userList.value.find((user) => user.value === params.ownerId);
-  params.ownerName = owner.label;
+  params.ownerName = owner ? owner.label : "管理员";
 
   //添加客户名称
   if (params.custId) {

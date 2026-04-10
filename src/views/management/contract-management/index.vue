@@ -296,6 +296,12 @@ const contextmenuList = ref([
     },
   },
 ]);
+const statusBar = ref({
+  statusPanels: [
+    { statusPanel: 'agTotalAndFilteredRowCountComponent', align: 'left' },
+    // { statusPanel: 'agSelectedRowCountComponent', align: 'left' }
+  ],
+})
 </script>
 <template>
   <Layout>
@@ -436,6 +442,7 @@ const contextmenuList = ref([
               :grid-data="gridData"
               :rowClick="toggleSidebar"
               :contextmenuList="contextmenuList"
+              :statusBar="statusBar"
             />
           </div>
           <div

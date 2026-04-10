@@ -624,6 +624,14 @@ const handleBreadcrumbClick = (item, index) => {
   }
   currentLevel.value = item.value;
 };
+watch(
+  () => projectShowType.value,
+  (value, oldValue) => {
+    if (value === "folder" && oldValue !== "folder") {
+      fetchFolderViewData();
+    }
+  }
+);
 onMounted(() => {
   // fetchFolderViewData();
 });
