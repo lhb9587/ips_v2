@@ -139,13 +139,15 @@
         :cust-id="selectedNodeInfo.id"
         v-if="selectedNodeInfo.type === 'company'"
       />
-      <project-table
+      <div
         v-else-if="
           selectedNodeInfo.type === 'project' ||
           selectedNodeInfo.type === 'folder'
         "
-        :defaultFilter="defaultFilter"
-      />
+        class="project-table-container"
+      >
+        <project-table :defaultFilter="defaultFilter" />
+      </div>
       <div
         v-else-if="
           selectedNodeInfo.type === 'case' ||
@@ -645,6 +647,7 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 24px;
   .sidebar-tree-container {
+    flex-shrink: 0;
     width: 350px; /* 根据实际需求调整宽度 */
     height: 100%;
     background-color: #fff;
@@ -744,6 +747,16 @@ onBeforeUnmount(() => {
   }
   .content-container {
     flex: 1;
+    min-width: 0;
+  }
+  .project-table-container {
+    min-width: 0;
+    overflow-x: hidden;
+
+    :deep(.card) {
+      width: 100%;
+      min-width: 0;
+    }
   }
 }
 .empty {
