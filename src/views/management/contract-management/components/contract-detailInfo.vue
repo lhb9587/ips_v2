@@ -2445,7 +2445,6 @@ const saveInfo = async (isSave) => {
     }
   } catch (error) {
     console.error("保存信息失败:", error);
-    ElMessage.error("操作失败，请稍后再试");
   } finally {
     submitting.value = false;
   }

@@ -227,6 +227,7 @@
       "text": "人力资源",
       "list": {
         "my_profile": "我的档案",
+        "my_attendance": "我的考勤",
         "personnel_management": "人员管理",
         "salary_management": "工资管理",
         "bonus_management": "奖金管理",

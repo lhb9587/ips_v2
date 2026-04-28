@@ -12,6 +12,7 @@
       popper-class="folder-popover"
       ref="folderPopRef"
       :show-after="100"
+      @show="handlePopoverShow"
     >
       <template #reference>
         <div
@@ -40,7 +41,10 @@
         </div>
       </template>
 
-      <div class="popover-content">
+      <div
+        class="popover-content"
+        v-loading="cardLoading"
+      >
         <!-- 标题 -->
         <h3 class="title">{{ custInfo.fullname }}</h3>
 
@@ -101,6 +105,7 @@
 <script>
 export default {
   name: "FolderItem",
+  emits: ["select", "dblclick", "viewDetails", "popover-show"],
   props: {
     detailInfo: {
       type: Object,
@@ -114,7 +119,13 @@ export default {
   },
   computed: {
     custInfo() {
-      return this.detailInfo.customerDto || {};
+      return {
+        ...this.detailInfo,
+        ...(this.detailInfo.customerDto || {}),
+      };
+    },
+    cardLoading() {
+      return Boolean(this.detailInfo.customerCardLoading);
     },
   },
   data() {
@@ -133,6 +144,9 @@ export default {
       }
       this.lastDoubleClickTime = now;
       this.$emit("dblclick", { title: this.title, event });
+    },
+    handlePopoverShow() {
+      this.$emit("popover-show", this.detailInfo);
     },
     viewDetails() {
       this.$refs.folderPopRef?.hide();

@@ -266,6 +266,7 @@ import {
 import { ElMessage } from "element-plus";
 import {
   queryCustomerListNew,
+  queryCustomerCardNew,
   addUserFollowCust,
   fetchList,
   addUserCustSort,
@@ -310,6 +311,8 @@ const treeVisible = ref(true);
 const isEditing = ref(false);
 const treeData = ref([]);
 const dragCopRef = ref(null);
+const customerCardCache = new Map();
+const customerCardRequestMap = new Map();
 
 const caseDomain = computed({
   get() {
@@ -330,6 +333,114 @@ const changeCustFanwei = (value) => {
   treeVisible.value = false;
   nextTick(() => {
     treeVisible.value = true;
+  });
+};
+
+const getCompanyCustId = (item = {}) => item.custId || item.id;
+
+const applyCustomerCardToCompany = (company, customerDto = {}) => {
+  if (!company) {
+    return company;
+  }
+
+  company.custId = getCompanyCustId(company);
+  company.myCaseCount = customerDto?.myCaseCount || 0;
+  company.teamCount = customerDto?.teamCount || 0;
+  company.projectSumCount = customerDto?.projectSumCount || 0;
+  company.customerDto = {
+    ...(company.customerDto || {}),
+    ...(customerDto || {}),
+  };
+  return company;
+};
+
+const syncCompanyCardToTree = (custId, customerDto = {}) => {
+  treeData.value.forEach((item) => {
+    if (getCompanyCustId(item) === custId) {
+      applyCustomerCardToCompany(item, customerDto);
+    }
+  });
+
+  const treeNode = treeRef.value?.getNode?.(custId);
+  if (treeNode?.data) {
+    applyCustomerCardToCompany(treeNode.data, customerDto);
+  }
+
+  if (
+    selectedNodeInfo.value?.type === "company" &&
+    getCompanyCustId(selectedNodeInfo.value) === custId
+  ) {
+    applyCustomerCardToCompany(selectedNodeInfo.value, customerDto);
+  }
+};
+
+const loadCustomerCardInfo = async (custId) => {
+  if (!custId) {
+    return {};
+  }
+
+  if (customerCardCache.has(custId)) {
+    return customerCardCache.get(custId) || {};
+  }
+
+  if (customerCardRequestMap.has(custId)) {
+    return customerCardRequestMap.get(custId);
+  }
+
+  const requestPromise = queryCustomerCardNew(
+    { custId },
+    { isLoading: false }
+  )
+    .then((res) => {
+      const customerDto = res.data || {};
+      customerCardCache.set(custId, customerDto);
+      syncCompanyCardToTree(custId, customerDto);
+      return customerDto;
+    })
+    .finally(() => {
+      customerCardRequestMap.delete(custId);
+    });
+
+  customerCardRequestMap.set(custId, requestPromise);
+  return requestPromise;
+};
+
+const ensureCompanyCardInfo = async (item) => {
+  const custId = getCompanyCustId(item);
+  if (!custId) {
+    return item?.customerDto || {};
+  }
+
+  if (customerCardCache.has(custId)) {
+    const customerDto = customerCardCache.get(custId) || {};
+    syncCompanyCardToTree(custId, customerDto);
+    return customerDto;
+  }
+
+  if (item.customerDto && Object.keys(item.customerDto).length) {
+    customerCardCache.set(custId, item.customerDto);
+    syncCompanyCardToTree(custId, item.customerDto);
+    return item.customerDto;
+  }
+
+  return loadCustomerCardInfo(custId).catch(() => item?.customerDto || {});
+};
+
+const normalizeCompanyList = (list = []) => {
+  return list.map((item) => {
+    const custId = getCompanyCustId(item);
+    const customerDto = customerCardCache.get(custId) ?? item.customerDto ?? {};
+    return {
+      id: custId,
+      custId,
+      label: item.fullname || item.label,
+      fullname: item.fullname || item.label,
+      type: "company",
+      myCaseCount: customerDto?.myCaseCount || 0,
+      teamCount: customerDto?.teamCount || 0,
+      projectSumCount: customerDto?.projectSumCount || 0,
+      customerDto: Object.keys(customerDto).length ? customerDto : undefined,
+    };
   });
 };
 
@@ -354,6 +465,9 @@ const handleNodeClick = (values) => {
   console.log(values, "values@@");
 
   selectedNodeInfo.value = values;
+  if (values.type === "company") {
+    ensureCompanyCardInfo(values);
+  }
   if (values.type === "folder") {
     defaultFilter.value = {
       custId: values.custId,
@@ -389,13 +503,14 @@ const getChildrenData = async (node, resolve) => {
   if (node.level === 1) {
     // 加载二级节点
     const companyId = node.data.id;
+    const customerDto = await ensureCompanyCardInfo(node.data);
     let children = [
       {
         id: Date.now().toString(36) + Math.random().toString(36).substr(2),
         custId: companyId,
         label: "我的案件",
         type: "case",
-        count: node.data.myCaseCount || 0,
+        count: customerDto.myCaseCount || node.data.myCaseCount || 0,
         leaf: true,
       },
       {
@@ -403,7 +518,7 @@ const getChildrenData = async (node, resolve) => {
         custId: companyId,
         label: "团队案件",
         type: "team_case",
-        count: node.data.teamCount || 0,
+        count: customerDto.teamCount || node.data.teamCount || 0,
         leaf: true,
       },
       {
@@ -411,7 +526,7 @@ const getChildrenData = async (node, resolve) => {
         custId: companyId,
         label: "项目",
         type: "folder",
-        count: node.data.projectSumCount || 0,
+        count: customerDto.projectSumCount || node.data.projectSumCount || 0,
       },
     ];
     resolve(children);
@@ -444,16 +559,7 @@ const loadNode = async (node, resolve) => {
     firstLoading.value = true;
 
     const res = await fetchCustomerList();
-    const companies = res.data.map((item) => {
-      return {
-        id: item.custId,
-        label: item.fullname,
-        type: "company",
-        myCaseCount: item.customerDto?.myCaseCount || 0,
-        teamCount: item.customerDto?.teamCount || 0,
-        projectSumCount: item.customerDto?.projectSumCount || 0,
-      };
-    });
+    const companies = normalizeCompanyList(res.data || []);
 
     nextTick(() => {
       if (companies?.length) {
@@ -482,16 +588,7 @@ const loadMoreData = async () => {
 
   try {
     const res = await fetchCustomerList();
-    const newCompanies = res.data.map((item) => {
-      return {
-        id: item.custId,
-        label: item.fullname,
-        type: "company",
-        myCaseCount: item.customerDto?.myCaseCount || 0,
-        teamCount: item.customerDto?.teamCount || 0,
-        projectSumCount: item.customerDto?.projectSumCount || 0,
-      };
-    });
+    const newCompanies = normalizeCompanyList(res.data || []);
 
     // 使用el-tree的append方法添加新节点
     if (treeRef.value) {
@@ -513,7 +610,6 @@ const loadMoreData = async () => {
 const fetchCustomerList = async () => {
   const params = {
     myFollow: myFollow.value,
-    carryCard: 1,
     pageSize: pageSize.value,
     pageNo: currentPage.value,
     keywords: filterText.value,

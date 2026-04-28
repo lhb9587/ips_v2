@@ -437,6 +437,13 @@ export const menuItems = [
         icon: "bx bx-user",
       },
       {
+        id: 435,
+        label: "menuitems.hrm.list.my_attendance",
+        link: "/hrm/my-attendance",
+        parentId: 56,
+        icon: "bx bx-time-five",
+      },
+      {
         id: 59,
         label: "menuitems.hrm.list.salary_management",
         link: "/workbench/hrm/payroll_management",

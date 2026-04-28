@@ -549,6 +549,7 @@ const URL_Tem = {
   queryCustomerNameIdUrl: SYS_URL + 'customer/queryCustomerNameId',
   queryCustCoverPage: SYS_URL + 'customer/queryCustCoverPage',
   queryCustomerListNew: SYS_URL + 'customer/queryCustomerListNew',
+  queryCustomerCardNew: SYS_URL + 'customer/queryCustomerCardNew',
   delUserFollowCust: SYS_URL + 'customer/delUserFollowCust',
   addUserFollowCust: SYS_URL + 'customer/addUserFollowCust',
   addUserCustSort: SYS_URL + 'customer/addUserCustSort',

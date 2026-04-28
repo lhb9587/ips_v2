@@ -1657,6 +1657,14 @@ export function queryCustomerListNew(data,config = {}) {
     ...config
   })
 }
+export function queryCustomerCardNew(data,config = {}) {
+  return request({
+    url: serviceApi.queryCustomerCardNew,
+    method: 'post',
+    data,
+    ...config
+  })
+}
 export function addUserFollowCust(data) {
   return request({
     url: serviceApi.addUserFollowCust,

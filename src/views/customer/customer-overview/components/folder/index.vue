@@ -106,6 +106,7 @@
           :key="index"
           :detailInfo="cust"
           @dblclick="handleEnterFolder(cust)"
+          @popover-show="handleCustomerPopoverShow"
           :selected="cust.custId === selectedId"
           @select="selectedId = cust.custId"
           @view-details="viewCustDetail(cust)"
@@ -227,7 +228,7 @@
 import { ref, watch, computed, nextTick, onMounted, onUnmounted } from "vue";
 import CustFolderItem from "../folder-item/cust-folder.vue";
 import ClassifiedItem from "../folder-item/classified-folder.vue";
-import { queryCustomerListNew } from "@/api/customerList";
+import { queryCustomerListNew, queryCustomerCardNew } from "@/api/customerList";
 import {
   ArrowRight,
   ArrowUpBold,
@@ -307,6 +308,8 @@ const custId = ref();
 const objId = ref(null);
 const taskType = ref(1); //1:事项 3:子事项
 const customerList = ref([]);
+const customerCardCache = new Map();
+const customerCardRequestMap = new Map();
 
 const totalText = computed(() => {
   const textMap = {
@@ -363,7 +366,110 @@ const changeCustFanwei = (value) => {
   fetchCustomerListNew();
 };
 
-const handleEnterFolder = (item) => {
+const normalizeCustomerList = (list = []) => {
+  return list.map((item) => {
+    const cachedCustomerDto = customerCardCache.get(item.custId);
+    return {
+      ...item,
+      customerDto: cachedCustomerDto ?? item.customerDto,
+      customerCardLoading: customerCardRequestMap.has(item.custId),
+    };
+  });
+};
+
+const patchCustomerInLists = (custId, updater) => {
+  const targetLists = [folderList.value, customerList.value].filter(
+    (list, index, source) => Array.isArray(list) && source.indexOf(list) === index
+  );
+
+  targetLists.forEach((list) => {
+    const targetIndex = list.findIndex((item) => item?.custId === custId);
+    if (targetIndex === -1) {
+      return;
+    }
+
+    const currentItem = list[targetIndex];
+    list.splice(targetIndex, 1, {
+      ...currentItem,
+      ...updater(currentItem),
+    });
+  });
+};
+
+const setCustomerCardLoading = (custId, loading) => {
+  patchCustomerInLists(custId, () => ({
+    customerCardLoading: loading,
+  }));
+};
+
+const mergeCustomerCardInfo = (custId, customerDto) => {
+  patchCustomerInLists(custId, (currentItem) => ({
+    customerDto: {
+      ...(currentItem.customerDto || {}),
+      ...(customerDto || {}),
+    },
+    customerCardLoading: false,
+  }));
+};
+
+const loadCustomerCardInfo = async (custId) => {
+  if (!custId) {
+    return {};
+  }
+
+  if (customerCardCache.has(custId)) {
+    return customerCardCache.get(custId) || {};
+  }
+
+  if (customerCardRequestMap.has(custId)) {
+    return customerCardRequestMap.get(custId);
+  }
+
+  setCustomerCardLoading(custId, true);
+  const requestPromise = queryCustomerCardNew(
+    { custId },
+    { isLoading: false }
+  )
+    .then((res) => {
+      const customerDto = res.data || {};
+      customerCardCache.set(custId, customerDto);
+      mergeCustomerCardInfo(custId, customerDto);
+      return customerDto;
+    })
+    .catch((error) => {
+      setCustomerCardLoading(custId, false);
+      throw error;
+    })
+    .finally(() => {
+      customerCardRequestMap.delete(custId);
+    });
+
+  customerCardRequestMap.set(custId, requestPromise);
+  return requestPromise;
+};
+
+const ensureCustomerCardInfo = async (item) => {
+  if (!item?.custId) {
+    return item?.customerDto || {};
+  }
+
+  if (customerCardCache.has(item.custId)) {
+    return customerCardCache.get(item.custId) || {};
+  }
+
+  if (item.customerDto && Object.keys(item.customerDto).length) {
+    customerCardCache.set(item.custId, item.customerDto);
+    return item.customerDto;
+  }
+
+  return loadCustomerCardInfo(item.custId).catch(() => item?.customerDto || {});
+};
+
+const handleCustomerPopoverShow = (item) => {
+  ensureCustomerCardInfo(item);
+};
+
+const handleEnterFolder = async (item) => {
   let nextLevel;
   if (currentLevel.value === "classified") {
     nextLevel = levelOptions[item.value];
@@ -376,7 +482,10 @@ const handleEnterFolder = (item) => {
   if (!nextLevel) {
     return;
   }
-  const detail = item.customerDto || {};
+  const detail =
+    currentLevel.value === "cust"
+      ? await ensureCustomerCardInfo(item)
+      : item.customerDto || {};
   currentInfo.value = detail;
   currentLevel.value = nextLevel;
   breadcrumbList.value.push({
@@ -536,23 +645,23 @@ const fetchCustomerListNew = (reset = true) => {
 
   const params = {
     myFollow: myFollow.value,
-    carryCard: 1,
     pageSize: 50,
     pageNo: currentPage.value,
     keywords: inputValue.value,
   };
   queryCustomerListNew(params, { isLoading: true })
     .then((res) => {
+      const customerData = normalizeCustomerList(res.data || []);
       if (reset) {
-        folderList.value = res.data;
-        customerList.value = res.data;
+        folderList.value = customerData;
+        customerList.value = customerData;
       } else {
-        folderList.value = [...folderList.value, ...res.data];
-        customerList.value = [...customerList.value, ...res.data];
+        folderList.value = [...folderList.value, ...customerData];
+        customerList.value = [...customerList.value, ...customerData];
       }
 
       // 判断是否还有更多数据
-      if (res.data.length < 50) {
+      if (customerData.length < 50) {
         currentHasMore.value = false;
       } else {
         currentPage.value += 1;

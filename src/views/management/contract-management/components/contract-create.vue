@@ -1228,10 +1228,6 @@ const doSubmitForm = (isSave, continueCreate = false) => {
         }
       }
     })
-    .catch((error) => {
-      console.error("保存合同出错:", error);
-      ElMessage.error("保存失败，请稍后再试");
-    })
     .finally(() => {
       submitting.value = false; // 无论成功失败，都重置提交状态
     });
@@ -1253,6 +1249,11 @@ const submitForm = (isSave, continueCreate = false) => {
   // 根据 isSave 判断是否需要校验
   if (isSave === 2) {
     // 提交时需要校验
+    if (contractFileList.value.length < 1) {
+      ElMessage.warning("请上传合同");
+      submitting.value = false;
+      return;
+    }
     contractFormRef.value.validate((valid) => {
       if (valid) {
         debouncedSubmit(isSave, continueCreate);
