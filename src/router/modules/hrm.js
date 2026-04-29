@@ -29,6 +29,19 @@ const hrmRouter = [
         component: () => import("@/views/hrm/my-attendance/index"),
       },
       {
+        path: "/hrm/my-attendance/leave-application",
+        name: "my-leave-application",
+        meta: { title: "我要请假", authRequired: true },
+        component: () =>
+          import("@/views/hrm/my-attendance/leave-application/index"),
+      },
+      {
+        path: "/hrm/my-attendance/leave-list",
+        name: "my-leave-list",
+        meta: { title: "请假列表", authRequired: true },
+        component: () => import("@/views/hrm/my-attendance/leave-list/index"),
+      },
+      {
         path: "/hrm/staff-management",
         name: "staff-management",
         meta: { title: "人员管理", authRequired: true },

@@ -1,5 +1,8 @@
 <script setup>
+import { useRouter } from "vue-router";
 import Layout from "@/layouts/main";
+
+const router = useRouter();
 
 const profileItems = [
   { label: "手机", value: "17554194174" },
@@ -9,7 +12,11 @@ const profileItems = [
 
 const quickEntries = [
   { label: "我的个人档案", icon: "bx bx-user" },
-  { label: "我要请假", icon: "bx bx-file" },
+  {
+    label: "我要请假",
+    icon: "bx bx-file",
+    routeName: "my-leave-application",
+  },
   { label: "我要加班", icon: "bx bx-briefcase-alt-2" },
   { label: "我要出差", icon: "bx bx-briefcase" },
   { label: "我要补卡", icon: "bx bx-id-card" },
@@ -27,6 +34,12 @@ const salaryChanges = [
   { label: "累计基本减除费用", value: "↑ 100%" },
   { label: "累计已预扣预缴", value: "↑ 100%" },
 ];
+
+const handleQuickEntry = (item) => {
+  if (item.routeName) {
+    router.push({ name: item.routeName });
+  }
+};
 </script>
 
 <template>
@@ -100,6 +113,8 @@ const salaryChanges = [
                 :key="item.label"
                 type="button"
                 class="shortcut-item"
+                :class="{ 'shortcut-item--active': item.routeName }"
+                @click="handleQuickEntry(item)"
               >
                 <span class="shortcut-item__icon">
                   <i :class="item.icon"></i>
@@ -526,6 +541,15 @@ const salaryChanges = [
   cursor: default;
 }
 
+.shortcut-item--active {
+  cursor: pointer;
+}
+
+.shortcut-item--active:hover .shortcut-item__icon {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(71, 108, 214, 0.16);
+}
+
 .shortcut-item__icon {
   width: 54px;
   height: 54px;
@@ -534,6 +558,7 @@ const salaryChanges = [
   align-items: center;
   justify-content: center;
   font-size: 26px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .shortcut-item:nth-child(6n + 1) .shortcut-item__icon {
