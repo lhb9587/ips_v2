@@ -694,7 +694,15 @@ onUnmounted(() => {
       >
         <div class="leave-detail-sidebar__header">
           <div>
-            <h2>请假详情</h2>
+            <div class="leave-detail-sidebar__title-line">
+              <h2>请假详情</h2>
+              <el-button
+                type="primary"
+                plain
+              >
+                审批
+              </el-button>
+            </div>
             <p>{{ currentDetail.billNo }}</p>
           </div>
           <div class="leave-detail-sidebar__actions">
@@ -967,6 +975,12 @@ onUnmounted(() => {
   color: #122448;
   font-size: 18px;
   font-weight: 600;
+}
+
+.leave-detail-sidebar__title-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .leave-detail-sidebar__header p {
