@@ -66,6 +66,10 @@ const props = defineProps({
     type: [Number, String],
     default: null,
   },
+  minWidth: {
+    type: [Number, String],
+    default: null,
+  },
   resizable: {
     type: Boolean,
     default: true,
@@ -85,6 +89,26 @@ const initialWidth = ref(0);
 
 const getOffcanvasElement = () =>
   document.querySelector(".offcanvas-end")
+
+const getNumericWidth = (value) => {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    if (/^\d+(\.\d+)?$/.test(normalized)) {
+      return Number(normalized);
+    }
+    if (/^\d+(\.\d+)?px$/.test(normalized)) {
+      return Number(normalized.replace("px", ""));
+    }
+  }
+  return null;
+};
+
+const getMinWidth = () => {
+  const customMinWidth = getNumericWidth(props.minWidth);
+  if (customMinWidth) return customMinWidth;
+  return Math.max(window.innerWidth * 0.7, 400);
+};
 
 const applyWidth = (value) => {
   const offcanvas = getOffcanvasElement();
@@ -115,7 +139,7 @@ const handleDragStart = (e) => {
 const handleDrag = (e) => {
   if (!dragging.value) return;
   const dx = startX.value - e.clientX;
-  const minWidth = Math.max(window.innerWidth * 0.7, 400);
+  const minWidth = getMinWidth();
   const maxWidth = window.innerWidth - 70;
   const newWidth = Math.min(
     Math.max(currentWidth.value + dx, minWidth),

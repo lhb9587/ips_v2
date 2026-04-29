@@ -430,6 +430,13 @@ export const menuItems = [
         icon: "fas fa-address-book",
       },
       {
+        id: 436,
+        label: "假勤管理",
+        link: "/hrm/attendance-management",
+        parentId: 56,
+        icon: "bx bx-calendar-event",
+      },
+      {
         id: 57,
         label: "menuitems.hrm.list.my_profile",
         link: "/workbench/hrm/my_profile",
