@@ -54,6 +54,27 @@ const hrmRouter = [
         component: () => import("@/views/hrm/my-attendance/leave-detail/index"),
       },
       {
+        path: "/hrm/my-attendance/supplement-application",
+        name: "my-supplement-application",
+        meta: { title: "我要补卡", authRequired: true },
+        component: () =>
+          import("@/views/hrm/my-attendance/supplement-application/index"),
+      },
+      {
+        path: "/hrm/my-attendance/supplement-list",
+        name: "my-supplement-list",
+        meta: { title: "补签卡列表", authRequired: true },
+        component: () =>
+          import("@/views/hrm/my-attendance/supplement-list/index"),
+      },
+      {
+        path: "/hrm/my-attendance/supplement-detail/:billNo?",
+        name: "my-supplement-detail",
+        meta: { title: "补签详情", authRequired: true },
+        component: () =>
+          import("@/views/hrm/my-attendance/supplement-detail/index"),
+      },
+      {
         path: "/hrm/staff-management",
         name: "staff-management",
         meta: { title: "人员管理", authRequired: true },

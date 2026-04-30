@@ -19,7 +19,11 @@ const quickEntries = [
   },
   { label: "我要加班", icon: "bx bx-briefcase-alt-2" },
   { label: "我要出差", icon: "bx bx-briefcase" },
-  { label: "我要补卡", icon: "bx bx-id-card" },
+  {
+    label: "我要补卡",
+    icon: "bx bx-id-card",
+    routeName: "my-supplement-application",
+  },
   { label: "我的工资条", icon: "bx bx-receipt" },
 ];
 

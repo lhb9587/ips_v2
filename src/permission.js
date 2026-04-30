@@ -13,7 +13,7 @@ NProgress.configure({ showSpinner: false }) // NProgress Configuration
 const whiteList = ['/login','/forgot-password','/excel_preview'] // 设置白名单
 
 //由于会出现动态路由，不能使用path，取路由的name作为白名单的key
-const allowRouterList = ['personal-profile','contract-detail','project-detail','task-detail','subtask-detail','case-detail','leave-quota-management','leave-management','attendance-profile','my-leave-application','my-leave-list','my-leave-detail']
+const allowRouterList = ['personal-profile','contract-detail','project-detail','task-detail','subtask-detail','case-detail','leave-quota-management','leave-management','attendance-profile','my-leave-application','my-leave-list','my-leave-detail','my-supplement-application','my-supplement-list','my-supplement-detail']
 // 记录路由
 // let hasRoles = true
 
