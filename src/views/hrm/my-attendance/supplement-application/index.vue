@@ -97,22 +97,6 @@ const form = reactive({
   ],
 });
 
-const submittedCount = computed(
-  () => records.value.filter((item) => item.status !== "未提交").length,
-);
-
-const draftCount = computed(
-  () => records.value.filter((item) => item.status === "未提交").length,
-);
-
-const lastSupplementTime = computed(() => {
-  const firstItem = records.value[0]?.items?.[0];
-  if (!firstItem) {
-    return "--";
-  }
-  return `${firstItem.attendanceDate} ${firstItem.timePoint}`;
-});
-
 const currentItemSummary = computed(() => {
   const filledItems = form.items.filter(
     (item) => item.attendanceDate || item.timePoint || item.type || item.reason,
@@ -232,23 +216,6 @@ const goSupplementList = () => {
           </el-button>
         </div>
       </div>
-
-      <section class="notice-panel">
-        <div class="notice-card">
-          <span>本月已提交补签申请次数</span>
-          <strong>{{ submittedCount }} 次</strong>
-        </div>
-        <div class="notice-card">
-          <span>当前草稿数量</span>
-          <strong>{{ draftCount }} 条</strong>
-        </div>
-        <div class="notice-card notice-card--link">
-          <span>上一次补签时间</span>
-          <button type="button" @click="goSupplementList">
-            {{ lastSupplementTime }}
-          </button>
-        </div>
-      </section>
 
       <div class="application-layout">
         <main class="application-main">
@@ -386,7 +353,6 @@ const goSupplementList = () => {
 }
 
 .page-toolbar,
-.notice-panel,
 .info-section {
   border: 1px solid #dce5f1;
   border-radius: 4px;
@@ -418,49 +384,6 @@ const goSupplementList = () => {
   display: flex;
   gap: 12px;
   flex-shrink: 0;
-}
-
-.notice-panel {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 14px;
-  padding: 16px;
-}
-
-.notice-card {
-  min-height: 76px;
-  padding: 16px;
-  border: 1px solid #d7e1ef;
-  border-radius: 8px;
-  background: linear-gradient(180deg, #f8fbff 0%, #eef3fb 100%);
-}
-
-.notice-card span {
-  display: block;
-  color: #536783;
-  font-size: 13px;
-}
-
-.notice-card strong {
-  display: block;
-  margin-top: 10px;
-  color: #092247;
-  font-size: 20px;
-  line-height: 1;
-}
-
-.notice-card--link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.notice-card--link button {
-  border: 0;
-  background: transparent;
-  color: #4679f5;
-  cursor: pointer;
 }
 
 .application-layout {
@@ -594,8 +517,7 @@ const goSupplementList = () => {
 }
 
 @media (max-width: 1200px) {
-  .application-layout,
-  .notice-panel {
+  .application-layout {
     grid-template-columns: 1fr;
   }
 
