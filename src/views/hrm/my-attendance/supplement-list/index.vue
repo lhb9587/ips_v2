@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { ElMessage } from "element-plus";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
@@ -267,13 +267,6 @@ const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
 };
 
-const resetSearch = () => {
-  diminput.value = "";
-  fuzzySearch();
-};
-
-const getSelectedRows = () => gridRef.value?.getRowList?.() || [];
-
 const goCreate = () => {
   router.push({ name: "my-supplement-application" });
 };
@@ -313,72 +306,6 @@ const openDetail = (params) => {
   detailDrawerVisible.value = false;
   sessionStorage.setItem("mySupplementCurrentDetail", JSON.stringify(record));
   router.push({ name: "my-supplement-detail", params: { billNo: record.billNo } });
-};
-
-const handleSubmitSelected = () => {
-  const selectedRows = getSelectedRows();
-  if (!selectedRows.length) {
-    return ElMessage.warning("请先选择需要提交的补签单");
-  }
-
-  let changedCount = 0;
-  selectedRows.forEach((row) => {
-    const record = records.value.find((item) => item.billNo === row.billNo);
-    if (record && record.status === "未提交") {
-      record.status = "审批中";
-      record.approver = "李经理";
-      record.approvalComment = "已提交，等待部门负责人审批";
-      changedCount += 1;
-    }
-  });
-
-  if (!changedCount) {
-    return ElMessage.warning("当前选择的补签单无需提交");
-  }
-
-  persistRecords();
-  ElMessage.success(`已提交 ${changedCount} 条补签单`);
-};
-
-const handleDiscardSelected = () => {
-  const selectedRows = getSelectedRows();
-  if (!selectedRows.length) {
-    return ElMessage.warning("请先选择需要废弃的补签单");
-  }
-
-  ElMessageBox.confirm("确定要废弃选中的补签单吗？", "废弃确认", {
-    confirmButtonText: "确定",
-    cancelButtonText: "取消",
-    type: "warning",
-  }).then(() => {
-    selectedRows.forEach((row) => {
-      const record = records.value.find((item) => item.billNo === row.billNo);
-      if (record && record.status !== "已通过") {
-        record.status = "已废弃";
-        record.approvalComment = "申请人已废弃该补签单";
-      }
-    });
-    persistRecords();
-    ElMessage.success("补签单已废弃");
-  });
-};
-
-const handleDeleteSelected = () => {
-  const selectedRows = getSelectedRows();
-  if (!selectedRows.length) {
-    return ElMessage.warning("请先选择需要删除的补签单");
-  }
-
-  ElMessageBox.confirm("确定要删除选中的补签单吗？删除后不可恢复。", "删除确认", {
-    confirmButtonText: "确定",
-    cancelButtonText: "取消",
-    type: "warning",
-  }).then(() => {
-    const billNos = selectedRows.map((item) => item.billNo);
-    records.value = records.value.filter((item) => !billNos.includes(item.billNo));
-    persistRecords();
-    ElMessage.success("补签单已删除");
-  });
 };
 
 const handlePagination = () => {};
@@ -583,27 +510,9 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
-                  <el-button @click="resetSearch">重置</el-button>
                   <el-button type="primary" @click="goCreate">
                     新建补签申请
                   </el-button>
-                  <el-button @click="handleSubmitSelected">提交</el-button>
-                  <el-dropdown>
-                    <el-button>
-                      更多
-                      <i class="mdi mdi-chevron-down ms-1"></i>
-                    </el-button>
-                    <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item @click="handleDiscardSelected">
-                          废弃
-                        </el-dropdown-item>
-                        <el-dropdown-item @click="handleDeleteSelected">
-                          删除
-                        </el-dropdown-item>
-                      </el-dropdown-menu>
-                    </template>
-                  </el-dropdown>
                 </div>
               </span>
               <div class="d-flex gap-2">
