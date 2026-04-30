@@ -1,12 +1,36 @@
 <script setup>
-import { computed, reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useStore } from "vuex";
 import { ElMessage, ElMessageBox } from "element-plus";
 import Layout from "@/layouts/main";
+import GridView from "@/components/common/grid-table/index.vue";
+import TopListTool from "@/components/common/top-list-tool/index.vue";
+import Pagination from "@/components/common/pagination/index.vue";
+import { saveTableConfig } from "@/utils";
 
+const route = useRoute();
 const router = useRouter();
+const store = useStore();
 
 const storageKey = "mySupplementCardRecords";
+const gridName = "mySupplementCardListGrid";
+
+const columnOptions = [
+  { title: "序号", value: "sid" },
+  { title: "单据编号", value: "billNo" },
+  { title: "姓名", value: "applicant" },
+  { title: "员工编码", value: "employeeCode" },
+  { title: "申请日期", value: "applyDate" },
+  { title: "考勤日期", value: "attendanceDate" },
+  { title: "补签类型", value: "type" },
+  { title: "补签时间点", value: "timePoint" },
+  { title: "补签原因", value: "reason" },
+  { title: "子项数", value: "itemCount" },
+  { title: "单据状态", value: "status" },
+  { title: "办理人", value: "approver" },
+  { title: "备注", value: "remark" },
+];
 
 const fallbackRecords = [
   {
@@ -64,41 +88,120 @@ const readRecords = () => {
   }
 };
 
-const records = ref(readRecords());
-const selectedRows = ref([]);
+const persistRecords = () => {
+  localStorage.setItem(storageKey, JSON.stringify(records.value));
+};
 
-const searchForm = reactive({
-  keyword: "",
+const records = ref(readRecords());
+const columnList = ref([...columnOptions]);
+const activeClass = ref([]);
+const rowHeight = ref(40);
+const isFull = ref(false);
+const boxRef = ref(null);
+const gridRef = ref(null);
+const diminput = ref("");
+const formInline = reactive({
   status: "",
   dateRange: [],
 });
 
 const statusOptions = ["未提交", "审批中", "已通过", "已废弃"];
+const gridOptions = {
+  rowMultiSelectWithClick: true,
+};
+const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
 
-const persistRecords = () => {
-  localStorage.setItem(storageKey, JSON.stringify(records.value));
+const setColumn = (list) => {
+  if (!Array.isArray(list) || list.length === 0) {
+    columnList.value = [...columnOptions];
+    return;
+  }
+  const validColumns = list.filter((item) =>
+    columnOptions.some((column) => column.value === item.value),
+  );
+  columnList.value = validColumns.length > 0 ? validColumns : [...columnOptions];
 };
 
-const filteredRecords = computed(() => {
-  return records.value.filter((record) => {
-    const firstItem = record.items?.[0] || {};
-    const keywordMatched =
-      !searchForm.keyword ||
-      [record.billNo, record.applicant, record.employeeCode, firstItem.reason]
-        .filter(Boolean)
-        .some((value) => value.includes(searchForm.keyword));
-    const statusMatched = !searchForm.status || record.status === searchForm.status;
-    const dateMatched =
-      !searchForm.dateRange?.length ||
-      (record.applyDate >= searchForm.dateRange[0] &&
-        record.applyDate <= searchForm.dateRange[1]);
+const fetchLocalPageSize = () => {
+  const pageSizeData = JSON.parse(localStorage.getItem("pageSize")) || [];
+  const savedData = pageSizeData.find((item) => item.name === route.name);
+  return savedData ? savedData.pageSize : 50;
+};
 
-    return keywordMatched && statusMatched && dateMatched;
-  });
+const listQuery = ref({
+  pageNo: 1,
+  pageSize: fetchLocalPageSize(),
 });
 
-const tableRows = computed(() =>
-  filteredRecords.value.map((record) => {
+const changeBorder = (newVal) => {
+  if (newVal) {
+    if (!activeClass.value.includes("Borderline")) {
+      activeClass.value.push("Borderline");
+    }
+  } else {
+    activeClass.value = activeClass.value.filter((item) => item !== "Borderline");
+  }
+  saveTableConfig("isBorderline", gridName, newVal);
+};
+
+const changeRowStyle = (newVal) => {
+  if (newVal) {
+    if (!activeClass.value.includes("zebra")) {
+      activeClass.value.push("zebra");
+    }
+  } else {
+    activeClass.value = activeClass.value.filter((item) => item !== "zebra");
+  }
+  saveTableConfig("iszebra", gridName, newVal);
+};
+
+const changeRowHeight = (height) => {
+  rowHeight.value = height;
+  saveTableConfig("rowHeight", gridName, height);
+};
+
+const calculateGridHeight = () => {
+  const layout = store.state.layout.layoutType;
+  const windowHeight = document.documentElement.clientHeight;
+  if (layout === "vertical") {
+    return windowHeight - 260;
+  }
+  return windowHeight - 306;
+};
+
+const gridHeight = ref(calculateGridHeight());
+
+watch(
+  () => store.state.layout.layoutType,
+  () => {
+    gridHeight.value = calculateGridHeight();
+  },
+);
+
+const changeScreenSize = () => {
+  const element = document.querySelector(".box");
+  if (!document.fullscreenElement) {
+    element.requestFullscreen().then(() => {
+      setTimeout(() => {
+        gridHeight.value = document.documentElement.clientHeight - 155;
+      }, 100);
+    });
+  } else {
+    document.exitFullscreen().then(() => {
+      gridHeight.value = calculateGridHeight();
+    });
+  }
+};
+
+const handleFullScreenChange = () => {
+  isFull.value = !isFull.value;
+  if (document.fullscreenElement !== boxRef.value) {
+    gridHeight.value = calculateGridHeight();
+  }
+};
+
+const listRows = computed(() =>
+  records.value.map((record) => {
     const firstItem = record.items?.[0] || {};
     return {
       ...record,
@@ -106,42 +209,92 @@ const tableRows = computed(() =>
       type: firstItem.type || "--",
       timePoint: firstItem.timePoint || "--",
       reason: firstItem.reason || "--",
+      remark: firstItem.remark || "--",
       itemCount: record.items?.length || 0,
     };
   }),
 );
 
-const statusTagType = (status) => {
-  const map = {
-    未提交: "info",
-    审批中: "warning",
-    已通过: "success",
-    已废弃: "danger",
-  };
-  return map[status] || "info";
+const filteredRows = computed(() => {
+  const keyword = diminput.value.trim().toLowerCase();
+  return listRows.value.filter((record) => {
+    const keywordMatched =
+      !keyword ||
+      [
+        record.billNo,
+        record.applicant,
+        record.employeeCode,
+        record.applyDate,
+        record.attendanceDate,
+        record.type,
+        record.timePoint,
+        record.reason,
+        record.status,
+        record.approver,
+        record.remark,
+      ].some((field) => String(field || "").toLowerCase().includes(keyword));
+    const statusMatched = !formInline.status || record.status === formInline.status;
+    const dateMatched =
+      !formInline.dateRange?.length ||
+      (record.applyDate >= formInline.dateRange[0] &&
+        record.applyDate <= formInline.dateRange[1]);
+
+    return keywordMatched && statusMatched && dateMatched;
+  });
+});
+
+const total = computed(() => filteredRows.value.length);
+
+const gridData = computed(() => {
+  const start = (listQuery.value.pageNo - 1) * listQuery.value.pageSize;
+  const end = start + listQuery.value.pageSize;
+  return filteredRows.value.slice(start, end).map((item, index) => ({
+    ...item,
+    sid: start + index,
+  }));
+});
+
+watch(total, (value) => {
+  const maxPage = Math.max(Math.ceil(value / listQuery.value.pageSize), 1);
+  if (listQuery.value.pageNo > maxPage) {
+    listQuery.value.pageNo = maxPage;
+  }
+});
+
+const fuzzySearch = () => {
+  listQuery.value.pageNo = 1;
 };
 
-const handleSelectionChange = (rows) => {
-  selectedRows.value = rows;
+const resetSearch = () => {
+  diminput.value = "";
+  formInline.status = "";
+  formInline.dateRange = [];
+  fuzzySearch();
 };
+
+const getSelectedRows = () => gridRef.value?.getRowList?.() || [];
 
 const goCreate = () => {
   router.push({ name: "my-supplement-application" });
 };
 
-const openDetail = (record) => {
+const openDetail = (params) => {
+  const record = params?.data || params;
+  if (!record?.billNo) {
+    return;
+  }
   sessionStorage.setItem("mySupplementCurrentDetail", JSON.stringify(record));
   router.push({ name: "my-supplement-detail", params: { billNo: record.billNo } });
 };
 
 const handleSubmitSelected = () => {
-  if (!selectedRows.value.length) {
-    ElMessage.warning("请先选择需要提交的补签单");
-    return;
+  const selectedRows = getSelectedRows();
+  if (!selectedRows.length) {
+    return ElMessage.warning("请先选择需要提交的补签单");
   }
 
   let changedCount = 0;
-  selectedRows.value.forEach((row) => {
+  selectedRows.forEach((row) => {
     const record = records.value.find((item) => item.billNo === row.billNo);
     if (record && record.status === "未提交") {
       record.status = "审批中";
@@ -152,8 +305,7 @@ const handleSubmitSelected = () => {
   });
 
   if (!changedCount) {
-    ElMessage.warning("当前选择的补签单无需提交");
-    return;
+    return ElMessage.warning("当前选择的补签单无需提交");
   }
 
   persistRecords();
@@ -161,9 +313,9 @@ const handleSubmitSelected = () => {
 };
 
 const handleDiscardSelected = () => {
-  if (!selectedRows.value.length) {
-    ElMessage.warning("请先选择需要废弃的补签单");
-    return;
+  const selectedRows = getSelectedRows();
+  if (!selectedRows.length) {
+    return ElMessage.warning("请先选择需要废弃的补签单");
   }
 
   ElMessageBox.confirm("确定要废弃选中的补签单吗？", "废弃确认", {
@@ -171,7 +323,7 @@ const handleDiscardSelected = () => {
     cancelButtonText: "取消",
     type: "warning",
   }).then(() => {
-    selectedRows.value.forEach((row) => {
+    selectedRows.forEach((row) => {
       const record = records.value.find((item) => item.billNo === row.billNo);
       if (record && record.status !== "已通过") {
         record.status = "已废弃";
@@ -184,9 +336,9 @@ const handleDiscardSelected = () => {
 };
 
 const handleDeleteSelected = () => {
-  if (!selectedRows.value.length) {
-    ElMessage.warning("请先选择需要删除的补签单");
-    return;
+  const selectedRows = getSelectedRows();
+  if (!selectedRows.length) {
+    return ElMessage.warning("请先选择需要删除的补签单");
   }
 
   ElMessageBox.confirm("确定要删除选中的补签单吗？删除后不可恢复。", "删除确认", {
@@ -194,193 +346,215 @@ const handleDeleteSelected = () => {
     cancelButtonText: "取消",
     type: "warning",
   }).then(() => {
-    const billNos = selectedRows.value.map((item) => item.billNo);
+    const billNos = selectedRows.map((item) => item.billNo);
     records.value = records.value.filter((item) => !billNos.includes(item.billNo));
     persistRecords();
-    selectedRows.value = [];
     ElMessage.success("补签单已删除");
   });
 };
+
+const handlePagination = () => {};
+
+const cellRenderer = (params) => {
+  const value = params.value || params.value === 0 ? params.value : "";
+  if (params.colDef.field === "sid") {
+    return params.value || params.value === 0 ? Number(params.value) + 1 : "";
+  }
+  if (params.colDef.field === "status") {
+    const classMap = {
+      未提交: "status-tag status-tag--info",
+      审批中: "status-tag status-tag--warning",
+      已通过: "status-tag status-tag--success",
+      已废弃: "status-tag status-tag--danger",
+    };
+    return `<span class="${classMap[value] || "status-tag"}" title="${value}">${value}</span>`;
+  }
+  return `<span title="${value}">${value}</span>`;
+};
+
+onMounted(() => {
+  document.addEventListener("fullscreenchange", handleFullScreenChange);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("fullscreenchange", handleFullScreenChange);
+});
 </script>
 
 <template>
   <Layout>
-    <div class="supplement-list-page">
-      <div class="page-toolbar">
-        <div>
-          <h2>补签卡列表</h2>
-          <p>展示本人保存的草稿和已提交补签单据，双击记录可查看详情。</p>
-        </div>
-        <div class="page-toolbar__actions">
-          <el-button type="primary" @click="goCreate">新建补签申请</el-button>
-          <el-button @click="handleSubmitSelected">提交</el-button>
-          <el-button @click="handleDiscardSelected">废弃</el-button>
-          <el-button type="danger" plain @click="handleDeleteSelected">
-            删除
-          </el-button>
+    <div class="row">
+      <div class="col-lg-12">
+        <div
+          class="card box"
+          ref="boxRef"
+        >
+          <div
+            class="card-body"
+            style="padding-bottom: 10px"
+          >
+            <div class="d-flex align-items-center">
+              <span class="mb-0 flex-grow-1">
+                <div class="d-flex supplement-toolbar">
+                  <el-input
+                    v-model="diminput"
+                    style="width: 220px"
+                    placeholder="搜索..."
+                    clearable
+                    class="top-search"
+                    @keyup.enter="fuzzySearch"
+                  >
+                    <template #prepend>
+                      <el-button @click="fuzzySearch">
+                        <i class="bx bx-search-alt"></i>
+                      </el-button>
+                    </template>
+                  </el-input>
+                  <el-select
+                    v-model="formInline.status"
+                    clearable
+                    placeholder="单据状态"
+                    style="width: 140px"
+                    @change="fuzzySearch"
+                  >
+                    <el-option
+                      v-for="status in statusOptions"
+                      :key="status"
+                      :label="status"
+                      :value="status"
+                    />
+                  </el-select>
+                  <el-date-picker
+                    v-model="formInline.dateRange"
+                    type="daterange"
+                    value-format="YYYY-MM-DD"
+                    start-placeholder="申请开始"
+                    end-placeholder="申请结束"
+                    style="width: 260px"
+                    @change="fuzzySearch"
+                  />
+                  <el-button @click="resetSearch">重置</el-button>
+                  <el-button type="primary" @click="goCreate">
+                    新建补签申请
+                  </el-button>
+                  <el-button @click="handleSubmitSelected">提交</el-button>
+                  <el-dropdown>
+                    <el-button>
+                      更多
+                      <i class="mdi mdi-chevron-down ms-1"></i>
+                    </el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item @click="handleDiscardSelected">
+                          废弃
+                        </el-dropdown-item>
+                        <el-dropdown-item @click="handleDeleteSelected">
+                          删除
+                        </el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
+              </span>
+              <div class="d-flex gap-2">
+                <TopListTool
+                  :gridName="gridName"
+                  @changeBorder="changeBorder"
+                  @changeRowStyle="changeRowStyle"
+                  @changeRowHeight="changeRowHeight"
+                  @changeScreenSize="changeScreenSize"
+                  @setColumn="setColumn"
+                  :queryList="{
+                    ...listQuery,
+                    status: formInline.status,
+                    dateRange: formInline.dateRange,
+                    searchWord: diminput,
+                  }"
+                  :isFull="isFull"
+                >
+                </TopListTool>
+              </div>
+            </div>
+          </div>
+          <div style="padding: 0 10px">
+            <GridView
+              ref="gridRef"
+              :gridName="gridName"
+              :height="gridHeight"
+              :rowHeight="rowHeight"
+              :columnDefs="columnList"
+              :grid-data="gridData"
+              :activeClass="activeClass"
+              :cellRenderer="cellRenderer"
+              :gridOptions="gridOptions"
+              :rowDoubleClicked="openDetail"
+            />
+          </div>
+          <div
+            v-if="total > 0"
+            class="card-body border-bottom"
+            style="padding-top: 10px"
+          >
+            <Pagination
+              :total="total"
+              v-model:page="listQuery.pageNo"
+              v-model:limit="listQuery.pageSize"
+              :pageSizes="pageSizesList"
+              @pagination="handlePagination"
+            ></Pagination>
+          </div>
         </div>
       </div>
-
-      <section class="search-panel">
-        <el-form :model="searchForm" label-width="78px" label-position="left">
-          <el-row :gutter="16">
-            <el-col :xl="8" :lg="8" :md="12" :sm="24">
-              <el-form-item label="关键字">
-                <el-input
-                  v-model="searchForm.keyword"
-                  clearable
-                  placeholder="单据编号、姓名、员工编码、补签原因"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col :xl="6" :lg="6" :md="12" :sm="24">
-              <el-form-item label="单据状态">
-                <el-select
-                  v-model="searchForm.status"
-                  clearable
-                  placeholder="请选择状态"
-                >
-                  <el-option
-                    v-for="status in statusOptions"
-                    :key="status"
-                    :label="status"
-                    :value="status"
-                  />
-                </el-select>
-              </el-form-item>
-            </el-col>
-            <el-col :xl="10" :lg="10" :md="24" :sm="24">
-              <el-form-item label="申请日期">
-                <el-date-picker
-                  v-model="searchForm.dateRange"
-                  type="daterange"
-                  value-format="YYYY-MM-DD"
-                  start-placeholder="开始日期"
-                  end-placeholder="结束日期"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-        </el-form>
-      </section>
-
-      <section class="table-panel">
-        <el-table
-          :data="tableRows"
-          border
-          height="560"
-          @selection-change="handleSelectionChange"
-          @row-dblclick="openDetail"
-        >
-          <el-table-column type="selection" width="48" />
-          <el-table-column prop="billNo" label="单据编号" min-width="170" />
-          <el-table-column prop="applicant" label="姓名" width="110" />
-          <el-table-column prop="employeeCode" label="员工编码" width="130" />
-          <el-table-column prop="applyDate" label="申请日期" width="120" />
-          <el-table-column prop="attendanceDate" label="考勤日期" width="120" />
-          <el-table-column prop="type" label="补签类型" width="120" />
-          <el-table-column prop="timePoint" label="补签时间点" width="120" />
-          <el-table-column prop="reason" label="补签原因" min-width="140" />
-          <el-table-column prop="itemCount" label="子项数" width="90" />
-          <el-table-column label="单据状态" width="110">
-            <template #default="{ row }">
-              <el-tag :type="statusTagType(row.status)">
-                {{ row.status }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="approver" label="办理人" width="110" />
-          <el-table-column label="操作" width="100" fixed="right">
-            <template #default="{ row }">
-              <el-button link type="primary" @click="openDetail(row)">
-                详情
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </section>
     </div>
   </Layout>
 </template>
 
-<style lang="scss" scoped>
-:deep(.page-content) {
-  padding-top: calc(50px + 16px) !important;
-  padding-right: 16px !important;
-  padding-bottom: 16px !important;
-  padding-left: 16px !important;
-  background: #f4f6fb;
+<style scoped lang="scss">
+.card-body {
+  flex: none;
 }
 
-.supplement-list-page {
-  min-height: calc(100vh - 120px);
-  color: #122448;
+.supplement-toolbar {
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.page-toolbar,
-.search-panel,
-.table-panel {
-  border: 1px solid #dce5f1;
-  border-radius: 4px;
-  background: #fff;
-}
-
-.page-toolbar {
-  display: flex;
+:deep(.status-tag) {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 20px;
-}
-
-.page-toolbar h2 {
-  margin: 0;
-  color: #122448;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.page-toolbar p {
-  margin: 6px 0 0;
-  color: #63718a;
+  justify-content: center;
+  min-width: 52px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  border: 1px solid #dcdfe6;
+  background: #f4f4f5;
+  color: #606266;
   font-size: 12px;
+  line-height: 22px;
 }
 
-.page-toolbar__actions {
-  display: flex;
-  gap: 12px;
-  flex-shrink: 0;
+:deep(.status-tag--warning) {
+  border-color: #f3d19e;
+  background: #fdf6ec;
+  color: #b88230;
 }
 
-.search-panel {
-  margin-top: 14px;
-  padding: 16px 18px 0;
+:deep(.status-tag--success) {
+  border-color: #b3e19d;
+  background: #f0f9eb;
+  color: #529b2e;
 }
 
-.search-panel :deep(.el-select),
-.search-panel :deep(.el-date-editor) {
-  width: 100%;
+:deep(.status-tag--danger) {
+  border-color: #fab6b6;
+  background: #fef0f0;
+  color: #c45656;
 }
 
-.table-panel {
-  margin-top: 14px;
-  padding: 16px;
-}
-
-@media (max-width: 768px) {
-  :deep(.page-content) {
-    padding-right: 12px !important;
-    padding-left: 12px !important;
-  }
-
-  .page-toolbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .page-toolbar__actions {
-    width: 100%;
-    flex-wrap: wrap;
-  }
+:deep(.status-tag--info) {
+  border-color: #d3d4d6;
+  background: #f4f4f5;
+  color: #73767a;
 }
 </style>
