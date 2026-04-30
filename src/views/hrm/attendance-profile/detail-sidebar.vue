@@ -68,7 +68,7 @@ const cancelEdit = () => {
 };
 
 const saveEdit = () => {
-  if (!formData.value.employeeName) {
+  if (props.mode === "create" && !formData.value.employeeName) {
     return ElMessage.warning("请填写员工姓名");
   }
   if (!formData.value.defaultShift) {
@@ -77,7 +77,10 @@ const saveEdit = () => {
 
   emit("save", {
     ...props.detailInfo,
-    employeeName: formData.value.employeeName,
+    employeeName:
+      props.mode === "create"
+        ? formData.value.employeeName
+        : props.detailInfo.employeeName,
     defaultShift: formData.value.defaultShift,
     holidaySystem: defaultPolicy.holidaySystem,
     attendanceSystem: defaultPolicy.attendanceSystem,
@@ -107,6 +110,16 @@ const detailRows = [
 const formatValue = (field) => {
   const value = props.detailInfo[field.key] || formData.value[field.key];
   return value || "-";
+};
+
+const canEditField = (field) => {
+  if (!isEditing.value || !field.editable) {
+    return false;
+  }
+  if (props.mode === "create") {
+    return ["employeeName", "defaultShift"].includes(field.key);
+  }
+  return field.key === "defaultShift";
 };
 </script>
 
@@ -173,7 +186,7 @@ const formatValue = (field) => {
             >
               <div class="detail-item__label">{{ field.label }}</div>
               <div
-                v-if="isEditing && field.editable && field.type === 'input'"
+                v-if="canEditField(field) && field.type === 'input'"
                 class="detail-item__editor"
               >
                 <el-input
@@ -183,7 +196,7 @@ const formatValue = (field) => {
                 />
               </div>
               <div
-                v-else-if="isEditing && field.editable && field.type === 'select'"
+                v-else-if="canEditField(field) && field.type === 'select'"
                 class="detail-item__editor"
               >
                 <el-select
