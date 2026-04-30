@@ -1,15 +1,19 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage } from "element-plus";
+import dayjs from "dayjs";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
+import DragSidebar from "@/components/common/sidebar-drag/index.vue";
+import LeaveDetailContent from "@/views/hrm/my-attendance/leave-list/components/LeaveDetailContent.vue";
 import { saveTableConfig } from "@/utils";
 
 const route = useRoute();
+const router = useRouter();
 const store = useStore();
 
 const gridName = "leaveManagementGrid";
@@ -45,6 +49,9 @@ const isFull = ref(false);
 const boxRef = ref(null);
 const gridRef = ref(null);
 const diminput = ref("");
+const detailDrawerVisible = ref(false);
+const currentDetail = ref(null);
+let rowClickTimer = null;
 const gridOptions = {
   rowMultiSelectWithClick: true,
 };
@@ -129,6 +136,71 @@ const listQuery = ref({
 
 const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
 const formInline = ref({});
+
+const statusToDetailMap = {
+  草稿: "未提交",
+  审批中: "审批中",
+  已审批: "已通过",
+  已驳回: "已驳回",
+  已废弃: "已废弃",
+  已生效: "已通过",
+};
+
+const statusToListMap = {
+  未提交: "草稿",
+  审批中: "审批中",
+  已通过: "已审批",
+  已驳回: "已驳回",
+  已废弃: "已废弃",
+};
+
+const formatManagementLeaveTime = (timeText) => {
+  const [date = "", time = ""] = String(timeText || "").split(" ");
+  if (!date) {
+    return "";
+  }
+  if (["上午", "下午"].includes(time)) {
+    return `${date} ${time}`;
+  }
+  const parsedTime = dayjs(`${date} ${time || "00:00"}`);
+  return `${date} ${parsedTime.isValid() && parsedTime.hour() >= 12 ? "下午" : "上午"}`;
+};
+
+const buildDetailFromRecord = (record) => ({
+  billNo: record.billNo,
+  applicant: record.employeeName,
+  employeeCode: record.employeeCode,
+  organization: record.organization,
+  applyDate: String(record.startTime || "").split(" ")[0],
+  leaveType: record.leaveType,
+  startTime: formatManagementLeaveTime(record.startTime),
+  endTime: formatManagementLeaveTime(record.endTime),
+  duration: record.leaveDuration,
+  unit: record.unit,
+  status: statusToDetailMap[record.billStatus] || record.billStatus,
+  approver: record.approver,
+  reason: record.reason || "请假申请已提交，等待审批流程处理。",
+  attachments: record.attachments || [],
+  comment: record.comment || "审批流程处理中",
+});
+
+const buildRecordFromDetail = (detail, sourceRecord = {}) => ({
+  ...sourceRecord,
+  billNo: detail.billNo,
+  employeeCode: detail.employeeCode,
+  employeeName: detail.applicant,
+  organization: detail.organization,
+  leaveType: detail.leaveType,
+  startTime: detail.startTime,
+  endTime: detail.endTime,
+  leaveDuration: detail.duration,
+  unit: detail.unit,
+  billStatus: statusToListMap[detail.status] || detail.status,
+  approver: detail.approver,
+  reason: detail.reason,
+  attachments: detail.attachments || [],
+  comment: detail.comment,
+});
 
 const leaveOrderList = ref([
   {
@@ -386,6 +458,67 @@ const cellRenderer = (params) => {
   }</span>`;
 };
 
+const handleRowClick = (params) => {
+  if (!params?.data) {
+    return;
+  }
+  if (rowClickTimer) {
+    clearTimeout(rowClickTimer);
+  }
+  rowClickTimer = setTimeout(() => {
+    currentDetail.value = buildDetailFromRecord(params.data);
+    detailDrawerVisible.value = true;
+    rowClickTimer = null;
+  }, 220);
+};
+
+const handleRowDoubleClick = (params) => {
+  if (!params?.data) {
+    return;
+  }
+  if (rowClickTimer) {
+    clearTimeout(rowClickTimer);
+    rowClickTimer = null;
+  }
+  const detail = buildDetailFromRecord(params.data);
+  sessionStorage.setItem("myLeaveCurrentDetail", JSON.stringify(detail));
+  detailDrawerVisible.value = false;
+  router.push({
+    name: "my-leave-detail",
+    params: { billNo: detail.billNo },
+  });
+};
+
+const closeDetailSidebar = () => {
+  detailDrawerVisible.value = false;
+  currentDetail.value = null;
+};
+
+const handleUpdateDetailRecord = (updatedRecord) => {
+  const recordIndex = leaveOrderList.value.findIndex(
+    (item) => item.billNo === updatedRecord.billNo,
+  );
+  if (recordIndex === -1) {
+    return;
+  }
+  const updatedListRecord = buildRecordFromDetail(
+    updatedRecord,
+    leaveOrderList.value[recordIndex],
+  );
+  leaveOrderList.value.splice(recordIndex, 1, updatedListRecord);
+  currentDetail.value = buildDetailFromRecord(updatedListRecord);
+};
+
+const handleDeleteDetailRecord = (record) => {
+  const recordIndex = leaveOrderList.value.findIndex(
+    (item) => item.billNo === record.billNo,
+  );
+  if (recordIndex > -1) {
+    leaveOrderList.value.splice(recordIndex, 1);
+  }
+  closeDetailSidebar();
+};
+
 const handlePagination = () => {};
 
 onMounted(() => {
@@ -393,6 +526,10 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  if (rowClickTimer) {
+    clearTimeout(rowClickTimer);
+    rowClickTimer = null;
+  }
   document.removeEventListener("fullscreenchange", handleFullScreenChange);
 });
 </script>
@@ -489,6 +626,8 @@ onUnmounted(() => {
               :activeClass="activeClass"
               :cellRenderer="cellRenderer"
               :gridOptions="gridOptions"
+              :rowClick="handleRowClick"
+              :rowDoubleClicked="handleRowDoubleClick"
             />
           </div>
           <div
@@ -507,11 +646,40 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <DragSidebar
+      v-if="detailDrawerVisible"
+      v-model="detailDrawerVisible"
+      sidebarName="leave-management-detail-sidebar"
+      :minWidth="900"
+      :width="1180"
+      :noCloseOnEsc="true"
+      :backdrop="false"
+      @close="closeDetailSidebar"
+    >
+      <div
+        v-if="currentDetail"
+        class="leave-detail-sidebar"
+      >
+        <LeaveDetailContent
+          :detailInfo="currentDetail"
+          @close="closeDetailSidebar"
+          @update-detail="handleUpdateDetailRecord"
+          @delete-detail="handleDeleteDetailRecord"
+        />
+      </div>
+    </DragSidebar>
   </Layout>
 </template>
 
 <style scoped lang="scss">
 .card-body {
   flex: none;
+}
+
+.leave-detail-sidebar {
+  min-height: 100vh;
+  padding: 16px;
+  background: #fff;
 }
 </style>
