@@ -8,6 +8,13 @@ const route = useRoute();
 const router = useRouter();
 
 const storageKey = "mySupplementCardRecords";
+const supplementTypes = ["上班补签", "下班补签", "外出补签", "其他补签"];
+const supplementReasons = [
+  "忘记打卡",
+  "外出公干",
+  "参加公司团建",
+  "体育活动",
+];
 
 const buildFallbackDetail = () => ({
   billNo: route.params.billNo || "BQ202604025347",
@@ -63,6 +70,8 @@ const readDetail = () => {
 };
 
 const detailInfo = ref(readDetail());
+const isEditingItems = ref(false);
+const itemEditList = ref([]);
 
 const approvalFlow = computed(() => {
   if (!detailInfo.value?.billNo) {
@@ -132,7 +141,77 @@ const goBack = () => {
   router.push({ name: "my-supplement-list" });
 };
 
+const createEmptyItem = () => ({
+  attendanceDate: "",
+  timePoint: "",
+  type: "",
+  reason: "",
+  remark: "",
+});
+
+const cloneItems = (items) => {
+  const list = Array.isArray(items) ? items : [];
+  return list.map((item) => ({
+    attendanceDate: item.attendanceDate || "",
+    timePoint: item.timePoint || "",
+    type: item.type || "",
+    reason: item.reason || "",
+    remark: item.remark || "",
+  }));
+};
+
+const handleEditItems = () => {
+  const currentItems = cloneItems(detailInfo.value.items);
+  itemEditList.value = currentItems.length ? currentItems : [createEmptyItem()];
+  isEditingItems.value = true;
+};
+
+const handleCancelEditItems = () => {
+  itemEditList.value = [];
+  isEditingItems.value = false;
+};
+
+const handleAddEditItem = () => {
+  itemEditList.value.push(createEmptyItem());
+};
+
+const handleRemoveEditItem = (index) => {
+  if (itemEditList.value.length === 1) {
+    ElMessage.warning("至少保留一条补签卡信息");
+    return;
+  }
+  itemEditList.value.splice(index, 1);
+};
+
+const validateEditItems = () => {
+  const invalidIndex = itemEditList.value.findIndex(
+    (item) => !item.attendanceDate || !item.timePoint || !item.type || !item.reason,
+  );
+  if (invalidIndex > -1) {
+    ElMessage.warning(`请完善第 ${invalidIndex + 1} 条补签卡信息`);
+    return false;
+  }
+  return true;
+};
+
+const handleSaveItems = () => {
+  if (!validateEditItems()) {
+    return;
+  }
+  detailInfo.value = {
+    ...detailInfo.value,
+    items: cloneItems(itemEditList.value),
+  };
+  persistDetail();
+  handleCancelEditItems();
+  ElMessage.success("补签卡信息已保存");
+};
+
 const handleSubmit = () => {
+  if (isEditingItems.value) {
+    ElMessage.warning("请先保存或取消补签卡信息编辑");
+    return;
+  }
   if (detailInfo.value.status !== "未提交") {
     ElMessage.warning("当前补签单无需提交");
     return;
@@ -145,6 +224,10 @@ const handleSubmit = () => {
 };
 
 const handleDiscard = () => {
+  if (isEditingItems.value) {
+    ElMessage.warning("请先保存或取消补签卡信息编辑");
+    return;
+  }
   if (detailInfo.value.status === "已通过") {
     ElMessage.warning("已通过的补签单不可废弃");
     return;
@@ -171,6 +254,23 @@ const handleDiscard = () => {
           <p>查看补签单据、补签卡明细、审批状态与审批意见。</p>
         </div>
         <div class="page-toolbar__actions">
+          <template v-if="isEditingItems">
+            <el-button
+              type="primary"
+              @click="handleSaveItems"
+            >
+              保存
+            </el-button>
+            <el-button @click="handleCancelEditItems">取消</el-button>
+          </template>
+          <el-button
+            v-else
+            type="primary"
+            plain
+            @click="handleEditItems"
+          >
+            编辑
+          </el-button>
           <el-button @click="goBack">返回补签卡列表</el-button>
           <el-button type="primary" @click="handleSubmit">提交</el-button>
           <el-button type="danger" plain @click="handleDiscard">废弃</el-button>
@@ -198,8 +298,26 @@ const handleDiscard = () => {
           </section>
 
           <section class="detail-card">
-            <div class="detail-card__title">补签卡信息</div>
-            <el-table :data="detailInfo.items" border>
+            <div class="detail-card__title detail-card__title--with-action">
+              <span>补签卡信息</span>
+              <div
+                v-if="isEditingItems"
+                class="detail-card__actions"
+              >
+                <el-button
+                  type="primary"
+                  plain
+                  @click="handleAddEditItem"
+                >
+                  新增补签卡
+                </el-button>
+              </div>
+            </div>
+            <el-table
+              v-if="!isEditingItems"
+              :data="detailInfo.items"
+              border
+            >
               <el-table-column type="index" label="#" width="54" />
               <el-table-column prop="attendanceDate" label="考勤日期" width="130" />
               <el-table-column prop="timePoint" label="补签时间点" width="130" />
@@ -207,6 +325,83 @@ const handleDiscard = () => {
               <el-table-column prop="reason" label="补签卡原因" width="150" />
               <el-table-column prop="remark" label="备注" min-width="220" />
             </el-table>
+            <el-form
+              v-else
+              class="supplement-items-form"
+              label-width="108px"
+              label-position="left"
+            >
+              <div
+                v-for="(item, index) in itemEditList"
+                :key="index"
+                class="supplement-item-editor"
+              >
+                <div class="supplement-item-editor__header">
+                  <strong>补签卡 {{ index + 1 }}</strong>
+                  <el-button
+                    link
+                    type="danger"
+                    @click="handleRemoveEditItem(index)"
+                  >
+                    删除
+                  </el-button>
+                </div>
+                <div class="supplement-item-editor__grid">
+                  <el-form-item label="考勤日期" required>
+                    <el-date-picker
+                      v-model="item.attendanceDate"
+                      type="date"
+                      value-format="YYYY-MM-DD"
+                      placeholder="请选择考勤日期"
+                    />
+                  </el-form-item>
+                  <el-form-item label="补签时间点" required>
+                    <el-time-select
+                      v-model="item.timePoint"
+                      start="00:00"
+                      step="00:15"
+                      end="23:45"
+                      placeholder="请选择时间点"
+                    />
+                  </el-form-item>
+                  <el-form-item label="补签卡类型" required>
+                    <el-select
+                      v-model="item.type"
+                      placeholder="请选择补签卡类型"
+                    >
+                      <el-option
+                        v-for="type in supplementTypes"
+                        :key="type"
+                        :label="type"
+                        :value="type"
+                      />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="补签卡原因" required>
+                    <el-select
+                      v-model="item.reason"
+                      placeholder="请选择补签卡原因"
+                    >
+                      <el-option
+                        v-for="reason in supplementReasons"
+                        :key="reason"
+                        :label="reason"
+                        :value="reason"
+                      />
+                    </el-select>
+                  </el-form-item>
+                </div>
+                <el-form-item label="备注">
+                  <el-input
+                    v-model="item.remark"
+                    type="textarea"
+                    :rows="3"
+                    resize="none"
+                    placeholder="请填写异常说明、补充依据或其他需要说明的信息"
+                  />
+                </el-form-item>
+              </div>
+            </el-form>
           </section>
         </main>
 
@@ -310,6 +505,20 @@ const handleDiscard = () => {
   font-weight: 600;
 }
 
+.detail-card__title--with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detail-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: 130px minmax(0, 1fr) 130px minmax(0, 1fr);
@@ -344,6 +553,44 @@ const handleDiscard = () => {
 .detail-card :deep(.el-table) {
   margin: 18px;
   width: calc(100% - 36px);
+}
+
+.supplement-items-form {
+  padding: 18px;
+}
+
+.supplement-item-editor {
+  padding: 16px;
+  border: 1px solid #e2e8f2;
+  border-radius: 4px;
+  background: #fbfcff;
+}
+
+.supplement-item-editor + .supplement-item-editor {
+  margin-top: 14px;
+}
+
+.supplement-item-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  color: #122448;
+}
+
+.supplement-item-editor__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+}
+
+.supplement-item-editor__grid :deep(.el-date-editor.el-input),
+.supplement-item-editor__grid :deep(.el-select) {
+  width: 100%;
+}
+
+.supplement-items-form :deep(.el-textarea) {
+  width: 100%;
 }
 
 .approval-card {
@@ -445,8 +692,22 @@ const handleDiscard = () => {
     flex-wrap: wrap;
   }
 
+  .detail-card__title--with-action {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .detail-card__actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
   .detail-grid {
     grid-template-columns: 110px minmax(0, 1fr);
+  }
+
+  .supplement-item-editor__grid {
+    grid-template-columns: 1fr;
   }
 
   .detail-grid div:nth-child(-n + 4) {
