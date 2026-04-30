@@ -206,7 +206,6 @@ const goSupplementList = () => {
       <div class="page-toolbar">
         <div>
           <h2>我要补卡</h2>
-          <p>按需求 2.3.6 展示补签创建、保存、提交与记录查看链路。</p>
         </div>
         <div class="page-toolbar__actions">
           <el-button @click="handleSave">保存</el-button>
