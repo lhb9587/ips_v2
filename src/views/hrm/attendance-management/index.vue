@@ -55,7 +55,7 @@ const moduleGroups = [
         title: "补签卡",
         description:
           "对由于忘记刷卡或外出公干等原因造成的未刷卡进行补卡，审核通过后会自动在员工打卡数据中增加记录",
-        route: "/workbench/hrm/signcard_management",
+        route: "/hrm/supplement-management",
       },
       {
         title: "出勤记录",
