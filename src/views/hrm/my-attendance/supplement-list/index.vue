@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -100,12 +100,7 @@ const isFull = ref(false);
 const boxRef = ref(null);
 const gridRef = ref(null);
 const diminput = ref("");
-const formInline = reactive({
-  status: "",
-  dateRange: [],
-});
 
-const statusOptions = ["未提交", "审批中", "已通过", "已废弃"];
 const gridOptions = {
   rowMultiSelectWithClick: true,
 };
@@ -233,13 +228,7 @@ const filteredRows = computed(() => {
         record.approver,
         record.remark,
       ].some((field) => String(field || "").toLowerCase().includes(keyword));
-    const statusMatched = !formInline.status || record.status === formInline.status;
-    const dateMatched =
-      !formInline.dateRange?.length ||
-      (record.applyDate >= formInline.dateRange[0] &&
-        record.applyDate <= formInline.dateRange[1]);
-
-    return keywordMatched && statusMatched && dateMatched;
+    return keywordMatched;
   });
 });
 
@@ -267,8 +256,6 @@ const fuzzySearch = () => {
 
 const resetSearch = () => {
   diminput.value = "";
-  formInline.status = "";
-  formInline.dateRange = [];
   fuzzySearch();
 };
 
@@ -410,29 +397,6 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
-                  <el-select
-                    v-model="formInline.status"
-                    clearable
-                    placeholder="单据状态"
-                    style="width: 140px"
-                    @change="fuzzySearch"
-                  >
-                    <el-option
-                      v-for="status in statusOptions"
-                      :key="status"
-                      :label="status"
-                      :value="status"
-                    />
-                  </el-select>
-                  <el-date-picker
-                    v-model="formInline.dateRange"
-                    type="daterange"
-                    value-format="YYYY-MM-DD"
-                    start-placeholder="申请开始"
-                    end-placeholder="申请结束"
-                    style="width: 260px"
-                    @change="fuzzySearch"
-                  />
                   <el-button @click="resetSearch">重置</el-button>
                   <el-button type="primary" @click="goCreate">
                     新建补签申请
@@ -466,8 +430,6 @@ onUnmounted(() => {
                   @setColumn="setColumn"
                   :queryList="{
                     ...listQuery,
-                    status: formInline.status,
-                    dateRange: formInline.dateRange,
                     searchWord: diminput,
                   }"
                   :isFull="isFull"
