@@ -64,43 +64,56 @@ const readDetail = () => {
 
 const detailInfo = ref(readDetail());
 
-const approvalSteps = computed(() => [
-  {
-    title: "申请人提交",
-    description:
-      detailInfo.value.status === "未提交"
-        ? "补签单暂未提交审批。"
-        : `${detailInfo.value.applicant} 已提交补签申请。`,
-    status: detailInfo.value.status === "未提交" ? "wait" : "finish",
-  },
-  {
-    title: "部门负责人审批",
-    description: detailInfo.value.approvalComment || "等待部门负责人审批。",
-    status:
-      detailInfo.value.status === "已通过"
-        ? "finish"
-        : detailInfo.value.status === "审批中"
-          ? "process"
-          : "wait",
-  },
-  {
-    title: "审批完成",
-    description:
-      detailInfo.value.status === "已通过"
-        ? "补签审批通过后影响异常处理结果和考勤计算结果。"
-        : "审批完成后更新异常处理结果。",
-    status: detailInfo.value.status === "已通过" ? "finish" : "wait",
-  },
-]);
+const approvalFlow = computed(() => {
+  if (!detailInfo.value?.billNo) {
+    return [];
+  }
 
-const statusTagType = computed(() => {
-  const map = {
-    未提交: "info",
-    审批中: "warning",
-    已通过: "success",
-    已废弃: "danger",
-  };
-  return map[detailInfo.value.status] || "info";
+  const detail = detailInfo.value;
+
+  if (detail.status === "未提交") {
+    return [
+      {
+        time: `${detail.applyDate} 10:18`,
+        title: "保存草稿",
+        actor: detail.applicant,
+        description: "补签单暂未提交审批。",
+        active: true,
+      },
+    ];
+  }
+
+  if (detail.status === "已废弃") {
+    return [
+      {
+        time: `${detail.applyDate} 10:18`,
+        title: "废弃申请",
+        actor: detail.applicant,
+        description: detail.approvalComment || "申请人已废弃该补签单",
+        active: true,
+      },
+    ];
+  }
+
+  return [
+    {
+      time: `${detail.applyDate} 10:18`,
+      title: "发起申请 · 提交申请",
+      actor: detail.applicant,
+      description: "提交补签申请，等待直属上级审批。",
+      active: true,
+    },
+    {
+      time: `${detail.applyDate} 10:19`,
+      title:
+        detail.status === "已通过"
+          ? "直属上级审批 · 审批通过"
+          : "直属上级审批 · 提交申请",
+      actor: detail.approver,
+      description: detail.approvalComment || "审批流程处理中",
+      active: detail.status === "审批中",
+    },
+  ];
 });
 
 const persistDetail = () => {
@@ -198,25 +211,25 @@ const handleDiscard = () => {
         </main>
 
         <aside class="detail-side">
-          <section class="detail-card">
-            <div class="detail-card__title">审批状态</div>
-            <div class="status-box">
-              <span>当前状态</span>
-              <el-tag :type="statusTagType">{{ detailInfo.status }}</el-tag>
+          <section class="detail-card approval-card">
+            <div class="detail-card__title">审批流程</div>
+            <div class="approval-timeline">
+              <div
+                v-for="(item, index) in approvalFlow"
+                :key="`${item.title}-${index}`"
+                class="approval-step"
+                :class="{ 'approval-step--active': item.active }"
+              >
+                <div class="approval-step__line"></div>
+                <div class="approval-step__dot"></div>
+                <div class="approval-step__body">
+                  <div class="approval-step__time">{{ item.time }}</div>
+                  <div class="approval-step__title">{{ item.title }}</div>
+                  <div class="approval-step__actor">{{ item.actor }}</div>
+                  <p>{{ item.description }}</p>
+                </div>
+              </div>
             </div>
-            <div class="approval-comment">
-              <span>审批意见</span>
-              <p>{{ detailInfo.approvalComment || "--" }}</p>
-            </div>
-            <el-steps direction="vertical" :active="1" finish-status="success">
-              <el-step
-                v-for="step in approvalSteps"
-                :key="step.title"
-                :title="step.title"
-                :description="step.description"
-                :status="step.status"
-              />
-            </el-steps>
           </section>
         </aside>
       </div>
@@ -333,42 +346,81 @@ const handleDiscard = () => {
   width: calc(100% - 36px);
 }
 
-.detail-side .detail-card {
-  padding-bottom: 18px;
+.approval-card {
+  min-height: 360px;
 }
 
-.status-box,
-.approval-comment {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 18px 18px 0;
-  padding: 14px;
-  border: 1px solid #e2e8f2;
-  background: #fbfcff;
-  color: #122448;
+.approval-timeline {
+  padding: 22px 24px 26px;
+}
+
+.approval-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: 12px;
+  min-height: 114px;
+}
+
+.approval-step:last-child {
+  min-height: 0;
+}
+
+.approval-step__line {
+  position: absolute;
+  top: 12px;
+  bottom: -12px;
+  left: 6px;
+  width: 1px;
+  background: #d9e4f4;
+}
+
+.approval-step:last-child .approval-step__line {
+  display: none;
+}
+
+.approval-step__dot {
+  position: relative;
+  z-index: 1;
+  width: 12px;
+  height: 12px;
+  margin-top: 3px;
+  border-radius: 50%;
+  background: #6aa1f8;
+}
+
+.approval-step--active .approval-step__dot {
+  background: #4f8df7;
+}
+
+.approval-step__body {
+  min-width: 0;
+  padding-bottom: 22px;
+}
+
+.approval-step__time {
+  color: #6c7b92;
   font-size: 13px;
 }
 
-.approval-comment {
-  display: block;
-}
-
-.approval-comment span {
-  display: block;
-  margin-bottom: 8px;
+.approval-step__title {
+  margin-top: 8px;
+  color: #122448;
+  font-size: 14px;
   font-weight: 600;
 }
 
-.approval-comment p {
-  margin: 0;
-  color: #63718a;
-  line-height: 1.7;
+.approval-step__actor {
+  margin-top: 6px;
+  color: #466083;
+  font-size: 13px;
 }
 
-.detail-side :deep(.el-steps) {
-  margin: 22px 18px 0;
+.approval-step p {
+  margin: 8px 0 0;
+  color: #4f5f77;
+  font-size: 13px;
+  line-height: 1.7;
 }
 
 @media (max-width: 1200px) {
