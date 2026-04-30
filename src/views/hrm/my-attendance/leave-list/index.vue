@@ -8,6 +8,7 @@ import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
+import LeaveDetailContent from "./components/LeaveDetailContent.vue";
 import { saveTableConfig } from "@/utils";
 
 const route = useRoute();
@@ -51,6 +52,7 @@ const detailDrawerVisible = ref(false);
 const currentDetail = ref(null);
 const detailEditMode = ref(false);
 const detailEditForm = ref({});
+let rowClickTimer = null;
 
 const gridOptions = {
   rowMultiSelectWithClick: true,
@@ -296,10 +298,32 @@ const handleRowClick = (params) => {
   if (!params?.data) {
     return;
   }
-  currentDetail.value = params.data;
-  detailEditMode.value = false;
-  detailEditForm.value = {};
-  detailDrawerVisible.value = true;
+  if (rowClickTimer) {
+    clearTimeout(rowClickTimer);
+  }
+  rowClickTimer = setTimeout(() => {
+    currentDetail.value = params.data;
+    detailEditMode.value = false;
+    detailEditForm.value = {};
+    detailDrawerVisible.value = true;
+    rowClickTimer = null;
+  }, 220);
+};
+
+const handleRowDoubleClick = (params) => {
+  if (!params?.data) {
+    return;
+  }
+  if (rowClickTimer) {
+    clearTimeout(rowClickTimer);
+    rowClickTimer = null;
+  }
+  sessionStorage.setItem("myLeaveCurrentDetail", JSON.stringify(params.data));
+  detailDrawerVisible.value = false;
+  router.push({
+    name: "my-leave-detail",
+    params: { billNo: params.data.billNo },
+  });
 };
 
 const parseLeaveTime = (timeText) => {
@@ -567,11 +591,36 @@ const closeDetailSidebar = () => {
 
 const handlePagination = () => {};
 
+const handleUpdateDetailRecord = (updatedRecord) => {
+  const recordIndex = leaveRecords.value.findIndex(
+    (item) => item.billNo === updatedRecord.billNo,
+  );
+  if (recordIndex === -1) {
+    return;
+  }
+  leaveRecords.value.splice(recordIndex, 1, updatedRecord);
+  currentDetail.value = { ...updatedRecord };
+};
+
+const handleDeleteDetailRecord = (record) => {
+  const recordIndex = leaveRecords.value.findIndex(
+    (item) => item.billNo === record.billNo,
+  );
+  if (recordIndex > -1) {
+    leaveRecords.value.splice(recordIndex, 1);
+  }
+  closeDetailSidebar();
+};
+
 onMounted(() => {
   document.addEventListener("fullscreenchange", handleFullScreenChange);
 });
 
 onUnmounted(() => {
+  if (rowClickTimer) {
+    clearTimeout(rowClickTimer);
+    rowClickTimer = null;
+  }
   document.removeEventListener("fullscreenchange", handleFullScreenChange);
 });
 </script>
@@ -659,6 +708,7 @@ onUnmounted(() => {
               :cellRenderer="cellRenderer"
               :gridOptions="gridOptions"
               :rowClick="handleRowClick"
+              :rowDoubleClicked="handleRowDoubleClick"
             />
           </div>
           <div
@@ -690,6 +740,17 @@ onUnmounted(() => {
     >
       <div
         v-if="currentDetail"
+        class="leave-detail-sidebar"
+      >
+        <LeaveDetailContent
+          :detailInfo="currentDetail"
+          @close="closeDetailSidebar"
+          @update-detail="handleUpdateDetailRecord"
+          @delete-detail="handleDeleteDetailRecord"
+        />
+      </div>
+      <div
+        v-if="false && currentDetail"
         class="leave-detail-sidebar"
       >
         <div class="leave-detail-sidebar__header">
