@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import dayjs from "dayjs";
 import Layout from "@/layouts/main";
 import LeaveTypeCard from "./components/LeaveTypeCard.vue";
+import LeaveTimelineDialog from "./components/LeaveTimelineDialog.vue";
 
 const router = useRouter();
 
@@ -106,6 +107,21 @@ const records = ref([
     reason: "身体不适就医。",
     comment: "审批通过",
   },
+  {
+    billNo: "QJ202603150823",
+    applicant: employeeInfo.name,
+    employeeCode: employeeInfo.code,
+    applyDate: "2026-03-15",
+    leaveType: "事假",
+    startTime: "2026-03-15 上午",
+    endTime: "2026-03-15 下午",
+    duration: 1,
+    unit: "天",
+    status: "未提交",
+    approver: "未提交",
+    reason: "个人事务安排。",
+    comment: "草稿暂未进入审批",
+  },
 ]);
 
 const form = reactive({
@@ -123,6 +139,7 @@ const form = reactive({
 
 const fileList = ref([]);
 const editingBillNo = ref("");
+const timelineDialogVisible = ref(false);
 
 const periodOptions = ["上午", "下午"];
 const otherTypeOptions = ["婚假", "丧假", "孕检假", "产假", "工伤假", "陪产假"];
@@ -299,6 +316,10 @@ const handleSubmit = () => {
 const goLeaveList = () => {
   router.push({ name: "my-leave-list" });
 };
+
+const openTimelineDialog = () => {
+  timelineDialogVisible.value = true;
+};
 </script>
 
 <template>
@@ -340,7 +361,7 @@ const goLeaveList = () => {
           <span>查看更多请假记录</span>
           <button
             type="button"
-            @click="goLeaveList"
+            @click="openTimelineDialog"
           >
             打开年度时间轴
           </button>
@@ -498,6 +519,11 @@ const goLeaveList = () => {
           </section>
         </aside>
       </div>
+
+      <LeaveTimelineDialog
+        v-model="timelineDialogVisible"
+        :records="records"
+      />
     </div>
   </Layout>
 </template>
