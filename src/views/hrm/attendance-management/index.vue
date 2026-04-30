@@ -39,7 +39,7 @@ const moduleGroups = [
       {
         title: "考勤档案",
         description: "员工考勤档案维护，维护员工对应的考勤编号",
-        route: "/workbench/hrm/attendance_profile",
+        route: "/hrm/attendance-profile",
       },
       {
         title: "出差单",

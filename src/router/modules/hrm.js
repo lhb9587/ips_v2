@@ -23,6 +23,12 @@ const hrmRouter = [
         component: () => import("@/views/hrm/leave-management/index"),
       },
       {
+        path: "/hrm/attendance-profile",
+        name: "attendance-profile",
+        meta: { title: "考勤档案", authRequired: true },
+        component: () => import("@/views/hrm/attendance-profile/index"),
+      },
+      {
         path: "/hrm/my-attendance",
         name: "my-attendance",
         meta: { title: "我的考勤", authRequired: true },
