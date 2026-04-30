@@ -61,17 +61,11 @@ const handleDeleteDetail = () => {
 <template>
   <Layout>
     <div class="leave-detail-page">
-      <div class="leave-detail-page__toolbar">
-        <div>
-          <h2>请假详情页</h2>
-          <p>{{ currentDetail.billNo }}</p>
-        </div>
-        <el-button @click="goLeaveList">返回请假列表</el-button>
-      </div>
-
       <LeaveDetailContent
         :detailInfo="currentDetail"
         :showClose="false"
+        :showBack="true"
+        @back="goLeaveList"
         @update-detail="handleUpdateDetail"
         @delete-detail="handleDeleteDetail"
       />
@@ -91,37 +85,5 @@ const handleDeleteDetail = () => {
 .leave-detail-page {
   min-height: calc(100vh - 120px);
   color: #122448;
-}
-
-.leave-detail-page__toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 14px;
-  padding: 16px 18px;
-  border: 1px solid #dce5f1;
-  border-radius: 4px;
-  background: #fff;
-}
-
-.leave-detail-page__toolbar h2 {
-  margin: 0;
-  color: #122448;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.leave-detail-page__toolbar p {
-  margin: 6px 0 0;
-  color: #63718a;
-  font-size: 12px;
-}
-
-@media (max-width: 768px) {
-  .leave-detail-page__toolbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
 }
 </style>

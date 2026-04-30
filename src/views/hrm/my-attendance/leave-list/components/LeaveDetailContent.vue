@@ -11,9 +11,13 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  showBack: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-const emit = defineEmits(["close", "update-detail", "delete-detail"]);
+const emit = defineEmits(["back", "close", "update-detail", "delete-detail"]);
 
 const detailEditMode = ref(false);
 const detailEditForm = ref({});
@@ -351,6 +355,12 @@ const approvalFlow = computed(() => {
             @click="handleDeleteDetail"
           >
             删除
+          </el-button>
+          <el-button
+            v-if="showBack"
+            @click="emit('back')"
+          >
+            返回请假列表
           </el-button>
         </template>
         <el-button
