@@ -1,5 +1,15 @@
 # Codex Project Instructions
 
+## IPS V2 Frontend 技能包执行规则
+
+每次在本项目中添加功能或修改功能时，必须先执行 `ips-v2-frontend` 技能包，读取并遵循：
+
+```text
+C:\Users\dell\.codex\skills\ips-v2-frontend\SKILL.md
+```
+
+尤其是涉及 `views`、`components`、`router/modules`、`api`、`state`、`permission`、`menu` 等前端功能文件时，需要按该技能包要求对齐现有目录结构、页面风格、公共组件用法、路由权限接入方式和自测交付规则。
+
 ## 代码变更后的提交规则
 
 每次完成涉及代码变更的任务后，在最终回复前按以下流程处理：
