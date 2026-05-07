@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage } from "element-plus";
 import dayjs from "dayjs";
@@ -13,7 +13,6 @@ import LeaveDetailContent from "@/views/hrm/my-attendance/leave-list/components/
 import { saveTableConfig } from "@/utils";
 
 const route = useRoute();
-const router = useRouter();
 const store = useStore();
 
 const gridName = "leaveManagementGrid";
@@ -472,23 +471,6 @@ const handleRowClick = (params) => {
   }, 220);
 };
 
-const handleRowDoubleClick = (params) => {
-  if (!params?.data) {
-    return;
-  }
-  if (rowClickTimer) {
-    clearTimeout(rowClickTimer);
-    rowClickTimer = null;
-  }
-  const detail = buildDetailFromRecord(params.data);
-  sessionStorage.setItem("myLeaveCurrentDetail", JSON.stringify(detail));
-  detailDrawerVisible.value = false;
-  router.push({
-    name: "my-leave-detail",
-    params: { billNo: detail.billNo },
-  });
-};
-
 const closeDetailSidebar = () => {
   detailDrawerVisible.value = false;
   currentDetail.value = null;
@@ -627,7 +609,6 @@ onUnmounted(() => {
               :cellRenderer="cellRenderer"
               :gridOptions="gridOptions"
               :rowClick="handleRowClick"
-              :rowDoubleClicked="handleRowDoubleClick"
             />
           </div>
           <div
