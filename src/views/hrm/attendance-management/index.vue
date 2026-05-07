@@ -89,7 +89,7 @@ const moduleGroups = [
         title: "考勤组",
         description:
           "按照相同班次、相同考勤制度、管理范围等维度将员工进行分类，便于排班、快捷过滤等操作",
-        route: "/workbench/hrm/attendance_group",
+        route: "/hrm/attendance-group",
       },
     ],
   },

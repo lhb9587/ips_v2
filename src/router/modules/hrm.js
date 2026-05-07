@@ -41,6 +41,12 @@ const hrmRouter = [
         component: () => import("@/views/hrm/attendance-profile/index"),
       },
       {
+        path: "/hrm/attendance-group",
+        name: "attendance-group",
+        meta: { title: "考勤组", authRequired: true },
+        component: () => import("@/views/hrm/attendance-group/index"),
+      },
+      {
         path: "/hrm/my-attendance",
         name: "my-attendance",
         meta: { title: "我的考勤", authRequired: true },
