@@ -23,6 +23,12 @@ const hrmRouter = [
         component: () => import("@/views/hrm/leave-management/index"),
       },
       {
+        path: "/hrm/overtime-management",
+        name: "overtime-management",
+        meta: { title: "加班单", authRequired: true },
+        component: () => import("@/views/hrm/overtime-management/index"),
+      },
+      {
         path: "/hrm/supplement-management",
         name: "supplement-management",
         meta: { title: "补签卡", authRequired: true },

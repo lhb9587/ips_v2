@@ -49,7 +49,7 @@ const moduleGroups = [
       {
         title: "加班单",
         description: "员工加班的维护",
-        route: "/workbench/hrm/overtime_management",
+        route: "/hrm/overtime-management",
       },
       {
         title: "补签卡",
