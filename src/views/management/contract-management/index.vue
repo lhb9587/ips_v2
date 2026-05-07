@@ -166,7 +166,7 @@ const fuzzySearch = () => {
   formInline.value = {};
   fetchDataFunc();
 };
-const fetchDataFunc = (isLoading = false) => {
+const fetchDataFunc = (isOpenDetail) => {
   //卡片和表格的数据
   getContractList(
     {
@@ -176,7 +176,7 @@ const fetchDataFunc = (isLoading = false) => {
       ...formInline.value,
     },
     {
-      isLoading,
+      isLoading:true,
     },
   ).then((res) => {
     getToNumber(); // 获取待审批数量
@@ -184,7 +184,7 @@ const fetchDataFunc = (isLoading = false) => {
     gridData.value.forEach((item, index) => {
       item.sid = index;
     });
-    isLoading && toggleSidebar({ data: gridData.value[0] });
+    isOpenDetail && toggleSidebar({ data: gridData.value[0] });
     total.value = res.total || 0;
   });
 };
@@ -454,7 +454,7 @@ const statusBar = ref({
               :total="total"
               v-model:page="listQuery.pageNo"
               v-model:limit="listQuery.pageSize"
-              @pagination="fetchDataFunc(false)"
+              @pagination="fetchDataFunc()"
               :pageSizes="pageSizesList"
             ></Pagination>
           </div>

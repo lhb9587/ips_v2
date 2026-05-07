@@ -60,6 +60,27 @@ const hrmRouter = [
         component: () => import("@/views/hrm/my-attendance/leave-detail/index"),
       },
       {
+        path: "/hrm/my-attendance/overtime-application",
+        name: "my-overtime-application",
+        meta: { title: "我要加班", authRequired: true },
+        component: () =>
+          import("@/views/hrm/my-attendance/overtime-application/index"),
+      },
+      {
+        path: "/hrm/my-attendance/overtime-list",
+        name: "my-overtime-list",
+        meta: { title: "加班列表", authRequired: true },
+        component: () =>
+          import("@/views/hrm/my-attendance/overtime-list/index"),
+      },
+      {
+        path: "/hrm/my-attendance/overtime-detail/:billNo?",
+        name: "my-overtime-detail",
+        meta: { title: "加班详情", authRequired: true },
+        component: () =>
+          import("@/views/hrm/my-attendance/overtime-detail/index"),
+      },
+      {
         path: "/hrm/my-attendance/supplement-application",
         name: "my-supplement-application",
         meta: { title: "我要补卡", authRequired: true },

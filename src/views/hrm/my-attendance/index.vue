@@ -17,7 +17,11 @@ const quickEntries = [
     icon: "bx bx-file",
     routeName: "my-leave-application",
   },
-  { label: "我要加班", icon: "bx bx-briefcase-alt-2" },
+  {
+    label: "我要加班",
+    icon: "bx bx-briefcase-alt-2",
+    routeName: "my-overtime-application",
+  },
   { label: "我要出差", icon: "bx bx-briefcase" },
   {
     label: "我要补卡",
