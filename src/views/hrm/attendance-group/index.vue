@@ -336,10 +336,6 @@ const closeDetail = () => {
   selectedDetail.value = {};
 };
 
-const getSelectedRows = () => {
-  return gridRef.value?.getRowList?.() || [];
-};
-
 const deleteGroups = (rows) => {
   const referencedRows = rows.filter((item) => item.referenced);
   if (referencedRows.length > 0) {
@@ -355,27 +351,6 @@ const deleteGroups = (rows) => {
     listQuery.value.pageNo -= 1;
   }
   return true;
-};
-
-const handleDeleteSelected = () => {
-  const selectedRows = getSelectedRows();
-  if (selectedRows.length === 0) {
-    return ElMessage.warning("请先选择需要删除的考勤组");
-  }
-
-  ElMessageBox.confirm(
-    `确认删除选中的 ${selectedRows.length} 个考勤组吗？`,
-    "删除确认",
-    {
-      type: "warning",
-      confirmButtonText: "删除",
-      cancelButtonText: "取消",
-    },
-  ).then(() => {
-    if (deleteGroups(selectedRows)) {
-      ElMessage.success("考勤组已删除");
-    }
-  });
 };
 
 const handleDeleteDetail = (record) => {

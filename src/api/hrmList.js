@@ -58,6 +58,15 @@ export function queryOrganizationsChild(data) {
   })
 }
 
+export function queryAttendanceArchivePage(data, config = {}) {
+  return request({
+    url: ipServiceApi.queryAttendanceArchivePage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryUnAuditModifyRecordNum(data) {
   return request({
     url: ipServiceApi.queryUnAuditModifyRecordNum,

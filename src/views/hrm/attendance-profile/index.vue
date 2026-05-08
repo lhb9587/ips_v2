@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -10,10 +10,12 @@ import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import AttendanceProfileDetailSidebar from "@/views/hrm/attendance-profile/detail-sidebar.vue";
 import { saveTableConfig } from "@/utils";
+import { queryAttendanceArchivePage } from "@/api/hrmList";
 
 const route = useRoute();
 const store = useStore();
 
+const bussId = 456;
 const gridName = "attendanceProfileGrid";
 const defaultHolidaySystem = "默认假期制度";
 const defaultAttendanceSystem = "默认考勤制度";
@@ -231,25 +233,9 @@ const shiftOptions = [
   },
 ];
 
-const columnOptions = [
-  { title: "员工编码", value: "employeeCode" },
-  { title: "姓名", value: "employeeName" },
-  { title: "考勤编号", value: "attendanceNo" },
-  { title: "假期制度", value: "holidaySystem" },
-  { title: "考勤制度", value: "attendanceSystem" },
-  { title: "默认班次", value: "defaultShift" },
-];
-
-const columnList = ref([...columnOptions]);
+const columnList = ref([]);
 const setColumn = (list) => {
-  if (!Array.isArray(list) || list.length === 0) {
-    columnList.value = [...columnOptions];
-    return;
-  }
-  const validColumns = list.filter((item) =>
-    columnOptions.some((column) => column.value === item.value),
-  );
-  columnList.value = validColumns.length > 0 ? validColumns : [...columnOptions];
+  columnList.value = Array.isArray(list) ? list : [];
 };
 
 const activeClass = ref([]);
@@ -261,6 +247,8 @@ const diminput = ref("");
 const detailVisible = ref(false);
 const detailMode = ref("view");
 const selectedDetail = ref({});
+const total = ref(0);
+const gridData = ref([]);
 const gridOptions = {
   rowMultiSelectWithClick: true,
 };
@@ -345,112 +333,38 @@ const listQuery = ref({
 const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
 const formInline = ref({});
 
-const profileList = ref([
-  {
-    id: 1,
-    employeeCode: "10633",
-    employeeName: "杨光",
-    attendanceNo: "KQ10633",
-    holidaySystem: defaultHolidaySystem,
-    attendanceSystem: defaultAttendanceSystem,
-    defaultShift: "标准班次",
-  },
-  {
-    id: 2,
-    employeeCode: "10634",
-    employeeName: "张敏",
-    attendanceNo: "KQ10634",
-    holidaySystem: defaultHolidaySystem,
-    attendanceSystem: defaultAttendanceSystem,
-    defaultShift: "早班",
-  },
-  {
-    id: 3,
-    employeeCode: "10635",
-    employeeName: "李倩",
-    attendanceNo: "KQ10635",
-    holidaySystem: defaultHolidaySystem,
-    attendanceSystem: defaultAttendanceSystem,
-    defaultShift: "行政班",
-  },
-  {
-    id: 4,
-    employeeCode: "10636",
-    employeeName: "王浩",
-    attendanceNo: "KQ10636",
-    holidaySystem: defaultHolidaySystem,
-    attendanceSystem: defaultAttendanceSystem,
-    defaultShift: "弹性班次",
-  },
-  {
-    id: 5,
-    employeeCode: "10637",
-    employeeName: "赵雪",
-    attendanceNo: "KQ10637",
-    holidaySystem: defaultHolidaySystem,
-    attendanceSystem: defaultAttendanceSystem,
-    defaultShift: "标准班次",
-  },
-  {
-    id: 6,
-    employeeCode: "10638",
-    employeeName: "陈博",
-    attendanceNo: "KQ10638",
-    holidaySystem: defaultHolidaySystem,
-    attendanceSystem: defaultAttendanceSystem,
-    defaultShift: "晚班",
-  },
-  {
-    id: 7,
-    employeeCode: "10639",
-    employeeName: "周岚",
-    attendanceNo: "KQ10639",
-    holidaySystem: defaultHolidaySystem,
-    attendanceSystem: defaultAttendanceSystem,
-    defaultShift: "行政班",
-  },
-  {
-    id: 8,
-    employeeCode: "10640",
-    employeeName: "孙洋",
-    attendanceNo: "KQ10640",
-    holidaySystem: defaultHolidaySystem,
-    attendanceSystem: defaultAttendanceSystem,
-    defaultShift: "标准班次",
-  },
-]);
-
-const filteredList = computed(() => {
-  const keyword = diminput.value.trim().toLowerCase();
-  if (!keyword) {
-    return profileList.value;
-  }
-  return profileList.value.filter((item) =>
-    [
-      item.employeeCode,
-      item.employeeName,
-      item.attendanceNo,
-      item.holidaySystem,
-      item.attendanceSystem,
-      item.defaultShift,
-    ].some((field) => String(field || "").toLowerCase().includes(keyword)),
-  );
-});
-
-const total = computed(() => filteredList.value.length);
-
-const gridData = computed(() => {
-  const start = (listQuery.value.pageNo - 1) * listQuery.value.pageSize;
-  const end = start + listQuery.value.pageSize;
-  return filteredList.value.slice(start, end).map((item, index) => ({
-    ...item,
-    sid: start + index,
-  }));
-});
+const fetchAttendanceArchiveList = () => {
+  queryAttendanceArchivePage(
+    {
+      pageNo: listQuery.value.pageNo,
+      pageSize: listQuery.value.pageSize,
+      talentCode: diminput.value || undefined,
+      talentName: diminput.value || undefined,
+      ...formInline.value,
+    },
+    {
+      isLoading: true,
+    },
+  ).then((res) => {
+    const records = res?.data?.records || [];
+    gridData.value = records.map((item, index) => ({
+      ...item,
+      id: item.archiveId,
+      employeeCode: item.talentCode,
+      employeeName: item.talentName,
+      holidaySystem: item.leavePolicyCode || defaultHolidaySystem,
+      attendanceSystem: item.attendancePolicyCode || defaultAttendanceSystem,
+      defaultShift: item.defaultShiftCode || "",
+      sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index,
+    }));
+    total.value = res?.data?.total || 0;
+  });
+};
 
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
   formInline.value = {};
+  fetchAttendanceArchiveList();
 };
 
 const cellRenderer = (params) => {
@@ -486,65 +400,42 @@ const openProfileDetail = (params) => {
   detailVisible.value = true;
 };
 
-const getSelectedRows = () => {
-  return gridRef.value?.getRowList?.() || [];
-};
-
 const closeDetail = () => {
   detailVisible.value = false;
   selectedDetail.value = {};
 };
 
 const handleSaveProfile = (payload) => {
-  const normalizedPayload = {
-    ...payload,
-    holidaySystem: defaultHolidaySystem,
-    attendanceSystem: defaultAttendanceSystem,
-  };
-  const targetIndex = profileList.value.findIndex((item) => item.id === payload.id);
+  const targetIndex = gridData.value.findIndex((item) => item.id === payload.id);
   if (targetIndex > -1) {
-    profileList.value.splice(targetIndex, 1, {
-      ...profileList.value[targetIndex],
-      ...normalizedPayload,
+    gridData.value.splice(targetIndex, 1, {
+      ...gridData.value[targetIndex],
+      ...payload,
+      holidaySystem: payload.holidaySystem || defaultHolidaySystem,
+      attendanceSystem: payload.attendanceSystem || defaultAttendanceSystem,
     });
-    selectedDetail.value = { ...profileList.value[targetIndex] };
+    selectedDetail.value = { ...gridData.value[targetIndex] };
     ElMessage.success("考勤档案已更新");
     return;
   }
 
-  profileList.value.unshift(normalizedPayload);
-  selectedDetail.value = { ...normalizedPayload };
+  selectedDetail.value = {
+    ...payload,
+    holidaySystem: payload.holidaySystem || defaultHolidaySystem,
+    attendanceSystem: payload.attendanceSystem || defaultAttendanceSystem,
+  };
   detailMode.value = "view";
   listQuery.value.pageNo = 1;
   ElMessage.success("考勤档案已新增");
+  fetchAttendanceArchiveList();
 };
 
 const deleteProfiles = (rows) => {
   const targetIds = new Set(rows.map((item) => item.id));
-  profileList.value = profileList.value.filter((item) => !targetIds.has(item.id));
+  gridData.value = gridData.value.filter((item) => !targetIds.has(item.id));
   if (gridData.value.length === 0 && listQuery.value.pageNo > 1) {
     listQuery.value.pageNo -= 1;
   }
-};
-
-const handleDeleteSelected = () => {
-  const selectedRows = getSelectedRows();
-  if (selectedRows.length === 0) {
-    return ElMessage.warning("请先选择需要删除的考勤档案");
-  }
-
-  ElMessageBox.confirm(
-    `确认删除选中的 ${selectedRows.length} 条考勤档案吗？`,
-    "删除确认",
-    {
-      type: "warning",
-      confirmButtonText: "删除",
-      cancelButtonText: "取消",
-    },
-  ).then(() => {
-    deleteProfiles(selectedRows);
-    ElMessage.success("考勤档案已删除");
-  });
 };
 
 const handleDeleteDetail = (record) => {
@@ -564,10 +455,13 @@ const handleDeleteDetail = (record) => {
   });
 };
 
-const handlePagination = () => {};
+const handlePagination = () => {
+  fetchAttendanceArchiveList();
+};
 
 onMounted(() => {
   document.addEventListener("fullscreenchange", handleFullScreenChange);
+  fetchAttendanceArchiveList();
 });
 
 onUnmounted(() => {
@@ -613,18 +507,12 @@ onUnmounted(() => {
                   >
                     新增
                   </el-button>
-                  <el-button
-                    type="danger"
-                    plain
-                    @click="handleDeleteSelected"
-                  >
-                    删除
-                  </el-button>
                 </div>
               </span>
               <div class="d-flex gap-2">
                 <TopListTool
                   :gridName="gridName"
+                  :buss-id="bussId"
                   @changeBorder="changeBorder"
                   @changeRowStyle="changeRowStyle"
                   @changeRowHeight="changeRowHeight"
@@ -645,6 +533,7 @@ onUnmounted(() => {
             <GridView
               ref="gridRef"
               :gridName="gridName"
+              :bussId="bussId"
               :height="gridHeight"
               :rowHeight="rowHeight"
               :columnDefs="columnList"
