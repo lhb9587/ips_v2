@@ -67,6 +67,24 @@ export function queryAttendanceArchivePage(data, config = {}) {
   })
 }
 
+export function queryUnarchivedAttendanceArchivePage(data, config = {}) {
+  return request({
+    url: ipServiceApi.queryUnarchivedAttendanceArchivePage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function batchCreateAttendanceArchiveByDefault(data, config = {}) {
+  return request({
+    url: ipServiceApi.batchCreateAttendanceArchiveByDefault,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryUnAuditModifyRecordNum(data) {
   return request({
     url: ipServiceApi.queryUnAuditModifyRecordNum,

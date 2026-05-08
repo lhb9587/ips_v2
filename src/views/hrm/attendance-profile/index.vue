@@ -9,6 +9,7 @@ import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import AttendanceProfileDetailSidebar from "@/views/hrm/attendance-profile/detail-sidebar.vue";
+import AttendanceProfileUnarchivedDialog from "@/views/hrm/attendance-profile/unarchived-dialog.vue";
 import { saveTableConfig } from "@/utils";
 import { queryAttendanceArchivePage } from "@/api/hrmList";
 
@@ -245,6 +246,7 @@ const boxRef = ref(null);
 const gridRef = ref(null);
 const diminput = ref("");
 const detailVisible = ref(false);
+const unarchivedDialogVisible = ref(false);
 const detailMode = ref("view");
 const selectedDetail = ref({});
 const total = ref(0);
@@ -391,6 +393,10 @@ const openCreateDetail = () => {
   detailVisible.value = true;
 };
 
+const openUnarchivedDialog = () => {
+  unarchivedDialogVisible.value = true;
+};
+
 const openProfileDetail = (params) => {
   if (!params?.data) {
     return;
@@ -507,6 +513,7 @@ onUnmounted(() => {
                   >
                     新增
                   </el-button>
+                  <el-button @click="openUnarchivedDialog">未建档案</el-button>
                 </div>
               </span>
               <div class="d-flex gap-2">
@@ -582,6 +589,12 @@ onUnmounted(() => {
         @close="closeDetail"
       />
     </DragSidebar>
+
+    <AttendanceProfileUnarchivedDialog
+      v-model="unarchivedDialogVisible"
+      :shiftOptions="shiftOptions"
+      @created="fetchAttendanceArchiveList"
+    />
   </Layout>
 </template>
 
