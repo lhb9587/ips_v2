@@ -161,7 +161,7 @@ const validateForm = () => {
     ElMessage.warning("请选择所属组织");
     return false;
   }
-  if ((formData.value.members || []).length === 0) {
+  if (props.mode !== "create" && (formData.value.members || []).length === 0) {
     ElMessage.warning("请至少选择一名考勤组成员");
     return false;
   }
@@ -179,6 +179,7 @@ const saveEdit = () => {
     code: formData.value.code.trim(),
     name: formData.value.name.trim(),
     remark: formData.value.remark.trim(),
+    members: [...(formData.value.members || [])],
   });
   isEditing.value = false;
 };
@@ -330,7 +331,10 @@ const deleteRecord = () => {
         </div>
       </section>
 
-      <section class="detail-section">
+      <section
+        v-if="props.mode !== 'create'"
+        class="detail-section"
+      >
         <div class="detail-section__toolbar">
           <div class="detail-section__title">成员列表</div>
           <div class="member-tools">

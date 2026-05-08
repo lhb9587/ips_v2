@@ -77,13 +77,8 @@ const moduleGroups = [
     entries: [
       {
         title: "排班列表",
-        description: "员工排班列表查询",
-        route: "/workbench/hrm/schedule_list",
-      },
-      {
-        title: "排班向导",
-        description: "按规则快速生成班次安排和周期计划。",
-        route: "/workbench/hrm/schedule_wizard",
+        description: "员工排班列表查询，支持自定义排班",
+        route: "/hrm/schedule-list",
       },
       {
         title: "考勤组",

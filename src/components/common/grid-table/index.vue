@@ -445,23 +445,26 @@ const refreshCellsfn = () => {
 
 const init = (list) => {
   columns.value = list.map((item) => ({
+    ...item,
     headerName: item.title,
-    field: item.value,
+    field: item.field || item.value,
     width:
-      getLoactionWidth(item.title, item.value) == "auto"
+      item.width ??
+      (getLoactionWidth(item.title, item.value) == "auto"
         ? 200
-        : getLoactionWidth(item.title, item.value),
-    resizable: true,
-    sortable: true,
-    maxWidth: getColumnMaxWidth(),
-    minWidth: item.value === "sid" ? 60 : 120,
+        : getLoactionWidth(item.title, item.value)),
+    resizable: item.resizable ?? true,
+    sortable: item.sortable ?? true,
+    maxWidth: item.maxWidth ?? getColumnMaxWidth(),
+    minWidth:
+      item.minWidth ?? (item.value === "sid" ? 60 : 120),
     editable: item.editable || false,
-    singleClickEdit: false,
+    singleClickEdit: item.singleClickEdit ?? false,
     flex: item.flex,
-    filter: "agSetColumnFilter",
-    menuTabs: ["filterMenuTab", "generalMenuTab", "columnsMenuTab"],
-    cellRenderer: cellRenderer,
-    enableRowGroup: true,
+    filter: item.filter ?? "agSetColumnFilter",
+    menuTabs: item.menuTabs || ["filterMenuTab", "generalMenuTab", "columnsMenuTab"],
+    cellRenderer: item.cellRenderer || cellRenderer,
+    enableRowGroup: item.enableRowGroup ?? true,
     rowGroup: item.rowGroup,
     comparator: (a, b) => {
       return sort(a, b, item.value);

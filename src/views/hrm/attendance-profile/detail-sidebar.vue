@@ -15,12 +15,25 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  organizationOptions: {
+    type: Array,
+    default: () => [],
+  },
+  employeeOptions: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const emit = defineEmits(["close", "save", "delete"]);
 
 const isEditing = ref(false);
 const formData = ref({});
+const shiftDialogVisible = ref(false);
+const employeeDialogVisible = ref(false);
+const employeeFilter = ref({
+  organizationCode: "",
+});
 
 const defaultPolicy = {
   holidaySystem: "默认假期制度",
@@ -32,7 +45,10 @@ const syncFormData = (detailInfo) => {
     ...detailInfo,
     holidaySystem: defaultPolicy.holidaySystem,
     attendanceSystem: defaultPolicy.attendanceSystem,
+    organizationCode: detailInfo.organizationCode || "",
+    organizationName: detailInfo.organizationName || "",
   };
+  employeeFilter.value.organizationCode = detailInfo.organizationCode || "";
 };
 
 watch(
@@ -47,6 +63,15 @@ watch(
 const titleText = computed(() =>
   props.mode === "create" ? "新增考勤档案" : "考勤档案详情",
 );
+
+const filteredShiftOptions = computed(() => props.shiftOptions);
+
+const filteredEmployeeOptions = computed(() => {
+  const organizationCode = employeeFilter.value.organizationCode.trim();
+  return props.employeeOptions.filter((item) => {
+    return !organizationCode || item.organizationCode === organizationCode;
+  });
+});
 
 const closeSidebar = () => {
   isEditing.value = false;
@@ -67,9 +92,44 @@ const cancelEdit = () => {
   isEditing.value = false;
 };
 
+const openEmployeeDialog = () => {
+  if (!isEditing.value) {
+    return;
+  }
+  employeeDialogVisible.value = true;
+};
+
+const chooseEmployeeOrganization = (row) => {
+  employeeFilter.value.organizationCode = row.organizationCode;
+};
+
+const chooseEmployee = (row) => {
+  formData.value.employeeCode = row.employeeCode;
+  formData.value.employeeName = row.employeeName;
+  formData.value.attendanceNo = row.attendanceNo || formData.value.attendanceNo;
+  formData.value.organizationCode = row.organizationCode;
+  formData.value.organizationName = row.organizationName;
+  employeeFilter.value.organizationCode = row.organizationCode;
+  employeeDialogVisible.value = false;
+};
+
+const openShiftDialog = () => {
+  if (!isEditing.value) {
+    return;
+  }
+  shiftDialogVisible.value = true;
+};
+
+const chooseShift = (row) => {
+  formData.value.defaultShift = row.shiftName;
+  formData.value.organizationCode = row.organizationCode;
+  formData.value.organizationName = row.organizationName;
+  shiftDialogVisible.value = false;
+};
+
 const saveEdit = () => {
   if (props.mode === "create" && !formData.value.employeeName) {
-    return ElMessage.warning("请填写员工姓名");
+    return ElMessage.warning("请选择员工");
   }
   if (!formData.value.defaultShift) {
     return ElMessage.warning("请选择默认班次");
@@ -77,11 +137,21 @@ const saveEdit = () => {
 
   emit("save", {
     ...props.detailInfo,
+    employeeCode:
+      props.mode === "create"
+        ? formData.value.employeeCode
+        : props.detailInfo.employeeCode,
     employeeName:
       props.mode === "create"
         ? formData.value.employeeName
         : props.detailInfo.employeeName,
+    attendanceNo:
+      props.mode === "create"
+        ? formData.value.attendanceNo
+        : props.detailInfo.attendanceNo,
     defaultShift: formData.value.defaultShift,
+    organizationCode: formData.value.organizationCode || props.detailInfo.organizationCode,
+    organizationName: formData.value.organizationName || props.detailInfo.organizationName,
     holidaySystem: defaultPolicy.holidaySystem,
     attendanceSystem: defaultPolicy.attendanceSystem,
   });
@@ -95,11 +165,11 @@ const deleteRecord = () => {
 const detailRows = [
   [
     { label: "员工编码", key: "employeeCode" },
-    { label: "姓名", key: "employeeName", editable: true, type: "input" },
+    { label: "姓名", key: "employeeName", editable: true, type: "employee-dialog" },
   ],
   [
     { label: "考勤编号", key: "attendanceNo" },
-    { label: "默认班次", key: "defaultShift", editable: true, type: "select" },
+    { label: "默认班次", key: "defaultShift", editable: true, type: "shift-dialog" },
   ],
   [
     { label: "假期制度", key: "holidaySystem" },
@@ -108,7 +178,14 @@ const detailRows = [
 ];
 
 const formatValue = (field) => {
-  const value = props.detailInfo[field.key] || formData.value[field.key];
+  const value = formData.value[field.key] ?? props.detailInfo[field.key];
+  if (
+    props.mode === "create" &&
+    ["employeeCode", "attendanceNo"].includes(field.key) &&
+    !value
+  ) {
+    return "";
+  }
   return value || "-";
 };
 
@@ -186,32 +263,34 @@ const canEditField = (field) => {
             >
               <div class="detail-item__label">{{ field.label }}</div>
               <div
-                v-if="canEditField(field) && field.type === 'input'"
+                v-if="canEditField(field) && field.type === 'employee-dialog'"
                 class="detail-item__editor"
               >
                 <el-input
                   v-model="formData[field.key]"
-                  placeholder="请输入姓名"
-                  clearable
-                />
+                  placeholder="请选择员工"
+                  readonly
+                  @click="openEmployeeDialog"
+                >
+                  <template #append>
+                    <el-button @click="openEmployeeDialog">选择</el-button>
+                  </template>
+                </el-input>
               </div>
               <div
-                v-else-if="canEditField(field) && field.type === 'select'"
+                v-else-if="canEditField(field) && field.type === 'shift-dialog'"
                 class="detail-item__editor"
               >
-                <el-select
+                <el-input
                   v-model="formData[field.key]"
-                  placeholder="请选择默认班次"
-                  filterable
-                  clearable
+                  placeholder="请选择班次"
+                  readonly
+                  @click="openShiftDialog"
                 >
-                  <el-option
-                    v-for="item in shiftOptions"
-                    :key="item"
-                    :label="item"
-                    :value="item"
-                  />
-                </el-select>
+                  <template #append>
+                    <el-button @click="openShiftDialog">选择</el-button>
+                  </template>
+                </el-input>
               </div>
               <div
                 v-else
@@ -224,6 +303,202 @@ const canEditField = (field) => {
         </div>
       </section>
     </div>
+
+    <el-dialog
+      v-model="employeeDialogVisible"
+      title="选择员工"
+      width="1120px"
+      append-to-body
+      destroy-on-close
+      class="attendance-profile-employee-dialog"
+    >
+      <div class="attendance-profile-dialog__body">
+        <div class="attendance-profile-dialog__filter">
+          <div class="attendance-profile-dialog__field">
+            <div class="attendance-profile-dialog__label">组织</div>
+            <el-input
+              :model-value="
+                organizationOptions.find(
+                  (item) => item.organizationCode === employeeFilter.organizationCode,
+                )?.organizationName || ''
+              "
+              placeholder="请选择组织"
+              readonly
+              class="attendance-profile-dialog__input"
+            >
+              <template #append>
+                <el-popover
+                  placement="bottom-end"
+                  trigger="click"
+                  :width="360"
+                >
+                  <template #reference>
+                    <el-button>选择</el-button>
+                  </template>
+                  <el-table
+                    :data="organizationOptions"
+                    border
+                    height="260"
+                    @row-click="chooseEmployeeOrganization"
+                    @row-dblclick="chooseEmployeeOrganization"
+                  >
+                    <el-table-column
+                      prop="organizationCode"
+                      label="组织编码"
+                      min-width="120"
+                    />
+                    <el-table-column
+                      prop="organizationName"
+                      label="组织名称"
+                      min-width="140"
+                    />
+                  </el-table>
+                </el-popover>
+              </template>
+            </el-input>
+          </div>
+        </div>
+
+        <div class="attendance-profile-dialog__table-wrap">
+          <el-table
+            :data="filteredEmployeeOptions"
+            border
+            height="420"
+            highlight-current-row
+            empty-text="无数据"
+            @row-dblclick="chooseEmployee"
+          >
+            <el-table-column
+              type="index"
+              label="序号"
+              width="60"
+            />
+            <el-table-column
+              prop="employeeCode"
+              label="员工编码"
+              min-width="140"
+            />
+            <el-table-column
+              prop="employeeName"
+              label="姓名"
+              min-width="140"
+            />
+            <el-table-column
+              prop="organizationName"
+              label="组织"
+              min-width="220"
+            />
+            <el-table-column
+              prop="positionName"
+              label="职位"
+              min-width="160"
+            />
+            <el-table-column
+              prop="employmentStatus"
+              label="用工关系状态"
+              min-width="160"
+            />
+            <el-table-column
+              prop="groupEntryDate"
+              label="入集团日期"
+              min-width="140"
+            />
+            <el-table-column
+              label="操作"
+              fixed="right"
+              width="90"
+            >
+              <template #default="{ row }">
+                <el-button
+                  type="primary"
+                  link
+                  @click="chooseEmployee(row)"
+                >
+                  选择
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+    </el-dialog>
+
+    <el-dialog
+      v-model="shiftDialogVisible"
+      title="选择班次"
+      width="1100px"
+      append-to-body
+      destroy-on-close
+      class="attendance-profile-shift-dialog"
+    >
+      <div class="attendance-profile-dialog__body">
+        <div class="attendance-profile-dialog__table-wrap">
+          <el-table
+            :data="filteredShiftOptions"
+            border
+            height="420"
+            highlight-current-row
+            @row-dblclick="chooseShift"
+          >
+            <el-table-column
+              type="index"
+              label="序号"
+              width="60"
+            />
+            <el-table-column
+              prop="shiftCode"
+              label="班次编码"
+              min-width="120"
+            />
+            <el-table-column
+              prop="shiftName"
+              label="班次名称"
+              min-width="180"
+            />
+            <el-table-column
+              prop="overtimePayType"
+              label="加班补偿方式"
+              min-width="140"
+            />
+            <el-table-column
+              prop="applicableFrequency"
+              label="适用段次"
+              min-width="120"
+            />
+            <el-table-column
+              prop="cardRule"
+              label="取卡规则"
+              min-width="160"
+            />
+            <el-table-column
+              prop="standardWorkHours"
+              label="标准工时"
+              min-width="120"
+            />
+            <el-table-column
+              prop="organizationName"
+              label="组织"
+              min-width="140"
+            />
+            <el-table-column
+              label="操作"
+              fixed="right"
+              width="90"
+            >
+              <template #default="{ row }">
+                <el-button
+                  type="primary"
+                  link
+                  @click="chooseShift(row)"
+                >
+                  选择
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -320,6 +595,59 @@ const canEditField = (field) => {
   width: 100%;
 }
 
+.attendance-profile-dialog__body {
+  display: grid;
+  gap: 16px;
+}
+
+.attendance-profile-dialog__filter {
+  padding: 8px 12px;
+  border: 1px solid #e7edf5;
+  border-radius: 8px;
+  background: #fafcff;
+}
+
+.attendance-profile-dialog__field {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.attendance-profile-dialog__label {
+  color: #4c5d78;
+  font-size: 14px;
+  text-align: right;
+}
+
+.attendance-profile-dialog__input,
+.attendance-profile-dialog__table-wrap {
+  width: 100%;
+}
+
+.attendance-profile-dialog__table-wrap {
+  border: 1px solid #e7edf5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+:deep(.attendance-profile-employee-dialog .el-dialog__body),
+:deep(.attendance-profile-shift-dialog .el-dialog__body) {
+  padding-top: 14px;
+}
+
+:deep(.attendance-profile-employee-dialog .el-input-group__append),
+:deep(.attendance-profile-shift-dialog .el-input-group__append) {
+  padding: 0;
+  background: #f6f9fc;
+}
+
+:deep(.attendance-profile-employee-dialog .el-table th.el-table__cell),
+:deep(.attendance-profile-shift-dialog .el-table th.el-table__cell) {
+  background: #f6f8fb;
+  color: #243449;
+}
+
 @media (max-width: 960px) {
   .attendance-profile-detail__content {
     padding: 20px 24px 32px;
@@ -332,6 +660,15 @@ const canEditField = (field) => {
 
   .attendance-profile-detail__actions {
     gap: 8px;
+  }
+
+  .attendance-profile-dialog__field {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .attendance-profile-dialog__label {
+    text-align: left;
   }
 }
 </style>

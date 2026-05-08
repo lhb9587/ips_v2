@@ -1,4 +1,4 @@
-const hrmRouter = [
+﻿const hrmRouter = [
   {
     path: "/hrm",
     name: "hrm",
@@ -9,6 +9,12 @@ const hrmRouter = [
         name: "attendance-management",
         meta: { title: "假勤管理", authRequired: true },
         component: () => import("@/views/hrm/attendance-management/index"),
+      },
+      {
+        path: "/hrm/schedule-list",
+        name: "schedule-list",
+        meta: { title: "排班列表", authRequired: true },
+        component: () => import("@/views/hrm/schedule-list/index"),
       },
       {
         path: "/hrm/leave-quota-management",
@@ -124,3 +130,4 @@ const hrmRouter = [
 ];
 
 export default hrmRouter;
+

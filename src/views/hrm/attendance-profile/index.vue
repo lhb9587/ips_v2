@@ -17,7 +17,219 @@ const store = useStore();
 const gridName = "attendanceProfileGrid";
 const defaultHolidaySystem = "默认假期制度";
 const defaultAttendanceSystem = "默认考勤制度";
-const shiftOptions = ["标准班次", "早班", "晚班", "弹性班次", "行政班"];
+const organizationOptions = [
+  {
+    organizationCode: "ORG001",
+    organizationName: "万慧达",
+    organizationFullName: "万慧达知识产权代理有限公司",
+  },
+  {
+    organizationCode: "ORG002",
+    organizationName: "人力资源部",
+    organizationFullName: "万慧达知识产权代理有限公司/人力资源部",
+  },
+  {
+    organizationCode: "ORG003",
+    organizationName: "产品研发部",
+    organizationFullName: "万慧达知识产权代理有限公司/产品研发部",
+  },
+];
+
+const employeeOptions = [
+  {
+    employeeCode: "10633",
+    employeeName: "杨光",
+    organizationCode: "ORG001",
+    organizationName: "万慧达",
+    positionName: "组长",
+    employmentStatus: "在职",
+    groupEntryDate: "2022-03-15",
+    attendanceNo: "KQ10633",
+  },
+  {
+    employeeCode: "10634",
+    employeeName: "张敏",
+    organizationCode: "ORG002",
+    organizationName: "人力资源部",
+    positionName: "招聘主管",
+    employmentStatus: "在职",
+    groupEntryDate: "2021-08-09",
+    attendanceNo: "KQ10634",
+  },
+  {
+    employeeCode: "10635",
+    employeeName: "李倩",
+    organizationCode: "ORG002",
+    organizationName: "人力资源部",
+    positionName: "HRBP",
+    employmentStatus: "在职",
+    groupEntryDate: "2020-11-20",
+    attendanceNo: "KQ10635",
+  },
+  {
+    employeeCode: "10636",
+    employeeName: "王浩",
+    organizationCode: "ORG003",
+    organizationName: "产品研发部",
+    positionName: "前端工程师",
+    employmentStatus: "在职",
+    groupEntryDate: "2023-02-06",
+    attendanceNo: "KQ10636",
+  },
+  {
+    employeeCode: "10637",
+    employeeName: "赵雪",
+    organizationCode: "ORG001",
+    organizationName: "万慧达",
+    positionName: "会计",
+    employmentStatus: "在职",
+    groupEntryDate: "2019-06-10",
+    attendanceNo: "KQ10637",
+  },
+  {
+    employeeCode: "10638",
+    employeeName: "陈博",
+    organizationCode: "ORG001",
+    organizationName: "万慧达",
+    positionName: "法务专员",
+    employmentStatus: "试用期",
+    groupEntryDate: "2024-09-02",
+    attendanceNo: "KQ10638",
+  },
+  {
+    employeeCode: "10639",
+    employeeName: "周颖",
+    organizationCode: "ORG003",
+    organizationName: "产品研发部",
+    positionName: "测试工程师",
+    employmentStatus: "在职",
+    groupEntryDate: "2022-12-01",
+    attendanceNo: "KQ10639",
+  },
+  {
+    employeeCode: "10640",
+    employeeName: "孙洋",
+    organizationCode: "ORG001",
+    organizationName: "万慧达",
+    positionName: "客户经理",
+    employmentStatus: "在职",
+    groupEntryDate: "2021-04-18",
+    attendanceNo: "KQ10640",
+  },
+];
+
+const shiftOptions = [
+  {
+    shiftCode: "001",
+    shiftName: "九点班次",
+    overtimePayType: "调休",
+    applicableFrequency: "一段",
+    cardRule: "默认取卡规则",
+    standardWorkHours: 7.75,
+    organizationCode: "ORG001",
+    organizationName: "万慧达",
+    isDefault: true,
+  },
+  {
+    shiftCode: "002",
+    shiftName: "九点半班次",
+    overtimePayType: "调休",
+    applicableFrequency: "一段",
+    cardRule: "默认取卡规则",
+    standardWorkHours: 7.25,
+    organizationCode: "ORG001",
+    organizationName: "万慧达",
+    isDefault: false,
+  },
+  {
+    shiftCode: "003",
+    shiftName: "十点班次",
+    overtimePayType: "调休",
+    applicableFrequency: "一段",
+    cardRule: "默认取卡规则",
+    standardWorkHours: 6.75,
+    organizationCode: "ORG001",
+    organizationName: "万慧达",
+    isDefault: false,
+  },
+  {
+    shiftCode: "004",
+    shiftName: "九点班次-十二点下班",
+    overtimePayType: "调休",
+    applicableFrequency: "一段",
+    cardRule: "默认取卡规则",
+    standardWorkHours: 2.75,
+    organizationCode: "ORG001",
+    organizationName: "万慧达",
+    isDefault: false,
+  },
+  {
+    shiftCode: "005",
+    shiftName: "九点半班次-十二点下班",
+    overtimePayType: "调休",
+    applicableFrequency: "一段",
+    cardRule: "默认取卡规则",
+    standardWorkHours: 2.25,
+    organizationCode: "ORG001",
+    organizationName: "万慧达",
+    isDefault: false,
+  },
+  {
+    shiftCode: "006",
+    shiftName: "十点班次-十二点下班",
+    overtimePayType: "调休",
+    applicableFrequency: "一段",
+    cardRule: "默认取卡规则",
+    standardWorkHours: 1.75,
+    organizationCode: "ORG001",
+    organizationName: "万慧达",
+    isDefault: false,
+  },
+  {
+    shiftCode: "007",
+    shiftName: "哺乳假-9点",
+    overtimePayType: "调休",
+    applicableFrequency: "一段",
+    cardRule: "默认取卡规则",
+    standardWorkHours: 6.75,
+    organizationCode: "ORG001",
+    organizationName: "万慧达",
+    isDefault: false,
+  },
+  {
+    shiftCode: "008",
+    shiftName: "哺乳假-10点",
+    overtimePayType: "调休",
+    applicableFrequency: "一段",
+    cardRule: "默认取卡规则",
+    standardWorkHours: 6.75,
+    organizationCode: "ORG001",
+    organizationName: "万慧达",
+    isDefault: false,
+  },
+  {
+    shiftCode: "009",
+    shiftName: "哺乳假-9点半",
+    overtimePayType: "调休",
+    applicableFrequency: "一段",
+    cardRule: "默认取卡规则",
+    standardWorkHours: 6.25,
+    organizationCode: "ORG001",
+    organizationName: "万慧达",
+    isDefault: false,
+  },
+  {
+    shiftCode: "010",
+    shiftName: "哺乳假-18点",
+    overtimePayType: "调休",
+    applicableFrequency: "一段",
+    cardRule: "默认取卡规则",
+    standardWorkHours: 6.75,
+    organizationCode: "ORG001",
+    organizationName: "万慧达",
+    isDefault: false,
+  },
+];
 
 const columnOptions = [
   { title: "员工编码", value: "employeeCode" },
@@ -248,14 +460,11 @@ const cellRenderer = (params) => {
 };
 
 const buildNewProfile = () => {
-  const nextNumber =
-    Math.max(...profileList.value.map((item) => Number(item.employeeCode) || 0), 10632) +
-    1;
   return {
     id: Date.now(),
-    employeeCode: `${nextNumber}`,
+    employeeCode: "",
     employeeName: "",
-    attendanceNo: `KQ${nextNumber}`,
+    attendanceNo: "",
     holidaySystem: defaultHolidaySystem,
     attendanceSystem: defaultAttendanceSystem,
     defaultShift: "标准班次",
@@ -476,6 +685,8 @@ onUnmounted(() => {
       <AttendanceProfileDetailSidebar
         :detailInfo="selectedDetail"
         :mode="detailMode"
+        :organizationOptions="organizationOptions"
+        :employeeOptions="employeeOptions"
         :shiftOptions="shiftOptions"
         @save="handleSaveProfile"
         @delete="handleDeleteDetail"

@@ -474,13 +474,6 @@ onUnmounted(() => {
                   >
                     创建
                   </el-button>
-                  <el-button
-                    type="danger"
-                    plain
-                    @click="handleDeleteSelected"
-                  >
-                    删除
-                  </el-button>
                 </div>
               </span>
               <div class="d-flex gap-2">
