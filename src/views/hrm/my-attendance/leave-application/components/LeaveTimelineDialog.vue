@@ -1,3 +1,4 @@
+<!-- 请假时间轴弹窗，用于展示员工历史请假记录。 -->
 <script setup>
 import { computed, defineEmits, defineProps, ref, watch } from "vue";
 import dayjs from "dayjs";

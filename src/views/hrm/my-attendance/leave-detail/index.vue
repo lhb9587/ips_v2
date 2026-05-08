@@ -1,3 +1,4 @@
+<!-- 请假详情页，用于承接请假列表跳转后的独立详情展示。 -->
 <script setup>
 import { ref } from "vue";
 import { useRoute, useRouter } from "vue-router";

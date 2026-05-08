@@ -1,3 +1,4 @@
+<!-- 我的考勤首页，展示员工自助考勤工作台与常用入口。 -->
 <script setup>
 import { useRouter } from "vue-router";
 import Layout from "@/layouts/main";

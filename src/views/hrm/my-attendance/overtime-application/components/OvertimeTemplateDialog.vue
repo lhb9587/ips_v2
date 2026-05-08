@@ -1,3 +1,4 @@
+<!-- 加班模板弹窗，用于选择和套用预设加班申请模板。 -->
 <script setup>
 import { computed, defineEmits, defineProps, ref, watch } from "vue";
 

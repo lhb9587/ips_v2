@@ -1,3 +1,4 @@
+<!-- 加班选项卡片组件，用于展示加班申请中的业务选项内容。 -->
 <script setup>
 import { defineEmits, defineProps } from "vue";
 

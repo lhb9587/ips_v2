@@ -1,3 +1,4 @@
+<!-- 补签卡详情内容组件，用于展示和处理补签卡单详情信息。 -->
 <script setup>
 /* global defineProps, defineEmits */
 import { computed, ref, watch } from "vue";

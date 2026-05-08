@@ -1,3 +1,4 @@
+<!-- 请假详情内容组件，用于展示和处理请假单详情信息。 -->
 <script setup>
 import { computed, defineEmits, defineProps, ref, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";

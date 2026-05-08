@@ -1,3 +1,4 @@
+<!-- 请假类型卡片，用于展示可选假期类型及额度信息。 -->
 <script setup>
 /* eslint-disable no-undef */
 defineProps({

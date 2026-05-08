@@ -1,3 +1,4 @@
+<!-- 请假申请页，负责创建、保存和提交员工请假单。 -->
 <script setup>
 import { computed, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
