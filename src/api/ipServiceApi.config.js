@@ -535,6 +535,8 @@ const URL_Tem = {
   queryOrganizationsChild: SYS_URL6 + 'talent/queryOrganizationsChild',
   queryAttendanceArchivePage: '/ip_attendance/api/attendance/archive/page',
   queryAttendanceGroupPage: '/ip_attendance/api/attendance/group/page',
+  queryAttendanceGroupDetail: '/ip_attendance/api/attendance/group/detail',
+  saveAttendanceGroup: '/ip_attendance/api/attendance/group/save',
   queryAttendanceArchiveDetail: '/ip_attendance/api/attendance/archive/detail',
   createAttendanceArchive: '/ip_attendance/api/attendance/archive/create',
   updateAttendanceArchive: '/ip_attendance/api/attendance/archive/update',

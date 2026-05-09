@@ -76,6 +76,24 @@ export function queryAttendanceGroupPage(data, config = {}) {
   })
 }
 
+export function queryAttendanceGroupDetail(data, config = {}) {
+  return request({
+    url: ipServiceApi.queryAttendanceGroupDetail,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function saveAttendanceGroup(data, config = {}) {
+  return request({
+    url: ipServiceApi.saveAttendanceGroup,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryUnarchivedAttendanceArchivePage(data, config = {}) {
   return request({
     url: ipServiceApi.queryUnarchivedAttendanceArchivePage,

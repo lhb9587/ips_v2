@@ -10,7 +10,11 @@ import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import AttendanceGroupDetailSidebar from "@/views/hrm/attendance-group/detail-sidebar.vue";
 import { saveTableConfig } from "@/utils";
-import { queryAttendanceGroupPage } from "@/api/hrmList";
+import {
+  queryAttendanceGroupDetail,
+  queryAttendanceGroupPage,
+  saveAttendanceGroup,
+} from "@/api/hrmList";
 
 const route = useRoute();
 const store = useStore();
@@ -128,9 +132,32 @@ const selectedDetail = ref({});
 const formInline = ref({});
 const total = ref(0);
 const gridData = ref([]);
+const detailLoading = ref(false);
 const gridOptions = {
   rowMultiSelectWithClick: true,
 };
+
+const buildMemberRecord = (item = {}) => ({
+  employeeCode: item.employeeCode || item.talentCode || "",
+  employeeName: item.employeeName || item.talentName || "",
+  attendancePosition: item.attendancePosition || item.posName || "",
+  attendanceOrganization: item.attendanceOrganization || item.deptName || "",
+  transferTime: item.transferTime || item.transferOutTime || "",
+  transferOrganization: item.transferOrganization || item.transferOutOrg || "",
+});
+
+const buildDetailRecord = (item = {}) => ({
+  id: item.id || item.groupId || "",
+  code: item.code || item.groupCode || "",
+  name: item.name || item.groupName || "",
+  organizationCode: item.organizationCode || item.orgCode || "",
+  organizationName: item.organizationName || item.orgName || "",
+  remark: item.remark || "",
+  referenced: Boolean(item.referenced),
+  members: Array.isArray(item.members)
+    ? item.members.map((member) => buildMemberRecord(member))
+    : [],
+});
 
 const setColumn = (list) => {
   columnList.value = Array.isArray(list) ? list : [];
@@ -282,12 +309,33 @@ const openGroupDetail = (params) => {
   if (!params?.data) {
     return;
   }
-  selectedDetail.value = {
-    ...params.data,
-    members: [...(params.data.members || [])],
-  };
-  detailMode.value = "view";
-  detailVisible.value = true;
+  detailLoading.value = true;
+  queryAttendanceGroupDetail(
+    {
+      groupId: params.data.id,
+      pageNo: 1,
+      pageSize: 200,
+    },
+    {
+      isLoading: true,
+    },
+  )
+    .then((res) => {
+      const detailData = res?.data || {};
+      selectedDetail.value = buildDetailRecord({
+        ...params.data,
+        ...detailData,
+        members: detailData?.members?.records || [],
+      });
+      detailMode.value = "view";
+      detailVisible.value = true;
+    })
+    .catch(() => {
+      selectedDetail.value = {};
+    })
+    .finally(() => {
+      detailLoading.value = false;
+    });
 };
 
 const closeDetail = () => {
@@ -329,30 +377,38 @@ const handleDeleteDetail = (record) => {
 };
 
 const handleSaveGroup = (payload) => {
-  const targetIndex = gridData.value.findIndex((item) => item.id === payload.id);
-  const nextRecord = {
-    ...payload,
-    members: [...(payload.members || [])],
+  const requestData = {
+    groupId: payload.id || undefined,
+    groupCode: payload.code,
+    groupName: payload.name,
+    orgCode: payload.organizationCode,
+    remark: payload.remark || "",
+    memberTalentCodes: Array.isArray(payload.members)
+      ? payload.members.map((item) => item.employeeCode).filter(Boolean)
+      : [],
   };
 
-  if (targetIndex > -1) {
-    gridData.value.splice(targetIndex, 1, {
-      ...gridData.value[targetIndex],
-      ...nextRecord,
+  saveAttendanceGroup(requestData, {
+    isLoading: true,
+  })
+    .then((res) => {
+      const result = res?.data || {};
+      const nextId = result.groupId || payload.id;
+      selectedDetail.value = buildDetailRecord({
+        ...payload,
+        id: nextId,
+      });
+      detailMode.value = "view";
+      listQuery.value.pageNo = 1;
+      ElMessage.success(result.message || (payload.id ? "考勤组已更新" : "考勤组已创建"));
+      fetchAttendanceGroupList();
+      if (nextId) {
+        openGroupDetail({ data: { ...selectedDetail.value, id: nextId } });
+      }
+    })
+    .catch(() => {
+      selectedDetail.value = buildDetailRecord(payload);
     });
-    selectedDetail.value = {
-      ...gridData.value[targetIndex],
-      members: [...(gridData.value[targetIndex].members || [])],
-    };
-    ElMessage.success("考勤组已更新");
-    return;
-  }
-
-  selectedDetail.value = { ...nextRecord, members: [...nextRecord.members] };
-  detailMode.value = "view";
-  listQuery.value.pageNo = 1;
-  ElMessage.success("考勤组已创建");
-  fetchAttendanceGroupList();
 };
 
 const handlePagination = () => {
