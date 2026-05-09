@@ -110,6 +110,9 @@ export const actions = {
           commit("SET_ROLES", []);
           commit("SET_PERMISSIONFLAG", true);
           commit("SET_PERMISSIONS", []);
+          commit("attendanceScope/SET_SCOPE", null, { root: true });
+          commit("attendanceScope/SET_LOADED", false, { root: true });
+          commit("attendanceScope/SET_ROLE_TYPE", "", { root: true });
           removeToken();
           removeUserInfo()
           // resetRouter();
@@ -126,6 +129,9 @@ export const actions = {
     return new Promise((resolve) => {
       commit("SET_TOKEN", "");
       commit("SET_ROLES", []);
+      commit("attendanceScope/SET_SCOPE", null, { root: true });
+      commit("attendanceScope/SET_LOADED", false, { root: true });
+      commit("attendanceScope/SET_ROLE_TYPE", "", { root: true });
       removeToken();
       resolve();
     });

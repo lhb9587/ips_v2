@@ -1,5 +1,5 @@
-<script setup>
-import { onMounted, onUnmounted, ref, watch } from "vue";
+﻿<script setup>
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -14,43 +14,13 @@ import {
   queryAttendanceGroupDetail,
   queryAttendanceGroupPage,
   saveAttendanceGroup,
-} from "@/api/hrmList";
+} from "@/api/attendance";
 
 const route = useRoute();
 const store = useStore();
 
 const bussId = 457;
 const gridName = "attendanceGroupGrid";
-const columnOptions = [
-  { title: "编码", value: "code" },
-  { title: "名称", value: "name" },
-  { title: "组织", value: "organizationName" },
-  { title: "备注", value: "remark" },
-  { title: "成员数", value: "memberCount" },
-];
-
-const organizationOptions = [
-  {
-    organizationCode: "ORG001",
-    organizationName: "曜斗科技",
-    organizationFullName: "曜斗科技有限公司",
-  },
-  {
-    organizationCode: "ORG002",
-    organizationName: "产品研发部",
-    organizationFullName: "曜斗科技有限公司/产品研发部",
-  },
-  {
-    organizationCode: "ORG003",
-    organizationName: "人力资源部",
-    organizationFullName: "曜斗科技有限公司/人力资源部",
-  },
-  {
-    organizationCode: "ORG004",
-    organizationName: "华东运营中心",
-    organizationFullName: "曜斗科技有限公司/华东运营中心",
-  },
-];
 
 const employeeOptions = [
   {
@@ -118,6 +88,14 @@ const employeeOptions = [
     transferOrganization: "",
   },
 ];
+
+const attendanceOrganizationOptions = computed(() =>
+  (store.getters["attendanceScope/deptScopes"] || []).map((item) => ({
+    organizationCode: item.deptId,
+    organizationName: item.deptName,
+    organizationFullName: item.deptName,
+  })),
+);
 
 const columnList = ref([]);
 const activeClass = ref([]);
@@ -285,7 +263,9 @@ const cellRenderer = (params) => {
 
 const buildNewGroup = () => {
   const defaultOrganization =
-    organizationOptions.length === 1 ? organizationOptions[0] : {};
+    attendanceOrganizationOptions.value.length === 1
+      ? attendanceOrganizationOptions.value[0]
+      : {};
 
   return {
     id: Date.now(),
@@ -530,7 +510,7 @@ onUnmounted(() => {
       <AttendanceGroupDetailSidebar
         :detailInfo="selectedDetail"
         :mode="detailMode"
-        :organizationOptions="organizationOptions"
+        :organizationOptions="attendanceOrganizationOptions"
         :employeeOptions="employeeOptions"
         @save="handleSaveGroup"
         @delete="handleDeleteDetail"
@@ -545,3 +525,5 @@ onUnmounted(() => {
   flex: none;
 }
 </style>
+
+

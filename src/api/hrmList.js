@@ -58,60 +58,6 @@ export function queryOrganizationsChild(data) {
   })
 }
 
-export function queryAttendanceArchivePage(data, config = {}) {
-  return request({
-    url: ipServiceApi.queryAttendanceArchivePage,
-    method: 'post',
-    data,
-    ...config
-  })
-}
-
-export function queryAttendanceGroupPage(data, config = {}) {
-  return request({
-    url: ipServiceApi.queryAttendanceGroupPage,
-    method: 'post',
-    data,
-    ...config
-  })
-}
-
-export function queryAttendanceGroupDetail(data, config = {}) {
-  return request({
-    url: ipServiceApi.queryAttendanceGroupDetail,
-    method: 'post',
-    data,
-    ...config
-  })
-}
-
-export function saveAttendanceGroup(data, config = {}) {
-  return request({
-    url: ipServiceApi.saveAttendanceGroup,
-    method: 'post',
-    data,
-    ...config
-  })
-}
-
-export function queryUnarchivedAttendanceArchivePage(data, config = {}) {
-  return request({
-    url: ipServiceApi.queryUnarchivedAttendanceArchivePage,
-    method: 'post',
-    data,
-    ...config
-  })
-}
-
-export function batchCreateAttendanceArchiveByDefault(data, config = {}) {
-  return request({
-    url: ipServiceApi.batchCreateAttendanceArchiveByDefault,
-    method: 'post',
-    data,
-    ...config
-  })
-}
-
 export function queryUnAuditModifyRecordNum(data) {
   return request({
     url: ipServiceApi.queryUnAuditModifyRecordNum,

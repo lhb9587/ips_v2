@@ -57,6 +57,8 @@ const titleText = computed(() =>
   props.mode === "create" ? "创建考勤组" : "考勤组详情",
 );
 
+const allowBaseInfoEdit = computed(() => props.mode === "create");
+
 const filteredMembers = computed(() => {
   const keyword = memberKeyword.value.trim().toLowerCase();
   const members = formData.value.members || [];
@@ -245,7 +247,7 @@ const deleteRecord = () => {
             <div class="detail-item">
               <div class="detail-item__label">编码</div>
               <div
-                v-if="isEditing"
+                v-if="isEditing && allowBaseInfoEdit"
                 class="detail-item__editor"
               >
                 <el-input
@@ -264,7 +266,7 @@ const deleteRecord = () => {
             <div class="detail-item">
               <div class="detail-item__label">名称</div>
               <div
-                v-if="isEditing"
+                v-if="isEditing && allowBaseInfoEdit"
                 class="detail-item__editor"
               >
                 <el-input
@@ -285,7 +287,7 @@ const deleteRecord = () => {
             <div class="detail-item">
               <div class="detail-item__label">组织</div>
               <div
-                v-if="isEditing"
+                v-if="isEditing && allowBaseInfoEdit"
                 class="detail-item__editor"
               >
                 <el-input
@@ -311,7 +313,7 @@ const deleteRecord = () => {
             <div class="detail-item">
               <div class="detail-item__label">备注</div>
               <div
-                v-if="isEditing"
+                v-if="isEditing && allowBaseInfoEdit"
                 class="detail-item__editor"
               >
                 <el-input

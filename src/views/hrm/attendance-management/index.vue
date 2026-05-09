@@ -1,8 +1,11 @@
 <script setup>
+import { onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { useStore } from "vuex";
 import Layout from "@/layouts/main";
 
 const router = useRouter();
+const store = useStore();
 
 const hero = {
   title: "假勤管理",
@@ -93,6 +96,10 @@ const moduleGroups = [
 const goToEntry = (route) => {
   router.push(route);
 };
+
+onMounted(() => {
+  store.dispatch("attendanceScope/getScope").catch(() => {});
+});
 </script>
 
 <template>
