@@ -47,6 +47,33 @@ export function saveAttendanceGroup(data, config = {}) {
   })
 }
 
+export function queryAttendanceGroupDeleteCheck(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceGroupDeleteCheck,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function deleteAttendanceGroup(data, config = {}) {
+  return request({
+    url: attendanceApi.deleteAttendanceGroup,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryAttendanceGroupMemberCandidatePage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceGroupMemberCandidatePage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryUnarchivedAttendanceArchivePage(data, config = {}) {
   return request({
     url: attendanceApi.queryUnarchivedAttendanceArchivePage,

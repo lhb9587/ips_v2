@@ -1,6 +1,8 @@
 <script setup>
-import { computed, defineEmits, defineProps, ref, watch } from "vue";
+import { computed, defineEmits, defineProps, nextTick, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
+import Pagination from "@/components/common/pagination/index.vue";
+import { queryAttendanceGroupMemberCandidatePage } from "@/api/attendance";
 
 const props = defineProps({
   detailInfo: {
@@ -29,6 +31,17 @@ const memberKeyword = ref("");
 const organizationDialogVisible = ref(false);
 const employeeDialogVisible = ref(false);
 const selectedEmployees = ref([]);
+const candidateLoading = ref(false);
+const candidateList = ref([]);
+const candidateTotal = ref(0);
+const candidateTableRef = ref(null);
+const candidateQuery = ref({
+  talentCode: "",
+  talentName: "",
+  deptCodes: [],
+  pageNo: 1,
+  pageSize: 10,
+});
 
 const syncFormData = (detailInfo) => {
   formData.value = {
@@ -58,7 +71,6 @@ const titleText = computed(() =>
 );
 
 const allowBaseInfoEdit = computed(() => props.mode === "create");
-
 const filteredMembers = computed(() => {
   const keyword = memberKeyword.value.trim().toLowerCase();
   const members = formData.value.members || [];
@@ -82,10 +94,19 @@ const selectableEmployees = computed(() => {
   const existingCodes = new Set(
     (formData.value.members || []).map((item) => item.employeeCode),
   );
-  return props.employeeOptions.filter(
-    (item) => !existingCodes.has(item.employeeCode),
-  );
+
+  return candidateList.value.map((item) => ({
+    ...item,
+    selectionDisabled: existingCodes.has(item.employeeCode),
+  }));
 });
+
+const departmentCascaderOptions = computed(() =>
+  (props.organizationOptions || []).map((item) => ({
+    value: item.organizationCode,
+    label: item.organizationName,
+  })),
+);
 
 const closeSidebar = () => {
   isEditing.value = false;
@@ -106,13 +127,6 @@ const cancelEdit = () => {
   isEditing.value = false;
 };
 
-const openOrganizationDialog = () => {
-  if (!isEditing.value) {
-    return;
-  }
-  organizationDialogVisible.value = true;
-};
-
 const chooseOrganization = (row) => {
   formData.value.organizationCode = row.organizationCode;
   formData.value.organizationName = row.organizationName;
@@ -123,12 +137,27 @@ const handleEmployeeSelection = (rows) => {
   selectedEmployees.value = rows;
 };
 
+const clearCandidateSelection = () => {
+  selectedEmployees.value = [];
+  nextTick(() => {
+    candidateTableRef.value?.clearSelection?.();
+  });
+};
+
 const openEmployeeDialog = () => {
   if (!isEditing.value) {
     return;
   }
-  selectedEmployees.value = [];
+  clearCandidateSelection();
+  candidateQuery.value = {
+    talentCode: "",
+    talentName: "",
+    deptCodes: [],
+    pageNo: 1,
+    pageSize: 10,
+  };
   employeeDialogVisible.value = true;
+  fetchCandidateList();
 };
 
 const addSelectedEmployees = () => {
@@ -149,6 +178,73 @@ const removeMember = (row) => {
     (item) => item.employeeCode !== row.employeeCode,
   );
 };
+
+const fetchCandidateList = () => {
+  if (!formData.value.id) {
+    candidateList.value = [];
+    candidateTotal.value = 0;
+    return;
+  }
+  candidateLoading.value = true;
+  queryAttendanceGroupMemberCandidatePage(
+    {
+      groupId: formData.value.id,
+      deptCodes: candidateQuery.value.deptCodes.length
+        ? candidateQuery.value.deptCodes
+        : undefined,
+      talentCode: candidateQuery.value.talentCode || undefined,
+      talentName: candidateQuery.value.talentName || undefined,
+      pageNo: candidateQuery.value.pageNo,
+      pageSize: candidateQuery.value.pageSize,
+    },
+    {
+      isLoading: false,
+    },
+  )
+    .then((res) => {
+      const records = Array.isArray(res?.data)
+        ? res.data
+        : res?.data?.records || [];
+      candidateList.value = records.map((item) => ({
+        employeeCode: item.talentCode || "",
+        employeeName: item.talentName || "",
+        attendancePosition: item.posId || "",
+        attendanceOrganization: item.deptName || "",
+        transferTime: item.joinDate || "",
+        transferOrganization: "",
+        empStatus: item.empStatus || "",
+        alreadyInGroup: Boolean(item.alreadyInGroup),
+      }));
+      candidateTotal.value =
+        Number(res?.total) ||
+        Number(res?.data?.total) ||
+        0;
+      if (Number(res?.currPage)) {
+        candidateQuery.value.pageNo = Number(res.currPage);
+      }
+      clearCandidateSelection();
+    })
+    .finally(() => {
+      candidateLoading.value = false;
+    });
+};
+
+const handleCandidateSearch = () => {
+  candidateQuery.value.pageNo = 1;
+  fetchCandidateList();
+};
+
+const handleCandidateDeptChange = (value) => {
+  candidateQuery.value.deptCodes = Array.isArray(value) ? value : [];
+  candidateQuery.value.pageNo = 1;
+  fetchCandidateList();
+};
+
+const handleCandidatePagination = () => {
+  fetchCandidateList();
+};
+
+const candidateRowSelectable = (row) => !row.selectionDisabled;
 
 const validateForm = () => {
   if (!formData.value.code.trim()) {
@@ -286,27 +382,7 @@ const deleteRecord = () => {
           <div class="detail-row">
             <div class="detail-item">
               <div class="detail-item__label">组织</div>
-              <div
-                v-if="isEditing && allowBaseInfoEdit"
-                class="detail-item__editor"
-              >
-                <el-input
-                  v-model="formData.organizationName"
-                  placeholder="请选择组织"
-                  readonly
-                  @click="openOrganizationDialog"
-                >
-                  <template #append>
-                    <el-button @click="openOrganizationDialog">
-                      选择
-                    </el-button>
-                  </template>
-                </el-input>
-              </div>
-              <div
-                v-else
-                class="detail-item__value"
-              >
+              <div class="detail-item__value">
                 {{ formData.organizationName || "-" }}
               </div>
             </div>
@@ -474,15 +550,60 @@ const deleteRecord = () => {
       width="860px"
       append-to-body
     >
+      <div class="candidate-toolbar">
+        <el-input
+          v-model="candidateQuery.talentCode"
+          class="candidate-toolbar__field"
+          placeholder="请输入员工编码"
+          clearable
+          @keyup.enter="handleCandidateSearch"
+        />
+        <el-input
+          v-model="candidateQuery.talentName"
+          class="candidate-toolbar__field"
+          placeholder="请输入员工姓名"
+          clearable
+          @keyup.enter="handleCandidateSearch"
+        >
+          <template #prepend>
+            <el-button @click="handleCandidateSearch">
+              <i class="bx bx-search-alt"></i>
+            </el-button>
+          </template>
+        </el-input>
+        <el-cascader
+          v-model="candidateQuery.deptCodes"
+          class="candidate-toolbar__dept"
+          :options="departmentCascaderOptions"
+          :props="{ multiple: true, emitPath: false, checkStrictly: true }"
+          collapse-tags
+          collapse-tags-tooltip
+          clearable
+          filterable
+          :show-all-levels="false"
+          placeholder="请选择部门"
+          @change="handleCandidateDeptChange"
+        />
+        <el-button
+          type="primary"
+          @click="handleCandidateSearch"
+        >
+          搜索
+        </el-button>
+      </div>
       <el-table
+        ref="candidateTableRef"
         :data="selectableEmployees"
         border
         height="420"
+        v-loading="candidateLoading"
+        row-key="employeeCode"
         @selection-change="handleEmployeeSelection"
       >
         <el-table-column
           type="selection"
           width="50"
+          :selectable="candidateRowSelectable"
         />
         <el-table-column
           prop="employeeCode"
@@ -504,7 +625,27 @@ const deleteRecord = () => {
           label="考勤组织"
           min-width="160"
         />
+        <el-table-column
+          label="状态"
+          min-width="120"
+        >
+          <template #default="{ row }">
+            <span :class="['candidate-status', { 'candidate-status--disabled': row.selectionDisabled }]">
+              {{ row.selectionDisabled ? "已在当前成员中" : "可添加" }}
+            </span>
+          </template>
+        </el-table-column>
       </el-table>
+      <div class="candidate-pagination">
+        <Pagination
+          :total="candidateTotal"
+          v-model:page="candidateQuery.pageNo"
+          v-model:limit="candidateQuery.pageSize"
+          :pageSizes="[10, 20, 50, 100]"
+          :storage="false"
+          @pagination="handleCandidatePagination"
+        />
+      </div>
       <template #footer>
         <el-button @click="employeeDialogVisible = false">取消</el-button>
         <el-button
@@ -637,6 +778,33 @@ const deleteRecord = () => {
   width: 220px;
 }
 
+.candidate-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.candidate-toolbar__field {
+  width: 220px;
+}
+
+.candidate-toolbar__dept {
+  width: 260px;
+}
+
+.candidate-pagination {
+  margin-top: 16px;
+}
+
+.candidate-status {
+  color: #2d8a55;
+}
+
+.candidate-status--disabled {
+  color: #9099ab;
+}
+
 :deep(.detail-item__editor .el-input__wrapper) {
   width: 100%;
 }
@@ -663,6 +831,15 @@ const deleteRecord = () => {
   .member-tools__search {
     flex: 1;
     width: auto;
+  }
+
+  .candidate-toolbar {
+    flex-direction: column;
+  }
+
+  .candidate-toolbar__field,
+  .candidate-toolbar__dept {
+    width: 100%;
   }
 }
 </style>

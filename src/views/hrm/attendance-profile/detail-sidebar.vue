@@ -1,7 +1,7 @@
 <script setup>
 import { computed, defineEmits, defineProps, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
-import { queryUnarchivedAttendanceArchivePage } from "@/api/hrmList";
+import { queryUnarchivedAttendanceArchivePage } from "@/api/attendance";
 
 const props = defineProps({
   detailInfo: {

@@ -12,38 +12,18 @@ import { saveTableConfig } from "@/utils";
 const route = useRoute();
 const store = useStore();
 
+const bussId = 458;
 const gridName = "scheduleListGrid";
-const columnOptions = [
-  { title: "员工编码", value: "employeeCode" },
-  { title: "姓名", value: "employeeName" },
-  { title: "考勤组织", value: "attendanceOrganization" },
-  { title: "考勤日期", value: "attendanceDate" },
-  { title: "日期类型", value: "dateType" },
-  { title: "班次名称", value: "shiftName" },
-  { title: "上班时间", value: "workStartTime" },
-  { title: "下班时间", value: "workEndTime" },
-  { title: "考勤编号", value: "attendanceNo" },
-  { title: "考勤制度", value: "attendanceSystem" },
-  { title: "取卡规则", value: "cardRule" },
-];
 
-const columnList = ref([...columnOptions]);
+const columnList = ref([]);
 const setColumn = (list) => {
-  if (!Array.isArray(list) || list.length === 0) {
-    columnList.value = [...columnOptions];
-    return;
-  }
-  const validColumns = list.filter((item) =>
-    columnOptions.some((column) => column.value === item.value),
-  );
-  columnList.value = validColumns.length > 0 ? validColumns : [...columnOptions];
+  columnList.value = Array.isArray(list) ? list : [];
 };
 
 const activeClass = ref([]);
 const rowHeight = ref(40);
 const isFull = ref(false);
 const boxRef = ref(null);
-const gridRef = ref(null);
 const diminput = ref("");
 const formInline = ref({});
 const gridOptions = {
@@ -427,6 +407,7 @@ onUnmounted(() => {
               <div class="d-flex gap-2">
                 <TopListTool
                   :gridName="gridName"
+                  :buss-id="bussId"
                   @changeBorder="changeBorder"
                   @changeRowStyle="changeRowStyle"
                   @changeRowHeight="changeRowHeight"
@@ -447,6 +428,7 @@ onUnmounted(() => {
             <GridView
               ref="gridRef"
               :gridName="gridName"
+              :bussId="bussId"
               :height="gridHeight"
               :rowHeight="rowHeight"
               :columnDefs="columnList"

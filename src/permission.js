@@ -14,6 +14,26 @@ const whiteList = ['/login','/forgot-password','/excel_preview'] // 设置白名
 
 //由于会出现动态路由，不能使用path，取路由的name作为白名单的key
 const allowRouterList = ['personal-profile','contract-detail','project-detail','task-detail','subtask-detail','case-detail','leave-quota-management','leave-management','overtime-management','supplement-management','attendance-profile','attendance-group','schedule-list','my-leave-application','my-leave-list','my-leave-detail','my-overtime-application','my-overtime-list','my-overtime-detail','my-supplement-application','my-supplement-list','my-supplement-detail']
+const attendanceRouteNameSet = new Set([
+  'attendance-management',
+  'leave-quota-management',
+  'leave-management',
+  'overtime-management',
+  'supplement-management',
+  'attendance-profile',
+  'attendance-group',
+  'schedule-list',
+  'my-attendance',
+  'my-leave-application',
+  'my-leave-list',
+  'my-leave-detail',
+  'my-overtime-application',
+  'my-overtime-list',
+  'my-overtime-detail',
+  'my-supplement-application',
+  'my-supplement-list',
+  'my-supplement-detail',
+])
 // 记录路由
 // let hasRoles = true
 
@@ -31,6 +51,13 @@ const openUrl = (path) =>{
     url = `http://${hostname}:${port}/v1/#${path}` // 外包测试
   }
   window.open(url);
+}
+
+function isAttendanceRoute(route) {
+  if (attendanceRouteNameSet.has(route.name)) {
+    return true
+  }
+  return route.path?.startsWith('/hrm/my-attendance')
 }
 
 //前置守卫
@@ -105,6 +132,12 @@ router.beforeEach((to, from, next) => {
             document.title = to.meta.title || 'vue-admin-perfect'
           }
           next()
+
+          if (isAttendanceRoute(to)) {
+            store.dispatch('attendanceScope/getScope').catch(error => {
+              console.error('Failed to fetch attendance scope:', error)
+            })
+          }
         })
         .catch(error => {
           console.error('获取用户信息失败:', error)

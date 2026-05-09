@@ -7,7 +7,7 @@ import Pagination from "@/components/common/pagination/index.vue";
 import {
   batchCreateAttendanceArchiveByDefault,
   queryUnarchivedAttendanceArchivePage,
-} from "@/api/hrmList";
+} from "@/api/attendance";
 
 const props = defineProps({
   modelValue: {

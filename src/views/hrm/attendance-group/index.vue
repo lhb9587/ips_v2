@@ -11,6 +11,8 @@ import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import AttendanceGroupDetailSidebar from "@/views/hrm/attendance-group/detail-sidebar.vue";
 import { saveTableConfig } from "@/utils";
 import {
+  deleteAttendanceGroup,
+  queryAttendanceGroupDeleteCheck,
   queryAttendanceGroupDetail,
   queryAttendanceGroupPage,
   saveAttendanceGroup,
@@ -114,6 +116,11 @@ const detailLoading = ref(false);
 const gridOptions = {
   rowMultiSelectWithClick: true,
 };
+
+const currentOperator = computed(() => ({
+  operatorId: store.state.user.userId || undefined,
+  operatorName: store.state.user.name || undefined,
+}));
 
 const buildMemberRecord = (item = {}) => ({
   employeeCode: item.employeeCode || item.talentCode || "",
@@ -233,7 +240,9 @@ const fetchAttendanceGroupList = () => {
       isLoading: true,
     },
   ).then((res) => {
-    const records = res?.data?.records || [];
+    const records = Array.isArray(res?.data)
+      ? res.data
+      : res?.data?.records || [];
     gridData.value = records.map((item, index) => ({
       ...item,
       id: item.groupId,
@@ -245,7 +254,13 @@ const fetchAttendanceGroupList = () => {
       referenced: false,
       sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index,
     }));
-    total.value = res?.data?.total || 0;
+    total.value =
+      Number(res?.total) ||
+      Number(res?.data?.total) ||
+      0;
+    if (Number(res?.currPage)) {
+      listQuery.value.pageNo = Number(res.currPage);
+    }
   });
 };
 
@@ -263,16 +278,19 @@ const cellRenderer = (params) => {
 
 const buildNewGroup = () => {
   const defaultOrganization =
-    attendanceOrganizationOptions.value.length === 1
+    attendanceOrganizationOptions.value.find(
+      (item) => String(item.organizationCode) === "102",
+    ) ||
+    (attendanceOrganizationOptions.value.length === 1
       ? attendanceOrganizationOptions.value[0]
-      : {};
+      : {});
 
   return {
     id: Date.now(),
     code: "",
     name: "",
-    organizationCode: defaultOrganization.organizationCode || "",
-    organizationName: defaultOrganization.organizationName || "",
+    organizationCode: defaultOrganization.organizationCode || "102",
+    organizationName: defaultOrganization.organizationName || "万慧达",
     remark: "",
     referenced: false,
     members: [],
@@ -323,42 +341,78 @@ const closeDetail = () => {
   selectedDetail.value = {};
 };
 
-const deleteGroups = (rows) => {
-  const referencedRows = rows.filter((item) => item.referenced);
-  if (referencedRows.length > 0) {
-    ElMessage.warning("已被排班引用的考勤组不允许删除");
-    return false;
-  }
-
-  const targetIds = new Set(rows.map((item) => item.id));
-  gridData.value = gridData.value.filter((item) => !targetIds.has(item.id));
+const removeGroupFromGrid = (groupId) => {
+  gridData.value = gridData.value.filter((item) => item.id !== groupId);
   if (gridData.value.length === 0 && listQuery.value.pageNo > 1) {
     listQuery.value.pageNo -= 1;
   }
-  return true;
 };
 
-const handleDeleteDetail = (record) => {
+const refreshAttendanceGroupListAfterDelete = (groupId) => {
+  removeGroupFromGrid(groupId);
+  if (total.value > 0) {
+    total.value = Math.max(total.value - 1, 0);
+  }
+  fetchAttendanceGroupList();
+};
+
+const handleDeleteDetail = async (record) => {
   if (!record?.id) {
     closeDetail();
     return;
   }
 
-  ElMessageBox.confirm(`确认删除 ${record.name} 吗？`, "删除确认", {
-    type: "warning",
-    confirmButtonText: "删除",
-    cancelButtonText: "取消",
-  }).then(() => {
-    if (deleteGroups([record])) {
-      closeDetail();
-      ElMessage.success("考勤组已删除");
+  try {
+    const checkRes = await queryAttendanceGroupDeleteCheck(
+      {
+        groupId: record.id,
+      },
+      {
+        isLoading: true,
+      },
+    );
+    const checkData = checkRes?.data || {};
+
+    if (checkData.canDelete === false) {
+      ElMessage.warning(
+        checkData.reason ||
+          `当前考勤组存在 ${checkData.referenceCount || 0} 条引用记录，暂不允许删除`,
+      );
+      return;
     }
-  });
+
+    await ElMessageBox.confirm(`确认删除 ${record.name} 吗？`, "删除确认", {
+      type: "warning",
+      confirmButtonText: "删除",
+      cancelButtonText: "取消",
+    });
+
+    await deleteAttendanceGroup(
+      {
+        groupId: record.id,
+        ...currentOperator.value,
+      },
+      {
+        isLoading: true,
+      },
+    );
+
+    refreshAttendanceGroupListAfterDelete(record.id);
+    if (selectedDetail.value?.id === record.id) {
+      closeDetail();
+    }
+    ElMessage.success("考勤组已删除");
+  } catch (error) {
+    if (error === "cancel" || error === "close" || error?.message === "cancel") {
+      return;
+    }
+  }
 };
 
 const handleSaveGroup = (payload) => {
+  const isCreateMode = detailMode.value === "create";
   const requestData = {
-    groupId: payload.id || undefined,
+    groupId: isCreateMode ? undefined : payload.id || undefined,
     groupCode: payload.code,
     groupName: payload.name,
     orgCode: payload.organizationCode,
@@ -374,14 +428,21 @@ const handleSaveGroup = (payload) => {
     .then((res) => {
       const result = res?.data || {};
       const nextId = result.groupId || payload.id;
+      const successMessage =
+        result.message || (payload.id ? "考勤组已更新" : "考勤组已创建");
+      listQuery.value.pageNo = 1;
+      fetchAttendanceGroupList();
+      if (isCreateMode) {
+        closeDetail();
+        ElMessage.success(successMessage);
+        return;
+      }
       selectedDetail.value = buildDetailRecord({
         ...payload,
         id: nextId,
       });
       detailMode.value = "view";
-      listQuery.value.pageNo = 1;
-      ElMessage.success(result.message || (payload.id ? "考勤组已更新" : "考勤组已创建"));
-      fetchAttendanceGroupList();
+      ElMessage.success(successMessage);
       if (nextId) {
         openGroupDetail({ data: { ...selectedDetail.value, id: nextId } });
       }

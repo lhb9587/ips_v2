@@ -11,7 +11,7 @@ import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import AttendanceProfileDetailSidebar from "@/views/hrm/attendance-profile/detail-sidebar.vue";
 import AttendanceProfileUnarchivedDialog from "@/views/hrm/attendance-profile/unarchived-dialog.vue";
 import { saveTableConfig } from "@/utils";
-import { queryAttendanceArchivePage } from "@/api/hrmList";
+import { queryAttendanceArchivePage } from "@/api/attendance";
 
 const route = useRoute();
 const store = useStore();
