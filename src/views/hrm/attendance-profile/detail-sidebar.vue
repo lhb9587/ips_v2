@@ -1,6 +1,7 @@
 <script setup>
 import { computed, defineEmits, defineProps, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
+import { queryUnarchivedAttendanceArchivePage } from "@/api/hrmList";
 
 const props = defineProps({
   detailInfo: {
@@ -31,6 +32,8 @@ const isEditing = ref(false);
 const formData = ref({});
 const shiftDialogVisible = ref(false);
 const employeeDialogVisible = ref(false);
+const employeeLoading = ref(false);
+const employeeOptions = ref([]);
 const employeeFilter = ref({
   organizationCode: "",
 });
@@ -48,7 +51,7 @@ const syncFormData = (detailInfo) => {
     organizationCode: detailInfo.organizationCode || "",
     organizationName: detailInfo.organizationName || "",
   };
-  employeeFilter.value.organizationCode = detailInfo.organizationCode || "";
+  employeeFilter.value.organizationCode = "";
 };
 
 watch(
@@ -66,9 +69,44 @@ const titleText = computed(() =>
 
 const filteredShiftOptions = computed(() => props.shiftOptions);
 
+const resolveEmployeePositionName = (record) => {
+  return record.positionName || record.posName || record.position || record.posId || "-";
+};
+
+const fetchEmployeeOptions = () => {
+  employeeLoading.value = true;
+  queryUnarchivedAttendanceArchivePage(
+    {
+      pageNo: 1,
+      pageSize: 200,
+      deptCode: employeeFilter.value.organizationCode || undefined,
+    },
+    {
+      isLoading: false,
+    },
+  )
+    .then((res) => {
+      const records = res?.data?.records || [];
+      employeeOptions.value = records.map((item) => ({
+        ...item,
+        employeeCode: item.talentCode,
+        employeeName: item.talentName,
+        organizationCode: item.deptCode || "",
+        organizationName: item.deptName || "",
+        positionName: resolveEmployeePositionName(item),
+        employmentStatus: item.empStatus || "-",
+        groupEntryDate: item.joinDate || "-",
+        attendanceNo: item.talentCode || "",
+      }));
+    })
+    .finally(() => {
+      employeeLoading.value = false;
+    });
+};
+
 const filteredEmployeeOptions = computed(() => {
   const organizationCode = employeeFilter.value.organizationCode.trim();
-  return props.employeeOptions.filter((item) => {
+  return employeeOptions.value.filter((item) => {
     return !organizationCode || item.organizationCode === organizationCode;
   });
 });
@@ -97,6 +135,7 @@ const openEmployeeDialog = () => {
     return;
   }
   employeeDialogVisible.value = true;
+  fetchEmployeeOptions();
 };
 
 const chooseEmployeeOrganization = (row) => {
@@ -128,7 +167,7 @@ const chooseShift = (row) => {
 };
 
 const saveEdit = () => {
-  if (props.mode === "create" && !formData.value.employeeName) {
+  if (!formData.value.employeeName) {
     return ElMessage.warning("请选择员工");
   }
   if (!formData.value.defaultShift) {
@@ -137,18 +176,9 @@ const saveEdit = () => {
 
   emit("save", {
     ...props.detailInfo,
-    employeeCode:
-      props.mode === "create"
-        ? formData.value.employeeCode
-        : props.detailInfo.employeeCode,
-    employeeName:
-      props.mode === "create"
-        ? formData.value.employeeName
-        : props.detailInfo.employeeName,
-    attendanceNo:
-      props.mode === "create"
-        ? formData.value.attendanceNo
-        : props.detailInfo.attendanceNo,
+    employeeCode: formData.value.employeeCode || props.detailInfo.employeeCode,
+    employeeName: formData.value.employeeName || props.detailInfo.employeeName,
+    attendanceNo: formData.value.attendanceNo || props.detailInfo.attendanceNo,
     defaultShift: formData.value.defaultShift,
     organizationCode: formData.value.organizationCode || props.detailInfo.organizationCode,
     organizationName: formData.value.organizationName || props.detailInfo.organizationName,
@@ -193,11 +223,18 @@ const canEditField = (field) => {
   if (!isEditing.value || !field.editable) {
     return false;
   }
-  if (props.mode === "create") {
-    return ["employeeName", "defaultShift"].includes(field.key);
-  }
-  return field.key === "defaultShift";
+  return ["employeeName", "defaultShift"].includes(field.key);
 };
+
+watch(
+  () => employeeFilter.value.organizationCode,
+  (value, oldValue) => {
+    if (!employeeDialogVisible.value || value === oldValue) {
+      return;
+    }
+    fetchEmployeeOptions();
+  },
+);
 </script>
 
 <template>
@@ -361,6 +398,7 @@ const canEditField = (field) => {
 
         <div class="attendance-profile-dialog__table-wrap">
           <el-table
+            v-loading="employeeLoading"
             :data="filteredEmployeeOptions"
             border
             height="420"

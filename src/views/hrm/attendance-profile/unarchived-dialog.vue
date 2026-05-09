@@ -40,6 +40,7 @@ const listQuery = ref({
   pageSize: 20,
 });
 const pageSizesList = [10, 20, 50, 100, 200];
+const selectedCount = computed(() => selectedRows.value.length);
 
 const resolvePositionName = (record) => {
   return record.positionName || record.posName || record.position || record.posId || "-";
@@ -149,104 +150,145 @@ watch(
     class="attendance-profile-unarchived-dialog"
     destroy-on-close
   >
-    <div class="attendance-profile-unarchived-dialog__toolbar">
-      <el-input
-        v-model="searchKeyword"
-        clearable
-        placeholder="请输入员工编码/姓名"
-        class="attendance-profile-unarchived-dialog__input"
-        @keyup.enter="handleSearch"
-      >
-        <template #prepend>
-          <el-button @click="handleSearch">
-            <i class="bx bx-search-alt"></i>
+    <div class="attendance-profile-unarchived">
+      <div class="attendance-profile-unarchived__hero">
+        <div class="attendance-profile-unarchived__hero-main">
+          <div class="attendance-profile-unarchived__hero-title">待建档员工列表</div>
+          <div class="attendance-profile-unarchived__hero-desc">
+            勾选未建档员工后，可按组织默认配置批量创建考勤档案。
+          </div>
+        </div>
+        <div class="attendance-profile-unarchived__hero-stats">
+          <div class="attendance-profile-unarchived__stat-card">
+            <div class="attendance-profile-unarchived__stat-label">待建档人数</div>
+            <div class="attendance-profile-unarchived__stat-value">{{ total }}</div>
+          </div>
+          <div class="attendance-profile-unarchived__stat-card attendance-profile-unarchived__stat-card--accent">
+            <div class="attendance-profile-unarchived__stat-label">已选择</div>
+            <div class="attendance-profile-unarchived__stat-value">{{ selectedCount }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="attendance-profile-unarchived__panel">
+        <div class="attendance-profile-unarchived-dialog__toolbar">
+          <el-input
+            v-model="searchKeyword"
+            clearable
+            placeholder="请输入员工编码/姓名"
+            class="attendance-profile-unarchived-dialog__input"
+            @keyup.enter="handleSearch"
+          >
+            <template #prepend>
+              <el-button @click="handleSearch">
+                <i class="bx bx-search-alt"></i>
+              </el-button>
+            </template>
+          </el-input>
+          <div class="attendance-profile-unarchived-dialog__toolbar-tip">
+            支持按员工编码或姓名快速筛选
+          </div>
+        </div>
+
+        <div class="attendance-profile-unarchived-dialog__table-wrap">
+          <el-table
+            v-loading="loading"
+            :data="tableData"
+            border
+            stripe
+            height="420"
+            @selection-change="handleSelectionChange"
+          >
+            <el-table-column
+              type="selection"
+              width="54"
+              align="center"
+            />
+            <el-table-column
+              prop="talentCode"
+              label="员工编码"
+              min-width="160"
+            />
+            <el-table-column
+              prop="talentName"
+              label="姓名"
+              min-width="140"
+            />
+            <el-table-column
+              prop="deptName"
+              label="组织"
+              min-width="260"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              prop="positionName"
+              label="职位"
+              min-width="160"
+              show-overflow-tooltip
+            />
+            <el-table-column
+              prop="employmentStatus"
+              label="用工关系状态"
+              min-width="160"
+            />
+            <el-table-column
+              prop="groupEntryDate"
+              label="入集团日期"
+              min-width="160"
+            />
+          </el-table>
+        </div>
+
+        <div
+          v-if="total > 0"
+          class="attendance-profile-unarchived-dialog__pagination"
+        >
+          <Pagination
+            :total="total"
+            v-model:page="listQuery.pageNo"
+            v-model:limit="listQuery.pageSize"
+            :pageSizes="pageSizesList"
+            :storage="false"
+            @pagination="handlePagination"
+          />
+        </div>
+      </div>
+
+      <div class="attendance-profile-unarchived__footer-panel">
+        <div class="attendance-profile-unarchived__field-block">
+          <div class="attendance-profile-unarchived__field-meta">
+            <div class="attendance-profile-unarchived__field-label">默认班次</div>
+          </div>
+          <el-input
+            v-model="selectedShift"
+            readonly
+            placeholder="请选择默认班次"
+            class="attendance-profile-unarchived-dialog__shift-input"
+            @click="openShiftDialog"
+          >
+            <template #append>
+              <el-button @click="openShiftDialog">选择</el-button>
+            </template>
+          </el-input>
+        </div>
+
+        <div class="attendance-profile-unarchived-dialog__footer-actions">
+          <el-button @click="closeDialog">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="submitLoading"
+            @click="handleBatchCreate"
+          >
+            批量建档
           </el-button>
-        </template>
-      </el-input>
-    </div>
-
-    <div class="attendance-profile-unarchived-dialog__table-wrap">
-      <el-table
-        v-loading="loading"
-        :data="tableData"
-        border
-        stripe
-        height="420"
-        @selection-change="handleSelectionChange"
-      >
-        <el-table-column
-          type="selection"
-          width="54"
-          align="center"
-        />
-        <el-table-column
-          prop="talentCode"
-          label="员工编码"
-          min-width="160"
-        />
-        <el-table-column
-          prop="talentName"
-          label="姓名"
-          min-width="140"
-        />
-        <el-table-column
-          prop="deptName"
-          label="组织"
-          min-width="260"
-          show-overflow-tooltip
-        />
-        <el-table-column
-          prop="positionName"
-          label="职位"
-          min-width="160"
-          show-overflow-tooltip
-        />
-        <el-table-column
-          prop="employmentStatus"
-          label="用工关系状态"
-          min-width="160"
-        />
-        <el-table-column
-          prop="groupEntryDate"
-          label="入集团日期"
-          min-width="160"
-        />
-      </el-table>
-    </div>
-
-    <div
-      v-if="total > 0"
-      class="attendance-profile-unarchived-dialog__pagination"
-    >
-      <Pagination
-        :total="total"
-        v-model:page="listQuery.pageNo"
-        v-model:limit="listQuery.pageSize"
-        :pageSizes="pageSizesList"
-        :storage="false"
-        @pagination="handlePagination"
-      />
-    </div>
-
-    <div class="attendance-profile-unarchived-dialog__footer-form">
-      <div class="attendance-profile-unarchived-dialog__form-label">默认班次</div>
-      <el-input
-        v-model="selectedShift"
-        readonly
-        placeholder="请选择默认班次"
-        class="attendance-profile-unarchived-dialog__shift-input"
-        @click="openShiftDialog"
-      >
-        <template #append>
-          <el-button @click="openShiftDialog">选择</el-button>
-        </template>
-      </el-input>
+        </div>
+      </div>
     </div>
 
     <el-dialog
       v-model="shiftDialogVisible"
       title="选择班次"
-      width="1100px"
+      width="1280px"
       append-to-body
       destroy-on-close
       class="attendance-profile-shift-dialog"
@@ -320,33 +362,130 @@ watch(
       </div>
     </el-dialog>
 
-    <template #footer>
-      <div class="attendance-profile-unarchived-dialog__footer-actions">
-        <el-button
-          type="primary"
-          :loading="submitLoading"
-          @click="handleBatchCreate"
-        >
-          批量建档
-        </el-button>
-        <el-button @click="closeDialog">取消</el-button>
-      </div>
-    </template>
   </el-dialog>
 </template>
 
 <style scoped lang="scss">
+.attendance-profile-unarchived,
+.attendance-profile-unarchived *,
+.attendance-profile-dialog__body,
+.attendance-profile-dialog__body *,
+.attendance-profile-shift-dialog,
+.attendance-profile-shift-dialog * {
+  box-sizing: border-box;
+}
+
+.attendance-profile-unarchived {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.attendance-profile-unarchived__hero {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border: 1px solid #e6edf7;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fbfcff 0%, #f4f8ff 100%);
+  width: 100%;
+  min-width: 0;
+}
+
+.attendance-profile-unarchived__hero-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.attendance-profile-unarchived__hero-title {
+  color: #243449;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.attendance-profile-unarchived__hero-desc {
+  margin-top: 6px;
+  color: #66758f;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.attendance-profile-unarchived__hero-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 12px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.attendance-profile-unarchived__stat-card {
+  min-width: 120px;
+  padding: 14px 16px;
+  border: 1px solid #dfe8f4;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.attendance-profile-unarchived__stat-card--accent {
+  border-color: #cfdcff;
+  background: #f3f7ff;
+}
+
+.attendance-profile-unarchived__stat-label {
+  color: #6a7892;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.attendance-profile-unarchived__stat-value {
+  margin-top: 4px;
+  color: #243449;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 30px;
+}
+
+.attendance-profile-unarchived__panel {
+  padding: 16px;
+  border: 1px solid #e7edf5;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  width: 100%;
+  min-width: 0;
+}
+
 .attendance-profile-unarchived-dialog__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 16px;
+  min-width: 0;
 }
 
 .attendance-profile-unarchived-dialog__input,
 .attendance-profile-unarchived-dialog__table-wrap {
   width: 100%;
+  min-width: 0;
 }
 
 .attendance-profile-unarchived-dialog__input {
   max-width: 320px;
+  flex: 0 1 320px;
+}
+
+.attendance-profile-unarchived-dialog__toolbar-tip {
+  flex: 0 1 auto;
+  color: #7d8aa3;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: right;
+  min-width: 0;
 }
 
 .attendance-profile-unarchived-dialog__table-wrap {
@@ -356,30 +495,56 @@ watch(
 }
 
 .attendance-profile-unarchived-dialog__pagination {
-  padding-top: 16px;
+  padding-top: 14px;
 }
 
-.attendance-profile-unarchived-dialog__footer-form {
+.attendance-profile-unarchived__footer-panel {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-top: 16px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 18px;
+  border: 1px solid #e7edf5;
+  border-radius: 12px;
+  background: #fbfcfe;
+  width: 100%;
+  min-width: 0;
 }
 
-.attendance-profile-unarchived-dialog__form-label {
-  flex: 0 0 auto;
-  min-width: 72px;
+.attendance-profile-unarchived__field-block {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.attendance-profile-unarchived__field-meta {
+  display: grid;
+  gap: 4px;
+}
+
+.attendance-profile-unarchived__field-label {
   color: #243449;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.attendance-profile-unarchived__field-desc {
+  color: #7b879c;
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .attendance-profile-unarchived-dialog__shift-input {
-  max-width: 360px;
+  max-width: 420px;
+  width: 100%;
 }
 
 .attendance-profile-unarchived-dialog__footer-actions {
   display: flex;
-  justify-content: flex-end;
+  flex: 0 0 auto;
+  align-items: center;
   gap: 12px;
 }
 
@@ -391,6 +556,15 @@ watch(
 
 :deep(.attendance-profile-unarchived-dialog .el-dialog__body) {
   padding-top: 14px;
+  overflow-x: hidden;
+}
+
+:deep(.attendance-profile-unarchived-dialog) {
+  max-width: calc(100vw - 48px);
+}
+
+:deep(.attendance-profile-unarchived-dialog .el-dialog__footer) {
+  display: none;
 }
 
 .attendance-profile-dialog__body,
@@ -408,5 +582,27 @@ watch(
 :deep(.attendance-profile-shift-dialog .el-table th.el-table__cell) {
   background: #f6f8fb;
   color: #243449;
+}
+
+@media (max-width: 960px) {
+  .attendance-profile-unarchived__hero,
+  .attendance-profile-unarchived__footer-panel,
+  .attendance-profile-unarchived-dialog__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .attendance-profile-unarchived__hero-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .attendance-profile-unarchived-dialog__input,
+  .attendance-profile-unarchived-dialog__shift-input {
+    max-width: none;
+  }
+
+  .attendance-profile-unarchived-dialog__footer-actions {
+    justify-content: flex-end;
+  }
 }
 </style>

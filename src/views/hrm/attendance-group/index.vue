@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -10,10 +10,12 @@ import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import AttendanceGroupDetailSidebar from "@/views/hrm/attendance-group/detail-sidebar.vue";
 import { saveTableConfig } from "@/utils";
+import { queryAttendanceGroupPage } from "@/api/hrmList";
 
 const route = useRoute();
 const store = useStore();
 
+const bussId = 457;
 const gridName = "attendanceGroupGrid";
 const columnOptions = [
   { title: "编码", value: "code" },
@@ -113,7 +115,7 @@ const employeeOptions = [
   },
 ];
 
-const columnList = ref([...columnOptions]);
+const columnList = ref([]);
 const activeClass = ref([]);
 const rowHeight = ref(40);
 const isFull = ref(false);
@@ -124,52 +126,14 @@ const detailVisible = ref(false);
 const detailMode = ref("view");
 const selectedDetail = ref({});
 const formInline = ref({});
+const total = ref(0);
+const gridData = ref([]);
 const gridOptions = {
   rowMultiSelectWithClick: true,
 };
 
-const attendanceGroupList = ref([
-  {
-    id: 1,
-    code: "KQG001",
-    name: "行政标准考勤组",
-    organizationCode: "ORG001",
-    organizationName: "曜斗科技",
-    remark: "适用于行政班员工",
-    referenced: true,
-    members: [employeeOptions[0], employeeOptions[2], employeeOptions[3]],
-  },
-  {
-    id: 2,
-    code: "KQG002",
-    name: "华东运营考勤组",
-    organizationCode: "ORG004",
-    organizationName: "华东运营中心",
-    remark: "跨组织统一排班",
-    referenced: false,
-    members: [employeeOptions[1], employeeOptions[6], employeeOptions[7]],
-  },
-  {
-    id: 3,
-    code: "KQG003",
-    name: "弹性班考勤组",
-    organizationCode: "ORG002",
-    organizationName: "产品研发部",
-    remark: "研发与支持岗位弹性班",
-    referenced: false,
-    members: [employeeOptions[3], employeeOptions[5]],
-  },
-]);
-
 const setColumn = (list) => {
-  if (!Array.isArray(list) || list.length === 0) {
-    columnList.value = [...columnOptions];
-    return;
-  }
-  const validColumns = list.filter((item) =>
-    columnOptions.some((column) => column.value === item.value),
-  );
-  columnList.value = validColumns.length > 0 ? validColumns : [...columnOptions];
+  columnList.value = Array.isArray(list) ? list : [];
 };
 
 const changeBorder = (newVal) => {
@@ -251,37 +215,39 @@ const listQuery = ref({
 });
 const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
 
-const filteredList = computed(() => {
-  const keyword = diminput.value.trim().toLowerCase();
-  const source = attendanceGroupList.value.map((item) => ({
-    ...item,
-    memberCount: item.members?.length || 0,
-  }));
-  if (!keyword) {
-    return source;
-  }
-
-  return source.filter((item) =>
-    [item.code, item.name, item.organizationName, item.remark].some((field) =>
-      String(field || "").toLowerCase().includes(keyword),
-    ),
-  );
-});
-
-const total = computed(() => filteredList.value.length);
-
-const gridData = computed(() => {
-  const start = (listQuery.value.pageNo - 1) * listQuery.value.pageSize;
-  const end = start + listQuery.value.pageSize;
-  return filteredList.value.slice(start, end).map((item, index) => ({
-    ...item,
-    sid: start + index,
-  }));
-});
+const fetchAttendanceGroupList = () => {
+  queryAttendanceGroupPage(
+    {
+      pageNo: listQuery.value.pageNo,
+      pageSize: listQuery.value.pageSize,
+      groupCode: diminput.value || undefined,
+      groupName: diminput.value || undefined,
+      ...formInline.value,
+    },
+    {
+      isLoading: true,
+    },
+  ).then((res) => {
+    const records = res?.data?.records || [];
+    gridData.value = records.map((item, index) => ({
+      ...item,
+      id: item.groupId,
+      code: item.groupCode,
+      name: item.groupName,
+      organizationCode: item.orgCode,
+      organizationName: item.orgName,
+      members: [],
+      referenced: false,
+      sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index,
+    }));
+    total.value = res?.data?.total || 0;
+  });
+};
 
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
   formInline.value = {};
+  fetchAttendanceGroupList();
 };
 
 const cellRenderer = (params) => {
@@ -291,19 +257,12 @@ const cellRenderer = (params) => {
 };
 
 const buildNewGroup = () => {
-  const nextNumber =
-    Math.max(
-      ...attendanceGroupList.value.map((item) =>
-        Number(String(item.code).replace(/\D/g, "")) || 0,
-      ),
-      0,
-    ) + 1;
   const defaultOrganization =
     organizationOptions.length === 1 ? organizationOptions[0] : {};
 
   return {
     id: Date.now(),
-    code: `KQG${String(nextNumber).padStart(3, "0")}`,
+    code: "",
     name: "",
     organizationCode: defaultOrganization.organizationCode || "",
     organizationName: defaultOrganization.organizationName || "",
@@ -344,9 +303,7 @@ const deleteGroups = (rows) => {
   }
 
   const targetIds = new Set(rows.map((item) => item.id));
-  attendanceGroupList.value = attendanceGroupList.value.filter(
-    (item) => !targetIds.has(item.id),
-  );
+  gridData.value = gridData.value.filter((item) => !targetIds.has(item.id));
   if (gridData.value.length === 0 && listQuery.value.pageNo > 1) {
     listQuery.value.pageNo -= 1;
   }
@@ -372,38 +329,39 @@ const handleDeleteDetail = (record) => {
 };
 
 const handleSaveGroup = (payload) => {
-  const targetIndex = attendanceGroupList.value.findIndex(
-    (item) => item.id === payload.id,
-  );
+  const targetIndex = gridData.value.findIndex((item) => item.id === payload.id);
   const nextRecord = {
     ...payload,
     members: [...(payload.members || [])],
   };
 
   if (targetIndex > -1) {
-    attendanceGroupList.value.splice(targetIndex, 1, {
-      ...attendanceGroupList.value[targetIndex],
+    gridData.value.splice(targetIndex, 1, {
+      ...gridData.value[targetIndex],
       ...nextRecord,
     });
     selectedDetail.value = {
-      ...attendanceGroupList.value[targetIndex],
-      members: [...(attendanceGroupList.value[targetIndex].members || [])],
+      ...gridData.value[targetIndex],
+      members: [...(gridData.value[targetIndex].members || [])],
     };
     ElMessage.success("考勤组已更新");
     return;
   }
 
-  attendanceGroupList.value.unshift(nextRecord);
   selectedDetail.value = { ...nextRecord, members: [...nextRecord.members] };
   detailMode.value = "view";
   listQuery.value.pageNo = 1;
   ElMessage.success("考勤组已创建");
+  fetchAttendanceGroupList();
 };
 
-const handlePagination = () => {};
+const handlePagination = () => {
+  fetchAttendanceGroupList();
+};
 
 onMounted(() => {
   document.addEventListener("fullscreenchange", handleFullScreenChange);
+  fetchAttendanceGroupList();
 });
 
 onUnmounted(() => {
@@ -454,6 +412,7 @@ onUnmounted(() => {
               <div class="d-flex gap-2">
                 <TopListTool
                   :gridName="gridName"
+                  :buss-id="bussId"
                   @changeBorder="changeBorder"
                   @changeRowStyle="changeRowStyle"
                   @changeRowHeight="changeRowHeight"
@@ -474,6 +433,7 @@ onUnmounted(() => {
             <GridView
               ref="gridRef"
               :gridName="gridName"
+              :bussId="bussId"
               :height="gridHeight"
               :rowHeight="rowHeight"
               :columnDefs="columnList"
