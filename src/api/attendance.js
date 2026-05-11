@@ -101,9 +101,36 @@ export function batchCreateAttendanceArchiveByDefault(data, config = {}) {
   })
 }
 
+export function queryAttendanceShiftList(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceShiftList,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryScheduleHorizontalPage(data, config = {}) {
   return request({
     url: attendanceApi.queryScheduleHorizontalPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryScheduleDetail(data, config = {}) {
+  return request({
+    url: attendanceApi.queryScheduleDetail,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function submitScheduleDetailUpdate(data, config = {}) {
+  return request({
+    url: attendanceApi.submitScheduleDetailUpdate,
     method: 'post',
     data,
     ...config

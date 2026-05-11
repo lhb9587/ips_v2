@@ -8,12 +8,17 @@ import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
+import DragSidebar from "@/components/common/sidebar-drag/index.vue";
+import ScheduleDetailSidebar from "@/views/hrm/schedule-list/detail-sidebar.vue";
 import { saveTableConfig } from "@/utils";
 import {
   queryAttendanceGroupPage,
   queryAttendanceRotationRuleList,
+  queryAttendanceShiftList,
+  queryScheduleDetail,
   queryScheduleHorizontalPage,
   queryScheduleWizardMemberPage,
+  submitScheduleDetailUpdate,
   submitScheduleWizard,
 } from "@/api/attendance";
 
@@ -39,6 +44,12 @@ const isFull = ref(false);
 const boxRef = ref(null);
 const gridRef = ref(null);
 const diminput = ref("");
+const detailVisible = ref(false);
+const detailLoading = ref(false);
+const detailSubmitLoading = ref(false);
+const selectedDetail = ref({});
+const detailShiftLoading = ref(false);
+const detailShiftOptions = ref([]);
 const total = ref(0);
 const gridData = ref([]);
 const formInline = ref({
@@ -72,7 +83,7 @@ const ruleOptions = ref([]);
 const employeeSource = ref([]);
 const employeePagination = ref({
   pageNo: 1,
-  pageSize: 10,
+  pageSize: 100,
 });
 const attendanceGroupOptions = ref([]);
 const attendanceGroupLoading = ref(false);
@@ -116,6 +127,42 @@ const buildWizardMemberRecord = (item = {}) => ({
   archiveId: item.archiveId || "",
   canSchedule: item.canSchedule !== false,
   cannotScheduleReason: item.cannotScheduleReason || "",
+});
+const buildScheduleDetailRecord = (item = {}) => ({
+  scheduleDayId: item.scheduleDayId || "",
+  talentCode: item.talentCode || "",
+  talentName: item.talentName || "",
+  attendanceOrgCode: item.attendanceOrgCode || "",
+  attendanceOrgName: item.attendanceOrgName || "",
+  scheduleDate: item.scheduleDate || "",
+  dateTypeValue: item.dateType || "",
+  dateType: DATE_TYPE_MAP[item.dateType] || item.dateType || "",
+  attendanceArchiveCode: item.attendanceArchiveCode || "",
+  attendancePolicyCode: item.attendancePolicyCode || "",
+  attendancePolicyName: item.attendancePolicyName || item.attendancePolicyCode || "",
+  canEdit: item.canEdit === true,
+  standardHours:
+    item.standardHours || item.standardHours === 0 ? item.standardHours : "",
+  shiftCode: item.shiftCode || "",
+  shiftName: item.shiftName || "",
+  fetchCardRuleCode: item.fetchCardRuleCode || "",
+  fetchCardRuleName: item.fetchCardRuleName || item.fetchCardRuleCode || "",
+  segments: Array.isArray(item.segments)
+    ? item.segments.map((segment) => ({
+        segmentNo: segment.segmentNo,
+        attendanceType: segment.attendanceType || "",
+        referenceDate: segment.referenceDate || segment.startReferenceDate || "current",
+        workStartTime: segment.workStartTime || "",
+        startNeedPunch: segment.startNeedPunch,
+        startFloatMinutes: segment.startFloatMinutes || 0,
+        workEndTime: segment.workEndTime || "",
+        endNeedPunch: segment.endNeedPunch,
+        endFloatMinutes: segment.endFloatMinutes || 0,
+        restStartTime: segment.restStartTime || "",
+        restEndTime: segment.restEndTime || "",
+        restMinutes: segment.restMinutes || 0,
+      }))
+    : [],
 });
 const currentOperator = computed(() => ({
   operatorId: store.state.user.userId || undefined,
@@ -188,7 +235,6 @@ const fetchWizardMembers = () => {
       deptCode: ruleForm.value.organization || undefined,
       groupId: ruleForm.value.attendanceGroup || undefined,
       talentName: ruleForm.value.employeeName || undefined,
-      talentCode: ruleForm.value.employeeName || undefined,
       pageNo: employeePagination.value.pageNo,
       pageSize: employeePagination.value.pageSize,
     },
@@ -235,6 +281,31 @@ const fetchRotationRuleOptions = () => {
     })
     .finally(() => {
       ruleLoading.value = false;
+    });
+};
+
+const fetchDetailShiftOptions = () => {
+  detailShiftLoading.value = true;
+  return queryAttendanceShiftList(
+    {},
+    {
+      isLoading: false,
+    },
+  )
+    .then((res) => {
+      const records = Array.isArray(res?.data) ? res.data : res?.data?.records || [];
+      detailShiftOptions.value = records.map((item) => ({
+        label: item.shiftName || "",
+        value: item.shiftCode || "",
+      }));
+      return detailShiftOptions.value;
+    })
+    .catch(() => {
+      detailShiftOptions.value = [];
+      return [];
+    })
+    .finally(() => {
+      detailShiftLoading.value = false;
     });
 };
 
@@ -404,6 +475,93 @@ const cellRenderer = (params) => {
   }</span>`;
 };
 
+const closeDetail = () => {
+  detailVisible.value = false;
+  selectedDetail.value = {};
+};
+
+const buildScheduleDetailQuery = (rowData = {}) => {
+  if (rowData.id || rowData.scheduleDayId) {
+    return {
+      scheduleDayId: rowData.id || rowData.scheduleDayId,
+    };
+  }
+
+  return {
+    talentCode: rowData.talentCode || rowData.employeeCode || undefined,
+    scheduleDate: rowData.scheduleDate || rowData.attendanceDate || undefined,
+  };
+};
+
+const openScheduleDetail = (params) => {
+  const rowData = params?.data || params;
+  const query = buildScheduleDetailQuery(rowData);
+  if (!query.scheduleDayId && !(query.talentCode && query.scheduleDate)) {
+    return;
+  }
+  detailVisible.value = true;
+  detailLoading.value = true;
+  selectedDetail.value = buildScheduleDetailRecord(rowData);
+  queryScheduleDetail(
+    query,
+    {
+      isLoading: false,
+    },
+  )
+    .then((res) => {
+      selectedDetail.value = buildScheduleDetailRecord({
+        ...rowData,
+        ...(res?.data || {}),
+      });
+    })
+    .catch(() => {
+      selectedDetail.value = {};
+      detailVisible.value = false;
+    })
+    .finally(() => {
+      detailLoading.value = false;
+    });
+};
+
+const handleDetailEdit = () => {
+  if (!detailShiftOptions.value.length) {
+    fetchDetailShiftOptions();
+  }
+};
+
+const handleDetailSave = (payload) => {
+  detailSubmitLoading.value = true;
+  return submitScheduleDetailUpdate(
+    {
+      scheduleDayId: payload.scheduleDayId,
+      dateType: payload.dateType,
+      shiftCode: payload.shiftCode,
+      segments: payload.segments,
+      ...currentOperator.value,
+    },
+    {
+      isLoading: true,
+    },
+  )
+    .then((res) => {
+      ElMessage.success(res?.data?.message || "保存成功");
+      return queryScheduleDetail(
+        {
+          scheduleDayId: payload.scheduleDayId,
+        },
+        {
+          isLoading: false,
+        },
+      ).then((detailRes) => {
+        selectedDetail.value = buildScheduleDetailRecord(detailRes?.data || {});
+        fetchScheduleList();
+      });
+    })
+    .finally(() => {
+      detailSubmitLoading.value = false;
+    });
+};
+
 const handlePagination = () => {
   fetchScheduleList();
 };
@@ -492,6 +650,7 @@ onUnmounted(() => {
               :grid-data="gridData"
               :activeClass="activeClass"
               :cellRenderer="cellRenderer"
+              :rowClick="openScheduleDetail"
               :gridOptions="gridOptions"
             />
           </div>
@@ -631,7 +790,7 @@ onUnmounted(() => {
             :total="employeeTotal"
             v-model:page="employeePagination.pageNo"
             v-model:limit="employeePagination.pageSize"
-            :pageSizes="[10, 20, 50, 100]"
+            :pageSizes="[20, 50, 100, 200]"
             :storage="false"
             @pagination="handleEmployeePagination"
           />
@@ -689,6 +848,28 @@ onUnmounted(() => {
         </el-button>
       </template>
     </el-dialog>
+
+    <DragSidebar
+      v-if="detailVisible"
+      v-model="detailVisible"
+      sidebarName="schedule-list-detail-sidebar"
+      :minWidth="760"
+      :width="920"
+      :noCloseOnEsc="true"
+      :backdrop="false"
+      @close="closeDetail"
+    >
+      <ScheduleDetailSidebar
+        :detailInfo="selectedDetail"
+        :loading="detailLoading"
+        :shiftOptions="detailShiftOptions"
+        :shiftLoading="detailShiftLoading"
+        :submitLoading="detailSubmitLoading"
+        @edit="handleDetailEdit"
+        @save="handleDetailSave"
+        @close="closeDetail"
+      />
+    </DragSidebar>
   </Layout>
 </template>
 

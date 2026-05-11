@@ -34,9 +34,6 @@ const shiftDialogVisible = ref(false);
 const employeeDialogVisible = ref(false);
 const employeeLoading = ref(false);
 const employeeOptions = ref([]);
-const employeeFilter = ref({
-  organizationCode: "",
-});
 
 const defaultPolicy = {
   holidaySystem: "默认假期制度",
@@ -51,7 +48,6 @@ const syncFormData = (detailInfo) => {
     organizationCode: detailInfo.organizationCode || "",
     organizationName: detailInfo.organizationName || "",
   };
-  employeeFilter.value.organizationCode = "";
 };
 
 watch(
@@ -79,14 +75,13 @@ const fetchEmployeeOptions = () => {
     {
       pageNo: 1,
       pageSize: 200,
-      deptCode: employeeFilter.value.organizationCode || undefined,
     },
     {
       isLoading: false,
     },
   )
     .then((res) => {
-      const records = res?.data?.records || [];
+      const records = Array.isArray(res?.data) ? res.data : [];
       employeeOptions.value = records.map((item) => ({
         ...item,
         employeeCode: item.talentCode,
@@ -104,12 +99,7 @@ const fetchEmployeeOptions = () => {
     });
 };
 
-const filteredEmployeeOptions = computed(() => {
-  const organizationCode = employeeFilter.value.organizationCode.trim();
-  return employeeOptions.value.filter((item) => {
-    return !organizationCode || item.organizationCode === organizationCode;
-  });
-});
+const filteredEmployeeOptions = computed(() => employeeOptions.value);
 
 const closeSidebar = () => {
   isEditing.value = false;
@@ -138,17 +128,12 @@ const openEmployeeDialog = () => {
   fetchEmployeeOptions();
 };
 
-const chooseEmployeeOrganization = (row) => {
-  employeeFilter.value.organizationCode = row.organizationCode;
-};
-
 const chooseEmployee = (row) => {
   formData.value.employeeCode = row.employeeCode;
   formData.value.employeeName = row.employeeName;
   formData.value.attendanceNo = row.attendanceNo || formData.value.attendanceNo;
   formData.value.organizationCode = row.organizationCode;
   formData.value.organizationName = row.organizationName;
-  employeeFilter.value.organizationCode = row.organizationCode;
   employeeDialogVisible.value = false;
 };
 
@@ -225,16 +210,6 @@ const canEditField = (field) => {
   }
   return ["employeeName", "defaultShift"].includes(field.key);
 };
-
-watch(
-  () => employeeFilter.value.organizationCode,
-  (value, oldValue) => {
-    if (!employeeDialogVisible.value || value === oldValue) {
-      return;
-    }
-    fetchEmployeeOptions();
-  },
-);
 </script>
 
 <template>
@@ -350,52 +325,6 @@ watch(
       class="attendance-profile-employee-dialog"
     >
       <div class="attendance-profile-dialog__body">
-        <div class="attendance-profile-dialog__filter">
-          <div class="attendance-profile-dialog__field">
-            <div class="attendance-profile-dialog__label">组织</div>
-            <el-input
-              :model-value="
-                organizationOptions.find(
-                  (item) => item.organizationCode === employeeFilter.organizationCode,
-                )?.organizationName || ''
-              "
-              placeholder="请选择组织"
-              readonly
-              class="attendance-profile-dialog__input"
-            >
-              <template #append>
-                <el-popover
-                  placement="bottom-end"
-                  trigger="click"
-                  :width="360"
-                >
-                  <template #reference>
-                    <el-button>选择</el-button>
-                  </template>
-                  <el-table
-                    :data="organizationOptions"
-                    border
-                    height="260"
-                    @row-click="chooseEmployeeOrganization"
-                    @row-dblclick="chooseEmployeeOrganization"
-                  >
-                    <el-table-column
-                      prop="organizationCode"
-                      label="组织编码"
-                      min-width="120"
-                    />
-                    <el-table-column
-                      prop="organizationName"
-                      label="组织名称"
-                      min-width="140"
-                    />
-                  </el-table>
-                </el-popover>
-              </template>
-            </el-input>
-          </div>
-        </div>
-
         <div class="attendance-profile-dialog__table-wrap">
           <el-table
             v-loading="employeeLoading"
