@@ -110,6 +110,15 @@ export function queryAttendanceShiftList(data, config = {}) {
   })
 }
 
+export function queryAttendanceShiftDetail(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceShiftDetail,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryScheduleHorizontalPage(data, config = {}) {
   return request({
     url: attendanceApi.queryScheduleHorizontalPage,

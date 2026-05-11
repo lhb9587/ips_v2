@@ -2,6 +2,7 @@
 // 排班列表单日排班详情/编辑侧边栏。
 import { computed, defineEmits, defineProps, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
+import { queryAttendanceShiftDetail } from "@/api/attendance";
 
 const props = defineProps({
   detailInfo: {
@@ -35,6 +36,7 @@ const DATE_TYPE_OPTIONS = [
 ];
 
 const isEditing = ref(false);
+const shiftDetailLoading = ref(false);
 const formData = ref({});
 
 const buildSegmentRecord = (item = {}, index = 0) => ({
@@ -139,6 +141,46 @@ const cancelEdit = () => {
 const handleShiftChange = (value) => {
   const selected = shiftOptionMap.value.get(value);
   formData.value.shiftName = selected?.label || "";
+  if (!value) {
+    return;
+  }
+  shiftDetailLoading.value = true;
+  queryAttendanceShiftDetail(
+    {
+      shiftCode: value,
+    },
+    {
+      isLoading: false,
+    },
+  )
+    .then((res) => {
+      const detail = res?.data || {};
+      formData.value.standardHours =
+        detail.standardHours || detail.standardHours === 0 ? detail.standardHours : "";
+      const detailSegments = Array.isArray(detail.segments) ? detail.segments : [];
+      formData.value.segments = detailSegments.map((item, index) =>
+        buildSegmentRecord(
+          {
+            segmentNo: item.segmentNo || index + 1,
+            attendanceType: item.attendanceType || "",
+            referenceDate: item.onDutyRefDate || "current",
+            workStartTime: item.onDutyTime || "",
+            startNeedPunch: item.onDutyNeedPunch,
+            startFloatMinutes: item.onDutyFloatMinute || 0,
+            workEndTime: item.offDutyTime || "",
+            endNeedPunch: item.offDutyNeedPunch,
+            endFloatMinutes: item.offDutyFloatMinute || 0,
+            restStartTime: item.restStartTime || "",
+            restEndTime: item.restEndTime || "",
+            restMinutes: item.restMinutes || 0,
+          },
+          index,
+        ),
+      );
+    })
+    .finally(() => {
+      shiftDetailLoading.value = false;
+    });
 };
 
 const validateForm = () => {
@@ -312,7 +354,7 @@ const saveEdit = () => {
                 v-model="formData.shiftCode"
                 class="detail-item__input"
                 filterable
-                :loading="shiftLoading"
+                :loading="shiftLoading || shiftDetailLoading"
                 placeholder="请选择班次名称"
                 @change="handleShiftChange"
               >

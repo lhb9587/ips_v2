@@ -20,6 +20,7 @@ const attendanceApi = {
   batchCreateAttendanceArchiveByDefault: `${ATTENDANCE_URL}/api/attendance/archive/batch-create-by-default`,
   queryAttendanceArchiveHistoryPage: `${ATTENDANCE_URL}/api/attendance/archive/history/page`,
   queryAttendanceShiftList: `${ATTENDANCE_URL}/api/attendance/setting/shift/list`,
+  queryAttendanceShiftDetail: `${ATTENDANCE_URL}/api/attendance/setting/shift/detail`,
   queryScheduleHorizontalPage: `${ATTENDANCE_URL}/api/attendance/schedule/list/horizontal/page`,
   queryScheduleDetail: `${ATTENDANCE_URL}/api/attendance/schedule/list/detail`,
   submitScheduleDetailUpdate: `${ATTENDANCE_URL}/api/attendance/schedule/list/update`,
