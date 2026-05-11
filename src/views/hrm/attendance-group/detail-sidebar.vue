@@ -2,7 +2,10 @@
 import { computed, defineEmits, defineProps, nextTick, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
 import Pagination from "@/components/common/pagination/index.vue";
-import { queryAttendanceGroupMemberCandidatePage } from "@/api/attendance";
+import {
+  queryAttendanceGroupDetail,
+  queryAttendanceGroupMemberCandidatePage,
+} from "@/api/attendance";
 
 const props = defineProps({
   detailInfo: {
@@ -17,30 +20,39 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-  employeeOptions: {
-    type: Array,
-    default: () => [],
-  },
 });
 
-const emit = defineEmits(["close", "save", "delete"]);
+const emit = defineEmits(["close", "save", "delete", "member-page-change"]);
 
 const isEditing = ref(false);
 const formData = ref({});
-const memberKeyword = ref("");
 const organizationDialogVisible = ref(false);
 const employeeDialogVisible = ref(false);
 const selectedEmployees = ref([]);
+const memberLoading = ref(false);
 const candidateLoading = ref(false);
 const candidateList = ref([]);
 const candidateTotal = ref(0);
 const candidateTableRef = ref(null);
+const memberPagination = ref({
+  pageNo: 1,
+  pageSize: 20,
+});
 const candidateQuery = ref({
   talentCode: "",
   talentName: "",
   deptCodes: [],
   pageNo: 1,
   pageSize: 10,
+});
+
+const buildMemberRecord = (item = {}) => ({
+  employeeCode: item.employeeCode || item.talentCode || "",
+  employeeName: item.employeeName || item.talentName || "",
+  attendancePosition: item.attendancePosition || item.posName || "",
+  attendanceOrganization: item.attendanceOrganization || item.deptName || "",
+  transferTime: item.transferTime || item.transferOutTime || "",
+  transferOrganization: item.transferOrganization || item.transferOutOrg || "",
 });
 
 const syncFormData = (detailInfo) => {
@@ -51,8 +63,20 @@ const syncFormData = (detailInfo) => {
     organizationCode: detailInfo.organizationCode || "",
     organizationName: detailInfo.organizationName || "",
     remark: detailInfo.remark || "",
-    members: Array.isArray(detailInfo.members) ? [...detailInfo.members] : [],
+    members: Array.isArray(detailInfo.members)
+      ? detailInfo.members.map((item) => buildMemberRecord(item))
+      : [],
+    allMembers: Array.isArray(detailInfo.allMembers)
+      ? detailInfo.allMembers.map((item) => buildMemberRecord(item))
+      : Array.isArray(detailInfo.members)
+        ? detailInfo.members.map((item) => buildMemberRecord(item))
+        : [],
+    memberTotal: Number(detailInfo.memberTotal) || 0,
     referenced: Boolean(detailInfo.referenced),
+  };
+  memberPagination.value = {
+    pageNo: Number(detailInfo.memberPageNo) || 1,
+    pageSize: Number(detailInfo.memberPageSize) || 20,
   };
 };
 
@@ -60,7 +84,6 @@ watch(
   () => [props.detailInfo, props.mode],
   ([detailInfo, mode]) => {
     syncFormData(detailInfo || {});
-    memberKeyword.value = "";
     isEditing.value = mode === "create";
   },
   { immediate: true, deep: true },
@@ -71,28 +94,28 @@ const titleText = computed(() =>
 );
 
 const allowBaseInfoEdit = computed(() => props.mode === "create");
-const filteredMembers = computed(() => {
-  const keyword = memberKeyword.value.trim().toLowerCase();
-  const members = formData.value.members || [];
-  if (!keyword) {
-    return members;
+const memberTotal = computed(() =>
+  isEditing.value
+    ? (formData.value.allMembers || []).length
+    : Number(formData.value.memberTotal) || 0,
+);
+const displayedMembers = computed(() => {
+  if (!isEditing.value) {
+    return formData.value.members || [];
   }
 
-  return members.filter((item) =>
-    [
-      item.employeeCode,
-      item.employeeName,
-      item.attendancePosition,
-      item.attendanceOrganization,
-      item.transferTime,
-      item.transferOrganization,
-    ].some((field) => String(field || "").toLowerCase().includes(keyword)),
-  );
+  const allMembers = formData.value.allMembers || [];
+  const pageNo = Number(memberPagination.value.pageNo) || 1;
+  const pageSize = Number(memberPagination.value.pageSize) || 20;
+  const startIndex = (pageNo - 1) * pageSize;
+  return allMembers.slice(startIndex, startIndex + pageSize);
 });
 
 const selectableEmployees = computed(() => {
   const existingCodes = new Set(
-    (formData.value.members || []).map((item) => item.employeeCode),
+    (formData.value.allMembers || formData.value.members || []).map(
+      (item) => item.employeeCode,
+    ),
   );
 
   return candidateList.value.map((item) => ({
@@ -113,8 +136,48 @@ const closeSidebar = () => {
   emit("close");
 };
 
-const startEdit = () => {
+const loadAllMembersForEdit = async () => {
+  if (!formData.value.id) {
+    return;
+  }
+
+  const pageSize = 200;
+  let pageNo = 1;
+  let total = 0;
+  const allMembers = [];
+
+  memberLoading.value = true;
+  try {
+    do {
+      const res = await queryAttendanceGroupDetail(
+        {
+          groupId: formData.value.id,
+          pageNo,
+          pageSize,
+        },
+        {
+          isLoading: false,
+        },
+      );
+      const memberData = res?.data?.members || {};
+      const records = Array.isArray(memberData.records) ? memberData.records : [];
+      allMembers.push(...records.map((item) => buildMemberRecord(item)));
+      total = Number(memberData.total) || allMembers.length;
+      pageNo += 1;
+    } while (allMembers.length < total);
+
+    formData.value.allMembers = allMembers;
+    formData.value.memberTotal = total;
+  } finally {
+    memberLoading.value = false;
+  }
+};
+
+const startEdit = async () => {
   syncFormData(props.detailInfo || {});
+  if (props.mode !== "create") {
+    await loadAllMembersForEdit();
+  }
   isEditing.value = true;
 };
 
@@ -165,18 +228,34 @@ const addSelectedEmployees = () => {
     return ElMessage.warning("请先选择需要加入考勤组的员工");
   }
 
-  formData.value.members = [
-    ...(formData.value.members || []),
+  formData.value.allMembers = [
+    ...(formData.value.allMembers || []),
     ...selectedEmployees.value.map((item) => ({ ...item })),
   ];
+  formData.value.memberTotal = formData.value.allMembers.length;
+  memberPagination.value.pageNo = Math.max(
+    1,
+    Math.ceil(formData.value.allMembers.length / memberPagination.value.pageSize),
+  );
   employeeDialogVisible.value = false;
   selectedEmployees.value = [];
 };
 
 const removeMember = (row) => {
+  formData.value.allMembers = (formData.value.allMembers || []).filter(
+    (item) => item.employeeCode !== row.employeeCode,
+  );
   formData.value.members = (formData.value.members || []).filter(
     (item) => item.employeeCode !== row.employeeCode,
   );
+  formData.value.memberTotal = formData.value.allMembers.length;
+  const maxPage = Math.max(
+    1,
+    Math.ceil(formData.value.allMembers.length / memberPagination.value.pageSize),
+  );
+  if (memberPagination.value.pageNo > maxPage) {
+    memberPagination.value.pageNo = maxPage;
+  }
 };
 
 const fetchCandidateList = () => {
@@ -245,21 +324,31 @@ const handleCandidatePagination = () => {
 };
 
 const candidateRowSelectable = (row) => !row.selectionDisabled;
+const handleMemberPagination = () => {
+  if (isEditing.value) {
+    return;
+  }
+  emit("member-page-change", {
+    groupId: formData.value.id,
+    pageNo: memberPagination.value.pageNo,
+    pageSize: memberPagination.value.pageSize,
+  });
+};
 
 const validateForm = () => {
-  if (!formData.value.code.trim()) {
+  if (props.mode === "create" && !formData.value.code.trim()) {
     ElMessage.warning("请填写考勤组编码");
     return false;
   }
-  if (!formData.value.name.trim()) {
+  if (props.mode === "create" && !formData.value.name.trim()) {
     ElMessage.warning("请填写考勤组名称");
     return false;
   }
-  if (!formData.value.organizationCode) {
+  if (props.mode === "create" && !formData.value.organizationCode) {
     ElMessage.warning("请选择所属组织");
     return false;
   }
-  if (props.mode !== "create" && (formData.value.members || []).length === 0) {
+  if (props.mode !== "create" && !formData.value.id) {
     ElMessage.warning("请至少选择一名考勤组成员");
     return false;
   }
@@ -277,7 +366,7 @@ const saveEdit = () => {
     code: formData.value.code.trim(),
     name: formData.value.name.trim(),
     remark: formData.value.remark.trim(),
-    members: [...(formData.value.members || [])],
+    members: [...(formData.value.allMembers || formData.value.members || [])],
   });
   isEditing.value = false;
 };
@@ -411,21 +500,11 @@ const deleteRecord = () => {
 
       <section
         v-if="props.mode !== 'create'"
-        class="detail-section"
+        class="detail-section detail-section--members"
       >
         <div class="detail-section__toolbar">
           <div class="detail-section__title">成员列表</div>
           <div class="member-tools">
-            <el-input
-              v-model="memberKeyword"
-              class="member-tools__search"
-              placeholder="搜索成员..."
-              clearable
-            >
-              <template #prepend>
-                <i class="bx bx-search-alt"></i>
-              </template>
-            </el-input>
             <el-button
               v-if="isEditing"
               type="primary"
@@ -438,9 +517,9 @@ const deleteRecord = () => {
         </div>
 
         <el-table
-          :data="filteredMembers"
+          :data="displayedMembers"
           border
-          height="360"
+          height="100%"
           empty-text="暂无成员"
         >
           <el-table-column
@@ -490,6 +569,16 @@ const deleteRecord = () => {
             </template>
           </el-table-column>
         </el-table>
+        <div class="member-pagination">
+          <Pagination
+            :total="memberTotal"
+            v-model:page="memberPagination.pageNo"
+            v-model:limit="memberPagination.pageSize"
+            :pageSizes="[10, 20, 50, 100]"
+            :storage="false"
+            @pagination="handleMemberPagination"
+          />
+        </div>
       </section>
     </div>
 
@@ -661,7 +750,10 @@ const deleteRecord = () => {
 
 <style scoped lang="scss">
 .attendance-group-detail {
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  min-height: 0;
   background: #fff;
 }
 
@@ -706,14 +798,24 @@ const deleteRecord = () => {
 }
 
 .attendance-group-detail__content {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: 24px;
   padding: 24px 40px 40px;
+  min-height: 0;
 }
 
 .detail-section {
   display: grid;
   gap: 16px;
+}
+
+.detail-section--members {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 360px;
 }
 
 .detail-section__title {
@@ -774,8 +876,13 @@ const deleteRecord = () => {
   gap: 10px;
 }
 
-.member-tools__search {
-  width: 220px;
+:deep(.detail-section--members .el-table) {
+  flex: 1;
+  min-height: 360px;
+}
+
+:deep(.detail-section--members .el-table__inner-wrapper) {
+  height: 100%;
 }
 
 .candidate-toolbar {
@@ -826,11 +933,6 @@ const deleteRecord = () => {
 
   .member-tools {
     width: 100%;
-  }
-
-  .member-tools__search {
-    flex: 1;
-    width: auto;
   }
 
   .candidate-toolbar {

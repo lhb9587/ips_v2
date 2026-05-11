@@ -348,18 +348,20 @@ const fetchAttendanceArchiveList = () => {
       isLoading: true,
     },
   ).then((res) => {
-    const records = res?.data?.records || [];
+    const records = Array.isArray(res?.data) ? res.data : [];
     gridData.value = records.map((item, index) => ({
       ...item,
       id: item.archiveId,
       employeeCode: item.talentCode,
       employeeName: item.talentName,
+      organizationCode: item.attendanceOrgCode || "",
+      organizationName: item.attendanceOrgName || "",
       holidaySystem: item.leavePolicyCode || defaultHolidaySystem,
       attendanceSystem: item.attendancePolicyCode || defaultAttendanceSystem,
       defaultShift: item.defaultShiftCode || "",
       sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index,
     }));
-    total.value = res?.data?.total || 0;
+    total.value = res?.total || 0;
   });
 };
 

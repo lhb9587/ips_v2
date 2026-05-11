@@ -60,14 +60,14 @@ const fetchUnarchivedList = () => {
     },
   )
     .then((res) => {
-      const records = res?.data?.records || [];
+      const records = Array.isArray(res?.data) ? res.data : [];
       tableData.value = records.map((item) => ({
         ...item,
         positionName: resolvePositionName(item),
         employmentStatus: item.empStatus || "-",
         groupEntryDate: item.joinDate || "-",
       }));
-      total.value = res?.data?.total || 0;
+      total.value = res?.total || 0;
     })
     .finally(() => {
       loading.value = false;

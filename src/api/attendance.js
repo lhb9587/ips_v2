@@ -47,6 +47,15 @@ export function saveAttendanceGroup(data, config = {}) {
   })
 }
 
+export function saveAttendanceGroupMembers(data, config = {}) {
+  return request({
+    url: attendanceApi.saveAttendanceGroupMembers,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryAttendanceGroupDeleteCheck(data, config = {}) {
   return request({
     url: attendanceApi.queryAttendanceGroupDeleteCheck,
@@ -86,6 +95,42 @@ export function queryUnarchivedAttendanceArchivePage(data, config = {}) {
 export function batchCreateAttendanceArchiveByDefault(data, config = {}) {
   return request({
     url: attendanceApi.batchCreateAttendanceArchiveByDefault,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryScheduleHorizontalPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryScheduleHorizontalPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryScheduleWizardMemberPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryScheduleWizardMemberPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function submitScheduleWizard(data, config = {}) {
+  return request({
+    url: attendanceApi.submitScheduleWizard,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryAttendanceRotationRuleList(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceRotationRuleList,
     method: 'post',
     data,
     ...config

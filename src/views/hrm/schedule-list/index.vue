@@ -1,4 +1,5 @@
 <script setup>
+import dayjs from "dayjs";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
@@ -8,12 +9,24 @@ import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import { saveTableConfig } from "@/utils";
+import {
+  queryAttendanceGroupPage,
+  queryAttendanceRotationRuleList,
+  queryScheduleHorizontalPage,
+  queryScheduleWizardMemberPage,
+  submitScheduleWizard,
+} from "@/api/attendance";
 
 const route = useRoute();
 const store = useStore();
 
 const bussId = 458;
 const gridName = "scheduleListGrid";
+const DATE_TYPE_MAP = {
+  workday: "工作日",
+  restday: "休息日",
+  holiday: "节假日",
+};
 
 const columnList = ref([]);
 const setColumn = (list) => {
@@ -24,192 +37,90 @@ const activeClass = ref([]);
 const rowHeight = ref(40);
 const isFull = ref(false);
 const boxRef = ref(null);
+const gridRef = ref(null);
 const diminput = ref("");
-const formInline = ref({});
+const total = ref(0);
+const gridData = ref([]);
+const formInline = ref({
+  startDate: dayjs().subtract(7, "day").format("YYYY-MM-DD"),
+  endDate: dayjs().format("YYYY-MM-DD"),
+});
 const gridOptions = {
   rowMultiSelectWithClick: true,
 };
 
 const showRuleDialog = ref(false);
 const employeeTableRef = ref(null);
+const employeeLoading = ref(false);
+const employeeTotal = ref(0);
+const ruleLoading = ref(false);
+const submitRuleLoading = ref(false);
 const selectedEmployees = ref([]);
 const ruleForm = ref({
   attendanceSystem: "默认考勤制度",
   attendanceGroup: "",
-  organization: "曜斗科技",
+  organization: "",
   employeeName: "",
   ruleId: "",
-  startDate: "2026-05-08",
-  endDate: "2026-06-08",
+  startDate: dayjs().format("YYYY-MM-DD"),
+  endDate: dayjs().add(30, "day").format("YYYY-MM-DD"),
   holidayHandling: "顺延",
 });
 
-const ruleOptions = [
-  { label: "001 标准轮班规则", value: "rule-001" },
-  { label: "002 早班轮班规则", value: "rule-002" },
-  { label: "003 晚班轮班规则", value: "rule-003" },
-  { label: "004 哺乳假轮班规则-9点半", value: "rule-004" },
-];
-const employeeSource = ref([
-  {
-    id: 1,
-    employeeCode: "10072",
-    employeeName: "陈红",
-    attendanceOrganization: "万慧达_曜斗科技",
-    positionName: "技术工程师",
-  },
-  {
-    id: 2,
-    employeeCode: "10596",
-    employeeName: "马超",
-    attendanceOrganization: "万慧达_曜斗科技",
-    positionName: "组长",
-  },
-  {
-    id: 3,
-    employeeCode: "10598",
-    employeeName: "张黎维",
-    attendanceOrganization: "万慧达_曜斗科技",
-    positionName: "技术工程师",
-  },
-  {
-    id: 4,
-    employeeCode: "10604",
-    employeeName: "刘旭",
-    attendanceOrganization: "万慧达_曜斗科技",
-    positionName: "技术工程师",
-  },
-  {
-    id: 5,
-    employeeCode: "10632",
-    employeeName: "李明",
-    attendanceOrganization: "万慧达_曜斗科技",
-    positionName: "合伙人",
-  },
-  {
-    id: 6,
-    employeeCode: "10633",
-    employeeName: "杨光",
-    attendanceOrganization: "万慧达_曜斗科技",
-    positionName: "组长",
-  },
-  {
-    id: 7,
-    employeeCode: "10873",
-    employeeName: "张道森",
-    attendanceOrganization: "万慧达_曜斗科技",
-    positionName: "Java后端开发工程师",
-  },
-  {
-    id: 8,
-    employeeCode: "10984",
-    employeeName: "王斌斌",
-    attendanceOrganization: "万慧达_曜斗科技",
-    positionName: "前端开发工程师",
-  },
-  {
-    id: 9,
-    employeeCode: "11002",
-    employeeName: "马林飞",
-    attendanceOrganization: "万慧达_曜斗科技",
-    positionName: "Java后端开发工程师",
-  },
-  {
-    id: 10,
-    employeeCode: "11049",
-    employeeName: "侯强",
-    attendanceOrganization: "万慧达_曜斗科技",
-    positionName: "PHP开发工程师",
-  },
-]);
+const ruleOptions = ref([]);
 
-const scheduleList = ref([
-  {
-    id: 1,
-    employeeCode: "10633",
-    employeeName: "杨光",
-    attendanceOrganization: "行政管理部",
-    attendanceDate: "2026-05-08",
-    dateType: "工作日",
-    shiftName: "标准班",
-    workStartTime: "09:00",
-    workEndTime: "18:00",
-    attendanceNo: "KQ10633",
-    attendanceSystem: "默认考勤制度",
-    cardRule: "正常打卡",
-  },
-  {
-    id: 2,
-    employeeCode: "10634",
-    employeeName: "张敏",
-    attendanceOrganization: "产品研发部",
-    attendanceDate: "2026-05-08",
-    dateType: "工作日",
-    shiftName: "弹性班",
-    workStartTime: "09:30",
-    workEndTime: "18:30",
-    attendanceNo: "KQ10634",
-    attendanceSystem: "默认考勤制度",
-    cardRule: "正常打卡",
-  },
-  {
-    id: 3,
-    employeeCode: "10635",
-    employeeName: "李磊",
-    attendanceOrganization: "华东运营中心",
-    attendanceDate: "2026-05-08",
-    dateType: "工作日",
-    shiftName: "轮班",
-    workStartTime: "08:30",
-    workEndTime: "17:30",
-    attendanceNo: "KQ10635",
-    attendanceSystem: "默认考勤制度",
-    cardRule: "正常打卡",
-  },
-]);
-
-const filteredEmployeeList = computed(() => {
-  return employeeSource.value.filter((item) => {
-    const matchSystem =
-      !ruleForm.value.attendanceSystem ||
-      ruleForm.value.attendanceSystem === "默认考勤制度";
-    const matchGroup =
-      !ruleForm.value.attendanceGroup ||
-      item.positionName.includes(ruleForm.value.attendanceGroup);
-    const matchOrg =
-      !ruleForm.value.organization ||
-      item.attendanceOrganization.includes(ruleForm.value.organization);
-    const matchName =
-      !ruleForm.value.employeeName ||
-      item.employeeName.includes(ruleForm.value.employeeName) ||
-      item.employeeCode.includes(ruleForm.value.employeeName);
-    return matchSystem && matchGroup && matchOrg && matchName;
-  });
+const employeeSource = ref([]);
+const employeePagination = ref({
+  pageNo: 1,
+  pageSize: 10,
 });
+const attendanceGroupOptions = ref([]);
+const attendanceGroupLoading = ref(false);
+const cascaderProps = {
+  emitPath: false,
+  checkStrictly: true,
+  value: "value",
+  label: "label",
+  children: "children",
+};
+const attendanceScope = computed(() => store.getters["attendanceScope/scope"] || {});
+const organizationCascaderOptions = computed(() => {
+  const mapTree = (list = []) =>
+    list.map((item) => ({
+      value: item.deptCode || item.deptId || item.organizationCode || item.value,
+      label: item.deptName || item.organizationName || item.label,
+      children: Array.isArray(item.children) ? mapTree(item.children) : [],
+    }));
 
-const filteredList = computed(() => {
-  const keyword = diminput.value.trim().toLowerCase();
-  if (!keyword) {
-    return scheduleList.value;
+  if (
+    Array.isArray(attendanceScope.value?.deptScopeTree) &&
+    attendanceScope.value.deptScopeTree.length > 0
+  ) {
+    return mapTree(attendanceScope.value.deptScopeTree);
   }
-  return scheduleList.value.filter((item) =>
-    [
-      item.employeeCode,
-      item.employeeName,
-      item.attendanceOrganization,
-      item.attendanceDate,
-      item.dateType,
-      item.shiftName,
-      item.workStartTime,
-      item.workEndTime,
-      item.attendanceNo,
-      item.attendanceSystem,
-      item.cardRule,
-    ].some((field) => String(field || "").toLowerCase().includes(keyword)),
-  );
-});
 
-const total = computed(() => filteredList.value.length);
+  return (store.getters["attendanceScope/deptScopes"] || []).map((item) => ({
+    value: item.deptCode || item.deptId || item.organizationCode,
+    label: item.deptName || item.organizationName || item.organizationFullName,
+    children: [],
+  }));
+});
+const buildWizardMemberRecord = (item = {}) => ({
+  id: item.archiveId || item.talentCode || "",
+  employeeCode: item.talentCode || "",
+  employeeName: item.talentName || "",
+  attendanceOrganization: item.deptName || "",
+  attendanceOrganizationCode: item.deptCode || "",
+  attendanceGroupId: item.attendanceGroupId || "",
+  attendanceGroupName: item.attendanceGroupName || "",
+  archiveId: item.archiveId || "",
+  canSchedule: item.canSchedule !== false,
+  cannotScheduleReason: item.cannotScheduleReason || "",
+});
+const currentOperator = computed(() => ({
+  operatorId: store.state.user.userId || undefined,
+  operatorName: store.state.user.name || undefined,
+}));
 
 const calculateGridHeight = () => {
   const layout = store.state.layout.layoutType;
@@ -232,23 +143,143 @@ watch(
 const fetchLocalPageSize = () => {
   const pageSizeData = JSON.parse(localStorage.getItem("pageSize")) || [];
   const savedData = pageSizeData.find((item) => item.name === route.name);
-  return savedData ? savedData.pageSize : 10;
+  const pageSize = savedData ? savedData.pageSize : 10;
+  return Math.min(pageSize, 100);
 };
 
 const listQuery = ref({
   pageNo: 1,
   pageSize: fetchLocalPageSize(),
 });
-const pageSizesList = ref([10, 50, 200, 500]);
+const pageSizesList = ref([10, 20, 50, 100]);
 
-const gridData = computed(() => {
-  const start = (listQuery.value.pageNo - 1) * listQuery.value.pageSize;
-  const end = start + listQuery.value.pageSize;
-  return filteredList.value.slice(start, end).map((item, index) => ({
-    ...item,
-    sid: start + index,
-  }));
-});
+const fetchAttendanceGroupOptions = () => {
+  attendanceGroupLoading.value = true;
+  return queryAttendanceGroupPage(
+    {
+      pageNo: 1,
+      pageSize: 1000,
+    },
+    {
+      isLoading: false,
+    },
+  )
+    .then((res) => {
+      const records = Array.isArray(res?.data) ? res.data : res?.data?.records || [];
+      attendanceGroupOptions.value = records.map((item) => ({
+        value: item.groupId || item.groupCode,
+        label: item.groupName || item.name || "",
+      }));
+      return attendanceGroupOptions.value;
+    })
+    .catch(() => {
+      attendanceGroupOptions.value = [];
+      return [];
+    })
+    .finally(() => {
+      attendanceGroupLoading.value = false;
+    });
+};
+
+const fetchWizardMembers = () => {
+  employeeLoading.value = true;
+  return queryScheduleWizardMemberPage(
+    {
+      deptCode: ruleForm.value.organization || undefined,
+      groupId: ruleForm.value.attendanceGroup || undefined,
+      talentName: ruleForm.value.employeeName || undefined,
+      talentCode: ruleForm.value.employeeName || undefined,
+      pageNo: employeePagination.value.pageNo,
+      pageSize: employeePagination.value.pageSize,
+    },
+    {
+      isLoading: false,
+    },
+  )
+    .then((res) => {
+      const records = Array.isArray(res?.data) ? res.data : res?.data?.records || [];
+      employeeSource.value = records.map((item) => buildWizardMemberRecord(item));
+      employeeTotal.value = Number(res?.total) || Number(res?.data?.total) || 0;
+      if (Number(res?.currPage)) {
+        employeePagination.value.pageNo = Number(res.currPage);
+      }
+    })
+    .catch(() => {
+      employeeSource.value = [];
+      employeeTotal.value = 0;
+    })
+    .finally(() => {
+      employeeLoading.value = false;
+    });
+};
+
+const fetchRotationRuleOptions = () => {
+  ruleLoading.value = true;
+  return queryAttendanceRotationRuleList(
+    {
+      organizationCode: ruleForm.value.organization || undefined,
+    },
+    {
+      isLoading: false,
+    },
+  )
+    .then((res) => {
+      const records = Array.isArray(res?.data) ? res.data : res?.data?.records || [];
+      ruleOptions.value = records.map((item) => ({
+        label: item.ruleName || item.rotationRuleName || "",
+        value: item.ruleCode || item.rotationRuleCode || "",
+      }));
+    })
+    .catch(() => {
+      ruleOptions.value = [];
+    })
+    .finally(() => {
+      ruleLoading.value = false;
+    });
+};
+
+const fetchScheduleList = () => {
+  queryScheduleHorizontalPage(
+    {
+      pageNo: listQuery.value.pageNo,
+      pageSize: Math.min(listQuery.value.pageSize, 100),
+      startDate: formInline.value.startDate,
+      endDate: formInline.value.endDate,
+      talentCode: diminput.value || undefined,
+      talentName: diminput.value || undefined,
+    },
+    {
+      isLoading: true,
+    },
+  )
+    .then((res) => {
+      const records = Array.isArray(res?.data) ? res.data : [];
+      gridData.value = records.map((item, index) => ({
+        ...item,
+        id: item.scheduleDayId,
+        employeeCode: item.talentCode || "",
+        employeeName: item.talentName || "",
+        attendanceOrganization: item.attendanceOrgName || "",
+        attendanceGroupName:
+          item.attendanceGroupName || item.groupName || item.attendanceGroup || "",
+        attendanceDate: item.scheduleDate || "",
+        dateType: DATE_TYPE_MAP[item.dateType] || item.dateType || "",
+        shiftName: item.shiftName || "",
+        workStartTime: item.workStartTime || "",
+        workEndTime: item.workEndTime || "",
+        attendanceNo: item.attendanceArchiveCode || "",
+        attendanceSystem:
+          item.attendancePolicyName || item.attendancePolicyCode || "",
+        cardRule: item.fetchCardRuleName || item.fetchCardRuleCode || "",
+        sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index,
+      }));
+      total.value = res?.total || 0;
+    })
+    .catch(() => {
+      gridData.value = [];
+      total.value = 0;
+    });
+};
 
 const changeBorder = (newVal) => {
   if (newVal) {
@@ -301,21 +332,14 @@ const handleFullScreenChange = () => {
 
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
-  formInline.value = {};
+  fetchScheduleList();
 };
 
 const openRuleDialog = () => {
-  ruleForm.value = {
-    attendanceSystem: "默认考勤制度",
-    attendanceGroup: "",
-    organization: "曜斗科技",
-    employeeName: "",
-    ruleId: "",
-    startDate: "2026-05-08",
-    endDate: "2026-06-08",
-    holidayHandling: "顺延",
-  };
   selectedEmployees.value = [];
+  employeePagination.value.pageNo = 1;
+  fetchRotationRuleOptions();
+  fetchWizardMembers();
   showRuleDialog.value = true;
 };
 
@@ -325,8 +349,14 @@ const handleEmployeeSelectionChange = (rows) => {
 
 const handleEmployeeFilter = async () => {
   await nextTick();
+  employeePagination.value.pageNo = 1;
+  fetchWizardMembers();
   selectedEmployees.value = [];
   employeeTableRef.value?.clearSelection?.();
+};
+
+const handleEmployeePagination = () => {
+  fetchWizardMembers();
 };
 
 const submitRuleDialog = () => {
@@ -339,11 +369,33 @@ const submitRuleDialog = () => {
     return;
   }
   if (!ruleForm.value.startDate || !ruleForm.value.endDate) {
-    ElMessage.warning("请先选择开始日期和结束日期");
+    ElMessage.warning("请选择开始日期和结束日期");
     return;
   }
-  showRuleDialog.value = false;
-  ElMessage.success("轮班规则已应用");
+  submitRuleLoading.value = true;
+  submitScheduleWizard(
+    {
+      startDate: ruleForm.value.startDate,
+      endDate: ruleForm.value.endDate,
+      rotationRuleCode: ruleForm.value.ruleId,
+      holidayHandleMode: "DELAY",
+      memberTalentCodes: selectedEmployees.value
+        .map((item) => item.employeeCode)
+        .filter(Boolean),
+      ...currentOperator.value,
+    },
+    {
+      isLoading: true,
+    },
+  )
+    .then((res) => {
+      showRuleDialog.value = false;
+      fetchScheduleList();
+      ElMessage.success(res?.data?.message || "轮班规则已应用");
+    })
+    .finally(() => {
+      submitRuleLoading.value = false;
+    });
 };
 
 const cellRenderer = (params) => {
@@ -352,10 +404,15 @@ const cellRenderer = (params) => {
   }</span>`;
 };
 
-const handlePagination = () => {};
+const handlePagination = () => {
+  fetchScheduleList();
+};
 
 onMounted(() => {
   document.addEventListener("fullscreenchange", handleFullScreenChange);
+  fetchAttendanceGroupOptions();
+  fetchRotationRuleOptions();
+  fetchScheduleList();
 });
 
 onUnmounted(() => {
@@ -479,27 +536,37 @@ onUnmounted(() => {
             </div>
             <div class="schedule-rule-dialog__field">
               <div class="schedule-rule-dialog__label">组织</div>
-              <el-input
+              <el-cascader
                 v-model="ruleForm.organization"
                 class="schedule-rule-dialog__input"
-              >
-                <template #append>
-                  <i class="bx bx-list-ul"></i>
-                </template>
-              </el-input>
+                :options="organizationCascaderOptions"
+                :props="cascaderProps"
+                clearable
+                filterable
+                :show-all-levels="false"
+                placeholder="请选择组织"
+              />
             </div>
           </div>
           <div class="schedule-rule-dialog__filter-row">
             <div class="schedule-rule-dialog__field">
               <div class="schedule-rule-dialog__label">考勤组</div>
-              <el-input
+              <el-select
                 v-model="ruleForm.attendanceGroup"
                 class="schedule-rule-dialog__input"
+                clearable
+                filterable
+                :loading="attendanceGroupLoading"
+                placeholder="请选择考勤组"
+                @change="handleEmployeeFilter"
               >
-                <template #append>
-                  <i class="bx bx-list-ul"></i>
-                </template>
-              </el-input>
+                <el-option
+                  v-for="item in attendanceGroupOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
             </div>
             <div class="schedule-rule-dialog__field">
               <div class="schedule-rule-dialog__label">姓名</div>
@@ -523,9 +590,11 @@ onUnmounted(() => {
         <div class="schedule-rule-dialog__table-wrap">
           <el-table
             ref="employeeTableRef"
-            :data="filteredEmployeeList"
+            :data="employeeSource"
             border
             height="360"
+            v-loading="employeeLoading"
+            row-key="archiveId"
             @selection-change="handleEmployeeSelectionChange"
           >
             <el-table-column
@@ -548,31 +617,45 @@ onUnmounted(() => {
               min-width="320"
             />
             <el-table-column
-              prop="positionName"
-              label="职位"
+              prop="attendanceGroupName"
+              label="考勤组"
               min-width="180"
             />
           </el-table>
         </div>
+        <div
+          v-if="employeeTotal > 0"
+          class="schedule-rule-dialog__table-pagination"
+        >
+          <Pagination
+            :total="employeeTotal"
+            v-model:page="employeePagination.pageNo"
+            v-model:limit="employeePagination.pageSize"
+            :pageSizes="[10, 20, 50, 100]"
+            :storage="false"
+            @pagination="handleEmployeePagination"
+          />
+        </div>
 
         <div class="schedule-rule-dialog__footer-form">
+          <div class="schedule-rule-dialog__field schedule-rule-dialog__field--full">
+            <div class="schedule-rule-dialog__label">轮班规则</div>
+            <el-select
+              v-model="ruleForm.ruleId"
+              filterable
+              :loading="ruleLoading"
+              placeholder="请选择轮班规则"
+              class="schedule-rule-dialog__rule-select"
+            >
+              <el-option
+                v-for="item in ruleOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </div>
           <div class="schedule-rule-dialog__rule-grid">
-            <div class="schedule-rule-dialog__field">
-              <div class="schedule-rule-dialog__label">轮班规则</div>
-              <el-select
-                v-model="ruleForm.ruleId"
-                filterable
-                placeholder="请选择轮班规则"
-                class="schedule-rule-dialog__rule-select"
-              >
-                <el-option
-                  v-for="item in ruleOptions"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-                />
-              </el-select>
-            </div>
             <div class="schedule-rule-dialog__field">
               <div class="schedule-rule-dialog__label">开始日期</div>
               <el-date-picker
@@ -599,6 +682,7 @@ onUnmounted(() => {
         <el-button @click="showRuleDialog = false">取消</el-button>
         <el-button
           type="primary"
+          :loading="submitRuleLoading"
           @click="submitRuleDialog"
         >
           确定
@@ -639,6 +723,10 @@ onUnmounted(() => {
   gap: 12px;
 }
 
+.schedule-rule-dialog__field--full {
+  width: 100%;
+}
+
 .schedule-rule-dialog__label {
   color: #4c5d78;
   font-size: 14px;
@@ -659,6 +747,10 @@ onUnmounted(() => {
   border: 1px solid #e7edf5;
   border-radius: 8px;
   overflow: hidden;
+}
+
+.schedule-rule-dialog__table-pagination {
+  margin-top: -4px;
 }
 
 .schedule-rule-dialog__footer-form {

@@ -16,6 +16,7 @@ import {
   queryAttendanceGroupDetail,
   queryAttendanceGroupPage,
   saveAttendanceGroup,
+  saveAttendanceGroupMembers,
 } from "@/api/attendance";
 
 const route = useRoute();
@@ -23,73 +24,6 @@ const store = useStore();
 
 const bussId = 457;
 const gridName = "attendanceGroupGrid";
-
-const employeeOptions = [
-  {
-    employeeCode: "10633",
-    employeeName: "杨光",
-    attendancePosition: "组长",
-    attendanceOrganization: "曜斗科技",
-    transferTime: "",
-    transferOrganization: "",
-  },
-  {
-    employeeCode: "10634",
-    employeeName: "张敏",
-    attendancePosition: "招商主管",
-    attendanceOrganization: "华东运营中心",
-    transferTime: "",
-    transferOrganization: "",
-  },
-  {
-    employeeCode: "10635",
-    employeeName: "李倩",
-    attendancePosition: "HRBP",
-    attendanceOrganization: "人力资源部",
-    transferTime: "",
-    transferOrganization: "",
-  },
-  {
-    employeeCode: "10636",
-    employeeName: "王浩",
-    attendancePosition: "前端工程师",
-    attendanceOrganization: "产品研发部",
-    transferTime: "",
-    transferOrganization: "",
-  },
-  {
-    employeeCode: "10637",
-    employeeName: "赵雪",
-    attendancePosition: "会计",
-    attendanceOrganization: "财务管理部",
-    transferTime: "2026-03-01",
-    transferOrganization: "财务共享中心",
-  },
-  {
-    employeeCode: "10638",
-    employeeName: "陈博",
-    attendancePosition: "法务专员",
-    attendanceOrganization: "法务中心",
-    transferTime: "",
-    transferOrganization: "",
-  },
-  {
-    employeeCode: "10639",
-    employeeName: "周岚",
-    attendancePosition: "市场经理",
-    attendanceOrganization: "市场发展部",
-    transferTime: "",
-    transferOrganization: "",
-  },
-  {
-    employeeCode: "10640",
-    employeeName: "孙洋",
-    attendancePosition: "客户经理",
-    attendanceOrganization: "客户成功部",
-    transferTime: "",
-    transferOrganization: "",
-  },
-];
 
 const attendanceOrganizationOptions = computed(() =>
   (store.getters["attendanceScope/deptScopes"] || []).map((item) => ({
@@ -109,6 +43,10 @@ const diminput = ref("");
 const detailVisible = ref(false);
 const detailMode = ref("view");
 const selectedDetail = ref({});
+const detailMemberQuery = ref({
+  pageNo: 1,
+  pageSize: 20,
+});
 const formInline = ref({});
 const total = ref(0);
 const gridData = ref([]);
@@ -142,6 +80,9 @@ const buildDetailRecord = (item = {}) => ({
   members: Array.isArray(item.members)
     ? item.members.map((member) => buildMemberRecord(member))
     : [],
+  memberPageNo: Number(item.memberPageNo) || 1,
+  memberPageSize: Number(item.memberPageSize) || 20,
+  memberTotal: Number(item.memberTotal) || 0,
 });
 
 const setColumn = (list) => {
@@ -298,21 +239,33 @@ const buildNewGroup = () => {
 };
 
 const openCreateDetail = () => {
+  detailMemberQuery.value = {
+    pageNo: 1,
+    pageSize: 20,
+  };
   selectedDetail.value = buildNewGroup();
   detailMode.value = "create";
   detailVisible.value = true;
 };
 
-const openGroupDetail = (params) => {
-  if (!params?.data) {
+const openGroupDetail = (params, pagination = {}) => {
+  const rowData = params?.data || params;
+  if (!rowData) {
     return;
   }
+  const nextPageNo = Number(pagination.pageNo) || detailMemberQuery.value.pageNo || 1;
+  const nextPageSize =
+    Number(pagination.pageSize) || detailMemberQuery.value.pageSize || 20;
+  detailMemberQuery.value = {
+    pageNo: nextPageNo,
+    pageSize: nextPageSize,
+  };
   detailLoading.value = true;
   queryAttendanceGroupDetail(
     {
-      groupId: params.data.id,
-      pageNo: 1,
-      pageSize: 200,
+      groupId: rowData.id,
+      pageNo: nextPageNo,
+      pageSize: nextPageSize,
     },
     {
       isLoading: true,
@@ -320,10 +273,16 @@ const openGroupDetail = (params) => {
   )
     .then((res) => {
       const detailData = res?.data || {};
+      const memberRecords = Array.isArray(detailData?.members?.records)
+        ? detailData.members.records
+        : [];
       selectedDetail.value = buildDetailRecord({
-        ...params.data,
+        ...rowData,
         ...detailData,
-        members: detailData?.members?.records || [],
+        members: memberRecords,
+        memberPageNo: detailData?.members?.pageNo || nextPageNo,
+        memberPageSize: detailData?.members?.pageSize || nextPageSize,
+        memberTotal: detailData?.members?.total || 0,
       });
       detailMode.value = "view";
       detailVisible.value = true;
@@ -339,6 +298,10 @@ const openGroupDetail = (params) => {
 const closeDetail = () => {
   detailVisible.value = false;
   selectedDetail.value = {};
+  detailMemberQuery.value = {
+    pageNo: 1,
+    pageSize: 20,
+  };
 };
 
 const removeGroupFromGrid = (groupId) => {
@@ -411,25 +374,41 @@ const handleDeleteDetail = async (record) => {
 
 const handleSaveGroup = (payload) => {
   const isCreateMode = detailMode.value === "create";
-  const requestData = {
-    groupId: isCreateMode ? undefined : payload.id || undefined,
-    groupCode: payload.code,
-    groupName: payload.name,
-    orgCode: payload.organizationCode,
-    remark: payload.remark || "",
-    memberTalentCodes: Array.isArray(payload.members)
-      ? payload.members.map((item) => item.employeeCode).filter(Boolean)
-      : [],
-  };
+  const memberTalentCodes = Array.isArray(payload.members)
+    ? payload.members.map((item) => item.employeeCode).filter(Boolean)
+    : [];
+  const request = isCreateMode
+    ? saveAttendanceGroup(
+        {
+          groupId: undefined,
+          groupCode: payload.code,
+          groupName: payload.name,
+          orgCode: payload.organizationCode,
+          remark: payload.remark || "",
+          memberTalentCodes,
+          ...currentOperator.value,
+        },
+        {
+          isLoading: true,
+        },
+      )
+    : saveAttendanceGroupMembers(
+        {
+          groupId: payload.id || undefined,
+          memberTalentCodes,
+          ...currentOperator.value,
+        },
+        {
+          isLoading: true,
+        },
+      );
 
-  saveAttendanceGroup(requestData, {
-    isLoading: true,
-  })
+  request
     .then((res) => {
       const result = res?.data || {};
       const nextId = result.groupId || payload.id;
       const successMessage =
-        result.message || (payload.id ? "考勤组已更新" : "考勤组已创建");
+        result.message || (isCreateMode ? "考勤组已创建" : "成员已保存");
       listQuery.value.pageNo = 1;
       fetchAttendanceGroupList();
       if (isCreateMode) {
@@ -444,12 +423,25 @@ const handleSaveGroup = (payload) => {
       detailMode.value = "view";
       ElMessage.success(successMessage);
       if (nextId) {
-        openGroupDetail({ data: { ...selectedDetail.value, id: nextId } });
+        openGroupDetail(
+          { data: { ...selectedDetail.value, id: nextId } },
+          detailMemberQuery.value,
+        );
       }
     })
     .catch(() => {
       selectedDetail.value = buildDetailRecord(payload);
     });
+};
+
+const handleMemberPageChange = (pagination) => {
+  if (!selectedDetail.value?.id) {
+    return;
+  }
+  openGroupDetail(
+    { data: { ...selectedDetail.value, id: selectedDetail.value.id } },
+    pagination,
+  );
 };
 
 const handlePagination = () => {
@@ -572,8 +564,8 @@ onUnmounted(() => {
         :detailInfo="selectedDetail"
         :mode="detailMode"
         :organizationOptions="attendanceOrganizationOptions"
-        :employeeOptions="employeeOptions"
         @save="handleSaveGroup"
+        @member-page-change="handleMemberPageChange"
         @delete="handleDeleteDetail"
         @close="closeDetail"
       />

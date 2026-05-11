@@ -6,6 +6,7 @@ const attendanceApi = {
   queryAttendanceGroupPage: `${ATTENDANCE_URL}/api/attendance/group/page`,
   queryAttendanceGroupDetail: `${ATTENDANCE_URL}/api/attendance/group/detail`,
   saveAttendanceGroup: `${ATTENDANCE_URL}/api/attendance/group/save`,
+  saveAttendanceGroupMembers: `${ATTENDANCE_URL}/api/attendance/group/member/save`,
   queryAttendanceGroupDeleteCheck: `${ATTENDANCE_URL}/api/attendance/group/delete-check`,
   deleteAttendanceGroup: `${ATTENDANCE_URL}/api/attendance/group/delete`,
   queryAttendanceGroupMemberCandidatePage: `${ATTENDANCE_URL}/api/attendance/group/member/candidate/page`,
@@ -18,6 +19,10 @@ const attendanceApi = {
   batchAssignAttendanceArchive: `${ATTENDANCE_URL}/api/attendance/archive/batch-assign`,
   batchCreateAttendanceArchiveByDefault: `${ATTENDANCE_URL}/api/attendance/archive/batch-create-by-default`,
   queryAttendanceArchiveHistoryPage: `${ATTENDANCE_URL}/api/attendance/archive/history/page`,
+  queryScheduleHorizontalPage: `${ATTENDANCE_URL}/api/attendance/schedule/list/horizontal/page`,
+  queryScheduleWizardMemberPage: `${ATTENDANCE_URL}/api/attendance/schedule/wizard/member/page`,
+  submitScheduleWizard: `${ATTENDANCE_URL}/api/attendance/schedule/wizard/submit`,
+  queryAttendanceRotationRuleList: `${ATTENDANCE_URL}/api/attendance/setting/rotation-rule/list`,
 }
 
 export default attendanceApi
