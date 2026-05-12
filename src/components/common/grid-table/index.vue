@@ -115,6 +115,15 @@ const props = defineProps({
     type: String,
     default: "multiple",
   },
+  // 是否自动添加左侧多选列，开启后列头展示全选框
+  showSelectionColumn: {
+    type: Boolean,
+    default: false,
+  },
+  selectionColumnOptions: {
+    type: Object,
+    default: () => ({}),
+  },
   // 单元格渲染
   cellRenderer: {
     type: [Function, undefined],
@@ -126,14 +135,53 @@ const defaultColDef = {
   value: "sid",
   width: "60",
 };
+const selectionColumnDef = {
+  title: "",
+  value: "__selection__",
+  field: "__selection__",
+  width: 48,
+  minWidth: 48,
+  maxWidth: 48,
+  pinned: "left",
+  lockPosition: "left",
+  suppressMovable: true,
+  resizable: false,
+  sortable: false,
+  filter: false,
+  menuTabs: [],
+  checkboxSelection: true,
+  headerCheckboxSelection: true,
+  headerCheckboxSelectionFilteredOnly: false,
+  suppressColumnsToolPanel: true,
+};
+const getColumnList = (list = []) => {
+  if (!props.showSelectionColumn) {
+    return list;
+  }
+  const hasSelectionColumn = list.some(
+    (item) =>
+      item.value === selectionColumnDef.value ||
+      item.field === selectionColumnDef.field,
+  );
+  if (hasSelectionColumn) {
+    return list;
+  }
+  return [
+    {
+      ...selectionColumnDef,
+      ...props.selectionColumnOptions,
+    },
+    ...list,
+  ];
+};
 watch(
   () => props.columnDefs,
   (newValue) => {
     if (newValue.length > 0) {
       if (props.hasDetailGrid) {
-        init([defaultColDef, ...newValue]);
+        init(getColumnList([defaultColDef, ...newValue]));
       } else {
-        init(newValue);
+        init(getColumnList(newValue));
       }
       // setColumnWidth();
     }
@@ -362,6 +410,7 @@ const setColumns240 = (params) => {
 const saveColumnsWidth = (params) => {
   let tableHeader = params.columnApi.columnModel
     .getColumnState()
+    .filter((item) => item.colId !== selectionColumnDef.value)
     .map((item) => ({
       width: item.width,
       prop: item.colId,
@@ -406,7 +455,7 @@ const getColumnMaxWidth = () => {
   }
 };
 onMounted(() => {
-  init(props.columnDefs);
+  init(getColumnList(props.columnDefs));
 
   // 创建ResizeObserver实例
   const resizeObserver = new ResizeObserver((entries) => {
@@ -463,7 +512,7 @@ const init = (list) => {
     flex: item.flex,
     filter: item.filter ?? "agSetColumnFilter",
     menuTabs: item.menuTabs || ["filterMenuTab", "generalMenuTab", "columnsMenuTab"],
-    cellRenderer: item.cellRenderer || cellRenderer,
+    cellRenderer: item.cellRenderer ?? (item.checkboxSelection ? undefined : cellRenderer),
     enableRowGroup: item.enableRowGroup ?? true,
     rowGroup: item.rowGroup,
     comparator: (a, b) => {
@@ -579,7 +628,11 @@ const onColumnMoved = (params) => {
     });
     console.log(columnMovedList, "columnMovedList");
     const filterCol = columnMovedList.filter((item) => {
-      return item.value !== "sid" && item.value !== "handle";
+      return (
+        item.value !== "sid" &&
+        item.value !== "handle" &&
+        item.value !== selectionColumnDef.value
+      );
     });
     savePreference({
       userId,
@@ -609,6 +662,7 @@ const onColumnResized = (params) => {
   const saveWidth = () => {
     let tableHeader = params.columnApi.columnModel
       .getColumnState()
+      .filter((item) => item.colId !== selectionColumnDef.value)
       .map((item) => ({
         // label: props.gridName,
         width: item.width,
@@ -669,6 +723,16 @@ const onBodyScrollEnd = () => {
   // console.log(event, "event");
 };
 
+const onRowClicked = (params) => {
+  if (
+    props.showSelectionColumn &&
+    params?.event?.target?.closest?.(".ag-selection-checkbox")
+  ) {
+    return;
+  }
+  props.rowClick(params);
+};
+
 const tableHeight = computed(() => {
   return props.height;
 });
@@ -716,7 +780,7 @@ defineExpose({
       :getContextMenuItems="getContextMenuItems"
       @sortChanged="refreshEvenRowsCurrencyData"
       @filterChanged="refreshEvenRowsCurrencyData"
-      @rowClicked="props.rowClick"
+      @rowClicked="onRowClicked"
       @rowDoubleClicked="props.rowDoubleClicked"
       animateRows
       :suppressDragLeaveHidesColumns="true"

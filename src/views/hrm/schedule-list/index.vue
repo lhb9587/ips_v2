@@ -19,6 +19,7 @@ import {
   queryScheduleHorizontalPage,
   queryScheduleWizardMemberPage,
   submitScheduleDetailUpdate,
+  submitScheduleSwap,
   submitScheduleWizard,
 } from "@/api/attendance";
 
@@ -56,6 +57,7 @@ const formInline = ref({
   startDate: dayjs().subtract(7, "day").format("YYYY-MM-DD"),
   endDate: dayjs().format("YYYY-MM-DD"),
 });
+const dateRange = ref([formInline.value.startDate, formInline.value.endDate]);
 const gridOptions = {
   rowMultiSelectWithClick: true,
 };
@@ -66,6 +68,7 @@ const employeeLoading = ref(false);
 const employeeTotal = ref(0);
 const ruleLoading = ref(false);
 const submitRuleLoading = ref(false);
+const swapLoading = ref(false);
 const selectedEmployees = ref([]);
 const ruleForm = ref({
   attendanceSystem: "默认考勤制度",
@@ -406,12 +409,73 @@ const fuzzySearch = () => {
   fetchScheduleList();
 };
 
+const handleDateRangeChange = (value) => {
+  const range = Array.isArray(value) ? value : [];
+  formInline.value.startDate = range[0] || "";
+  formInline.value.endDate = range[1] || "";
+  fuzzySearch();
+};
+
 const openRuleDialog = () => {
   selectedEmployees.value = [];
   employeePagination.value.pageNo = 1;
   fetchRotationRuleOptions();
   fetchWizardMembers();
   showRuleDialog.value = true;
+};
+
+const getScheduleDayId = (row = {}) => row.scheduleDayId || row.id;
+
+const formatSwapMessage = (data = {}, sourceRow = {}, targetRow = {}) => {
+  if (data.message) {
+    return data.message;
+  }
+  const sourceText = `${sourceRow.employeeName || data.sourceTalentName || ""}${
+    sourceRow.attendanceDate || data.sourceScheduleDate || ""
+      ? `（${sourceRow.attendanceDate || data.sourceScheduleDate}）`
+      : ""
+  }`;
+  const targetText = `${targetRow.employeeName || data.targetTalentName || ""}${
+    targetRow.attendanceDate || data.targetScheduleDate || ""
+      ? `（${targetRow.attendanceDate || data.targetScheduleDate}）`
+      : ""
+  }`;
+  if (sourceText.trim() && targetText.trim()) {
+    return `调班成功：${sourceText} 与 ${targetText}`;
+  }
+  return "调班成功";
+};
+
+const handleScheduleSwap = () => {
+  const selectedRows = gridRef.value?.getRowList?.() || [];
+  if (selectedRows.length !== 2) {
+    ElMessage.warning("请选择两条排班记录进行调班");
+    return;
+  }
+  const [sourceRow, targetRow] = selectedRows;
+  const sourceScheduleDayId = getScheduleDayId(sourceRow);
+  const targetScheduleDayId = getScheduleDayId(targetRow);
+  if (!sourceScheduleDayId || !targetScheduleDayId) {
+    ElMessage.warning("选中的排班记录缺少日排班ID，无法调班");
+    return;
+  }
+  swapLoading.value = true;
+  submitScheduleSwap(
+    {
+      sourceScheduleDayId,
+      targetScheduleDayId,
+    },
+    {
+      isLoading: true,
+    },
+  )
+    .then((res) => {
+      ElMessage.success(formatSwapMessage(res?.data || {}, sourceRow, targetRow));
+      fetchScheduleList();
+    })
+    .finally(() => {
+      swapLoading.value = false;
+    });
 };
 
 const handleEmployeeSelectionChange = (rows) => {
@@ -610,12 +674,32 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
+                  <el-date-picker
+                    v-model="dateRange"
+                    type="daterange"
+                    value-format="YYYY-MM-DD"
+                    range-separator="-"
+                    start-placeholder="开始日期"
+                    end-placeholder="结束日期"
+                    class="schedule-list__date-range"
+                    style="width: 260px; min-width: 260px; max-width: 260px; flex: 0 0 260px"
+                    clearable
+                    @change="handleDateRangeChange"
+                  />
                   <el-button
                     type="primary"
                     plain
                     @click="openRuleDialog"
                   >
                     轮班规则
+                  </el-button>
+                  <el-button
+                    type="primary"
+                    plain
+                    :loading="swapLoading"
+                    @click="handleScheduleSwap"
+                  >
+                    调班
                   </el-button>
                 </div>
               </span>
@@ -650,6 +734,7 @@ onUnmounted(() => {
               :grid-data="gridData"
               :activeClass="activeClass"
               :cellRenderer="cellRenderer"
+              :showSelectionColumn="true"
               :rowClick="openScheduleDetail"
               :gridOptions="gridOptions"
             />
@@ -876,6 +961,14 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .card-body {
   flex: none;
+}
+
+:deep(.schedule-list__date-range.el-date-editor--daterange),
+.schedule-list__date-range {
+  width: 260px !important;
+  min-width: 260px !important;
+  max-width: 260px !important;
+  flex: 0 0 260px !important;
 }
 
 .schedule-rule-dialog__body {
