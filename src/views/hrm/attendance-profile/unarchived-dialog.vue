@@ -1,7 +1,7 @@
 <!-- 未建档员工列表弹窗，负责展示并分页查询未建档员工。 -->
 <!-- eslint-disable no-undef -->
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
 import Pagination from "@/components/common/pagination/index.vue";
 import {
@@ -31,6 +31,7 @@ const loading = ref(false);
 const searchKeyword = ref("");
 const tableData = ref([]);
 const total = ref(0);
+const tableRef = ref(null);
 const shiftDialogVisible = ref(false);
 const selectedShift = ref("");
 const selectedRows = ref([]);
@@ -41,6 +42,9 @@ const listQuery = ref({
 });
 const pageSizesList = [10, 20, 50, 100, 200];
 const selectedCount = computed(() => selectedRows.value.length);
+const defaultShiftValue = computed(
+  () => props.shiftOptions.find((item) => item?.isDefault)?.shiftName || "",
+);
 
 const resolvePositionName = (record) => {
   return record.positionName || record.posName || record.position || record.posId || "-";
@@ -96,9 +100,22 @@ const handleSelectionChange = (rows) => {
   selectedRows.value = rows;
 };
 
+const resetDialogState = () => {
+  selectedRows.value = [];
+  selectedShift.value = defaultShiftValue.value;
+  shiftDialogVisible.value = false;
+  nextTick(() => {
+    tableRef.value?.clearSelection?.();
+  });
+};
+
 const handleBatchCreate = () => {
   if (!selectedRows.value.length) {
     return ElMessage.warning("请选择需要建档的员工");
+  }
+
+  if (!selectedShift.value) {
+    return ElMessage.warning("\u8BF7\u9009\u62E9\u9ED8\u8BA4\u73ED\u6B21");
   }
 
   const talentCodes = [...new Set(selectedRows.value.map((item) => item.talentCode).filter(Boolean))];
@@ -126,7 +143,7 @@ const handleBatchCreate = () => {
 };
 
 const closeDialog = () => {
-  selectedRows.value = [];
+  resetDialogState();
   dialogVisible.value = false;
 };
 
@@ -134,9 +151,11 @@ watch(
   () => props.modelValue,
   (visible) => {
     if (!visible) {
+      resetDialogState();
       return;
     }
     listQuery.value.pageNo = 1;
+    selectedShift.value = defaultShiftValue.value;
     fetchUnarchivedList();
   },
 );
@@ -148,6 +167,7 @@ watch(
     title="未建档案"
     width="1080px"
     class="attendance-profile-unarchived-dialog"
+    :close-on-click-modal="false"
     destroy-on-close
   >
     <div class="attendance-profile-unarchived">
@@ -192,6 +212,7 @@ watch(
 
         <div class="attendance-profile-unarchived-dialog__table-wrap">
           <el-table
+            ref="tableRef"
             v-loading="loading"
             :data="tableData"
             border

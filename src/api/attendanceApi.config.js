@@ -26,6 +26,7 @@ const attendanceApi = {
   submitScheduleDetailUpdate: `${ATTENDANCE_URL}/api/attendance/schedule/list/update`,
   submitScheduleSwap: `${ATTENDANCE_URL}/api/attendance/schedule/list/swap`,
   queryScheduleSwapPage: `${ATTENDANCE_URL}/api/attendance/schedule/swap/page`,
+  queryScheduleSwapDetail: `${ATTENDANCE_URL}/api/attendance/schedule/swap/detail`,
   queryScheduleWizardMemberPage: `${ATTENDANCE_URL}/api/attendance/schedule/wizard/member/page`,
   submitScheduleWizard: `${ATTENDANCE_URL}/api/attendance/schedule/wizard/submit`,
   queryAttendanceRotationRuleList: `${ATTENDANCE_URL}/api/attendance/setting/rotation-rule/list`,

@@ -121,7 +121,7 @@ const cancelEdit = () => {
 };
 
 const openEmployeeDialog = () => {
-  if (!isEditing.value) {
+  if (!isEditing.value || props.mode !== "create") {
     return;
   }
   employeeDialogVisible.value = true;
@@ -208,7 +208,10 @@ const canEditField = (field) => {
   if (!isEditing.value || !field.editable) {
     return false;
   }
-  return ["employeeName", "defaultShift"].includes(field.key);
+  if (field.key === "employeeName") {
+    return props.mode === "create";
+  }
+  return field.key === "defaultShift";
 };
 </script>
 

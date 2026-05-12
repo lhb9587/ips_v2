@@ -1,44 +1,46 @@
-<!-- 调班单列表页，展示排班调班历史记录并支持按条件分页查询。 -->
+<!-- 调班单列表页，单击行可打开调班单详情侧边栏。 -->
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
-import { queryScheduleSwapPage } from "@/api/attendance";
+import DragSidebar from "@/components/common/sidebar-drag/index.vue";
+import { queryScheduleSwapDetail, queryScheduleSwapPage } from "@/api/attendance";
 
 const route = useRoute();
 const store = useStore();
 
 const gridName = "scheduleSwapListGrid";
-const DATE_TYPE_MAP = {
-  workday: "工作日",
-  restday: "休息日",
-  holiday: "节假日",
-};
 const DEFAULT_COLUMNS = [
   { title: "序号", value: "sid", width: 70, minWidth: 70, maxWidth: 90 },
-  { title: "员工编码", value: "sourceTalentCode", minWidth: 110 },
-  { title: "姓名", value: "sourceTalentName", minWidth: 100 },
-  { title: "考勤日期", value: "sourceScheduleDate", minWidth: 120 },
-  { title: "日期类型", value: "sourceDateTypeLabel", minWidth: 110 },
-  { title: "是否在考勤日期生成休息日排班", value: "sourceGenerateRestScheduleLabel", minWidth: 220 },
-  { title: "员工编码", value: "targetTalentCode", minWidth: 110 },
-  { title: "姓名", value: "targetTalentName", minWidth: 100 },
-  { title: "考勤日期", value: "targetScheduleDate", minWidth: 120 },
-  { title: "日期类型", value: "targetDateTypeLabel", minWidth: 110 },
-  { title: "是否在考勤日期生成休息日排班", value: "targetGenerateRestScheduleLabel", minWidth: 220 },
-  { title: "备注", value: "reason", minWidth: 200 },
+  { title: "调出员工编码", value: "sourceTalentCode", minWidth: 120 },
+  { title: "调出姓名", value: "sourceTalentName", minWidth: 120 },
+  { title: "调出考勤日期", value: "sourceScheduleDate", minWidth: 120 },
+  { title: "调入员工编码", value: "targetTalentCode", minWidth: 120 },
+  { title: "调入姓名", value: "targetTalentName", minWidth: 120 },
+  { title: "调入考勤日期", value: "targetScheduleDate", minWidth: 120 },
+  { title: "备注", value: "reason", minWidth: 180 },
   { title: "操作人", value: "operatorName", minWidth: 100 },
   { title: "操作时间", value: "operateTime", minWidth: 170 },
 ];
 
+const gridHeight = ref(0);
 const columnList = ref([...DEFAULT_COLUMNS]);
 const rowHeight = ref(40);
 const diminput = ref("");
 const total = ref(0);
 const gridData = ref([]);
+const detailVisible = ref(false);
+const detailLoading = ref(false);
+const selectedDetail = ref({});
+
+const dateTypeLabelMap = {
+  workday: "工作日",
+  restday: "休息日",
+  holiday: "节假日",
+};
 
 const calculateGridHeight = () => {
   const layout = store.state.layout.layoutType;
@@ -49,7 +51,7 @@ const calculateGridHeight = () => {
   return windowHeight - 290;
 };
 
-const gridHeight = ref(calculateGridHeight());
+gridHeight.value = calculateGridHeight();
 
 watch(
   () => store.state.layout.layoutType,
@@ -71,19 +73,60 @@ const listQuery = ref({
 });
 const pageSizesList = ref([10, 20, 50, 100]);
 
-const normalizeDateType = (value) => DATE_TYPE_MAP[value] || value || "-";
+const formatDateType = (value) => dateTypeLabelMap[value] || value || "-";
 
-const normalizeRestScheduleLabel = (item = {}) => {
-  if (typeof item.generateRestSchedule === "boolean") {
-    return item.generateRestSchedule ? "是" : "否";
+const parseSnapshot = (snapshot) => {
+  if (!snapshot) {
+    return {};
   }
-  if (typeof item.isGenerateRestSchedule === "boolean") {
-    return item.isGenerateRestSchedule ? "是" : "否";
+  if (typeof snapshot === "object") {
+    return snapshot;
   }
-  if (typeof item.generatedRestSchedule === "boolean") {
-    return item.generatedRestSchedule ? "是" : "否";
+  try {
+    return JSON.parse(snapshot);
+  } catch {
+    return {};
   }
-  return "-";
+};
+
+const pickDisplaySnapshot = (afterSnapshot, beforeSnapshot) => {
+  const afterData = parseSnapshot(afterSnapshot);
+  if (Object.keys(afterData).length > 0) {
+    return afterData;
+  }
+  return parseSnapshot(beforeSnapshot);
+};
+
+const buildDetailFromResponse = (detail = {}, row = {}) => {
+  const sourceSnapshot = pickDisplaySnapshot(
+    detail.sourceAfterSnapshot,
+    detail.sourceBeforeSnapshot,
+  );
+  const targetSnapshot = pickDisplaySnapshot(
+    detail.targetAfterSnapshot,
+    detail.targetBeforeSnapshot,
+  );
+
+  return {
+    swapHistoryId: detail.swapHistoryId || row.swapHistoryId || "",
+    reason: detail.reason || row.reason || "-",
+    operatorName: detail.operatorName || row.operatorName || "-",
+    operateTime: detail.operateTime || row.operateTime || "-",
+    source: {
+      employeeCode: sourceSnapshot.talentCode || row.sourceTalentCode || "-",
+      employeeName: sourceSnapshot.talentName || row.sourceTalentName || "-",
+      scheduleDate: sourceSnapshot.scheduleDate || row.sourceScheduleDate || "-",
+      dateType: formatDateType(sourceSnapshot.dateType) || row.sourceDateTypeLabel || "-",
+      shiftName: sourceSnapshot.shiftName || sourceSnapshot.shiftCode || row.sourceShiftName || "-",
+    },
+    target: {
+      employeeCode: targetSnapshot.talentCode || row.targetTalentCode || "-",
+      employeeName: targetSnapshot.talentName || row.targetTalentName || "-",
+      scheduleDate: targetSnapshot.scheduleDate || row.targetScheduleDate || "-",
+      dateType: formatDateType(targetSnapshot.dateType) || row.targetDateTypeLabel || "-",
+      shiftName: targetSnapshot.shiftName || targetSnapshot.shiftCode || row.targetShiftName || "-",
+    },
+  };
 };
 
 const mapSwapRecord = (item = {}, index = 0) => ({
@@ -91,23 +134,8 @@ const mapSwapRecord = (item = {}, index = 0) => ({
   id:
     item.swapHistoryId ||
     `${item.sourceScheduleDayId || ""}_${item.targetScheduleDayId || ""}_${index}`,
-  sourceTalentCode: item.sourceTalentCode || "-",
-  sourceTalentName: item.sourceTalentName || "-",
-  sourceScheduleDate: item.sourceScheduleDate || "-",
-  sourceDateTypeLabel: normalizeDateType(
-    item.sourceDateType || item.sourceScheduleDateType || item.sourceDateTypeName,
-  ),
-  targetTalentCode: item.targetTalentCode || "-",
-  targetTalentName: item.targetTalentName || "-",
-  targetScheduleDate: item.targetScheduleDate || "-",
-  targetDateTypeLabel: normalizeDateType(
-    item.targetDateType || item.targetScheduleDateType || item.targetDateTypeName,
-  ),
-  sourceGenerateRestScheduleLabel: normalizeRestScheduleLabel(item),
-  targetGenerateRestScheduleLabel: normalizeRestScheduleLabel(item),
-  reason: item.reason || "-",
-  operatorName: item.operatorName || "-",
-  operateTime: item.operateTime || "-",
+  sourceDateTypeLabel: formatDateType(item.sourceDateType),
+  targetDateTypeLabel: formatDateType(item.targetDateType),
 });
 
 const fetchScheduleSwapList = () => {
@@ -116,7 +144,7 @@ const fetchScheduleSwapList = () => {
       pageNo: listQuery.value.pageNo,
       pageSize: Math.min(listQuery.value.pageSize, 100),
       talentCode: diminput.value || undefined,
-      talentName: undefined,
+      talentName: diminput.value || undefined,
     },
     {
       isLoading: true,
@@ -136,6 +164,37 @@ const fetchScheduleSwapList = () => {
     });
 };
 
+const openDetail = (row) => {
+  const sourceRow = row?.data || row;
+  if (!sourceRow?.swapHistoryId) {
+    return;
+  }
+  detailVisible.value = true;
+  detailLoading.value = true;
+  queryScheduleSwapDetail(
+    {
+      swapHistoryId: sourceRow.swapHistoryId,
+    },
+    {
+      isLoading: false,
+    },
+  )
+    .then((res) => {
+      selectedDetail.value = buildDetailFromResponse(res?.data || {}, sourceRow);
+    })
+    .catch(() => {
+      selectedDetail.value = buildDetailFromResponse({}, sourceRow);
+    })
+    .finally(() => {
+      detailLoading.value = false;
+    });
+};
+
+const closeDetail = () => {
+  detailVisible.value = false;
+  selectedDetail.value = {};
+};
+
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
   fetchScheduleSwapList();
@@ -145,11 +204,13 @@ const handlePagination = () => {
   fetchScheduleSwapList();
 };
 
+const cellRenderer = (params) => {
+  const value = params.value || params.value === 0 ? params.value : "";
+  return `<span title="${value}">${value}</span>`;
+};
+
 onMounted(() => {
   fetchScheduleSwapList();
-});
-
-onUnmounted(() => {
 });
 </script>
 
@@ -188,6 +249,8 @@ onUnmounted(() => {
               :rowHeight="rowHeight"
               :columnDefs="columnList"
               :grid-data="gridData"
+              :cellRenderer="cellRenderer"
+              :rowClick="openDetail"
             />
           </div>
           <div
@@ -206,6 +269,61 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <DragSidebar
+      v-if="detailVisible"
+      v-model="detailVisible"
+      sidebarName="schedule-swap-detail-sidebar"
+      :minWidth="760"
+      :width="920"
+      :noCloseOnEsc="true"
+      :backdrop="false"
+      @close="closeDetail"
+    >
+      <div class="schedule-swap-detail">
+        <div class="schedule-swap-detail__header">
+          <div>
+            <div class="schedule-swap-detail__title">调班单详情</div>
+          </div>
+          <el-button @click="closeDetail">关闭</el-button>
+        </div>
+
+        <div
+          v-loading="detailLoading"
+          class="schedule-swap-detail__body"
+        >
+          <section class="detail-panel">
+            <div class="detail-grid">
+              <div>员工编码</div>
+              <div>{{ selectedDetail.source?.employeeCode || "-" }}</div>
+              <div>姓名</div>
+              <div>{{ selectedDetail.source?.employeeName || "-" }}</div>
+              <div>考勤日期</div>
+              <div>{{ selectedDetail.source?.scheduleDate || "-" }}</div>
+              <div>日期类型</div>
+              <div>{{ selectedDetail.source?.dateType || "-" }}</div>
+              <div>班次名称</div>
+              <div>{{ selectedDetail.source?.shiftName || "-" }}</div>
+            </div>
+          </section>
+
+          <section class="detail-panel">
+            <div class="detail-grid">
+              <div>员工编码</div>
+              <div>{{ selectedDetail.target?.employeeCode || "-" }}</div>
+              <div>姓名</div>
+              <div>{{ selectedDetail.target?.employeeName || "-" }}</div>
+              <div>考勤日期</div>
+              <div>{{ selectedDetail.target?.scheduleDate || "-" }}</div>
+              <div>日期类型</div>
+              <div>{{ selectedDetail.target?.dateType || "-" }}</div>
+              <div>班次名称</div>
+              <div>{{ selectedDetail.target?.shiftName || "-" }}</div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </DragSidebar>
   </Layout>
 </template>
 
@@ -214,4 +332,61 @@ onUnmounted(() => {
   flex: none;
 }
 
+.schedule-swap-detail {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: #fff;
+}
+
+.schedule-swap-detail__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid #e9edf5;
+}
+
+.schedule-swap-detail__title {
+  color: #1f2d49;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.schedule-swap-detail__body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  padding: 24px 28px 32px;
+  overflow: auto;
+}
+
+.detail-panel {
+  padding: 10px 18px 10px 8px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 18px 16px;
+  color: #1f2d49;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.detail-grid > div:nth-child(odd) {
+  color: #6d7b92;
+}
+
+@media (max-width: 960px) {
+  .schedule-swap-detail__body {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-grid {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+}
 </style>

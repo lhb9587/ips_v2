@@ -1,4 +1,5 @@
 <script setup>
+import dayjs from "dayjs";
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
@@ -40,9 +41,6 @@ const detailMode = ref("view");
 const selectedDetail = ref({});
 const total = ref(0);
 const gridData = ref([]);
-const gridOptions = {
-  rowMultiSelectWithClick: true,
-};
 
 const changeBorder = (newVal) => {
   if (newVal) {
@@ -180,28 +178,46 @@ const fuzzySearch = () => {
   fetchAttendanceArchiveList();
 };
 
+const formatDateTimeCell = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+  const target = dayjs(value);
+  return target.isValid() ? target.format("YYYY-MM-DD HH:mm") : "";
+};
+
+const formatSwitchCell = (value) => {
+  if (value === 1 || value === "1") {
+    return "开启";
+  }
+  if (value === 0 || value === "0") {
+    return "关闭";
+  }
+  return value || value === 0 ? value : "";
+};
+
+const formatYesNoCell = (value) => {
+  if (value === 1 || value === "1") {
+    return "是";
+  }
+  if (value === 0 || value === "0") {
+    return "否";
+  }
+  return value || value === 0 ? value : "";
+};
+
 const cellRenderer = (params) => {
-  return `<span title="${params.value || params.value === 0 ? params.value : ""}">${
-    params.value || params.value === 0 ? params.value : ""
-  }</span>`;
-};
-
-const buildNewProfile = () => {
-  return {
-    id: Date.now(),
-    employeeCode: "",
-    employeeName: "",
-    attendanceNo: "",
-    holidaySystem: defaultHolidaySystem,
-    attendanceSystem: defaultAttendanceSystem,
-    defaultShift: "标准班次",
-  };
-};
-
-const openCreateDetail = () => {
-  selectedDetail.value = buildNewProfile();
-  detailMode.value = "create";
-  detailVisible.value = true;
+  let displayValue = params.value || params.value === 0 ? params.value : "";
+  if (["createTime", "updateTime"].includes(params?.colDef?.field)) {
+    displayValue = formatDateTimeCell(params.value);
+  }
+  if (params?.colDef?.field === "status") {
+    displayValue = formatSwitchCell(params.value);
+  }
+  if (["isAutoSchedule", "isPunchAttendance"].includes(params?.colDef?.field)) {
+    displayValue = formatYesNoCell(params.value);
+  }
+  return `<span title="${displayValue}">${displayValue}</span>`;
 };
 
 const openUnarchivedDialog = () => {
@@ -320,6 +336,7 @@ onUnmounted(() => {
                     </template>
                   </el-input>
                   <el-button
+                    v-if="false"
                     type="primary"
                     @click="openCreateDetail"
                   >
@@ -359,8 +376,7 @@ onUnmounted(() => {
               :grid-data="gridData"
               :activeClass="activeClass"
               :cellRenderer="cellRenderer"
-              :rowDoubleClicked="openProfileDetail"
-              :gridOptions="gridOptions"
+              :rowClick="openProfileDetail"
             />
           </div>
           <div

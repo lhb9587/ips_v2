@@ -164,6 +164,15 @@ export function queryScheduleSwapPage(data, config = {}) {
   })
 }
 
+export function queryScheduleSwapDetail(data, config = {}) {
+  return request({
+    url: attendanceApi.queryScheduleSwapDetail,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryScheduleWizardMemberPage(data, config = {}) {
   return request({
     url: attendanceApi.queryScheduleWizardMemberPage,
