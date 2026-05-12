@@ -1,7 +1,7 @@
 <script setup>
 import dayjs from "dayjs";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage } from "element-plus";
 import Layout from "@/layouts/main";
@@ -24,6 +24,7 @@ import {
 } from "@/api/attendance";
 
 const route = useRoute();
+const router = useRouter();
 const store = useStore();
 
 const bussId = 458;
@@ -478,6 +479,12 @@ const handleScheduleSwap = () => {
     });
 };
 
+const handleOpenScheduleSwapList = () => {
+  router.push({
+    name: "schedule-swap-list",
+  });
+};
+
 const handleEmployeeSelectionChange = (rows) => {
   selectedEmployees.value = rows;
 };
@@ -700,6 +707,13 @@ onUnmounted(() => {
                     @click="handleScheduleSwap"
                   >
                     调班
+                  </el-button>
+                  <el-button
+                    type="primary"
+                    plain
+                    @click="handleOpenScheduleSwapList"
+                  >
+                    调班单
                   </el-button>
                 </div>
               </span>

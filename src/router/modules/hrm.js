@@ -17,6 +17,12 @@
         component: () => import("@/views/hrm/schedule-list/index"),
       },
       {
+        path: "/hrm/schedule-swap-list",
+        name: "schedule-swap-list",
+        meta: { title: "调班单", authRequired: true },
+        component: () => import("@/views/hrm/schedule-swap-list/index"),
+      },
+      {
         path: "/hrm/leave-quota-management",
         name: "leave-quota-management",
         meta: { title: "假期额度维护", authRequired: true },

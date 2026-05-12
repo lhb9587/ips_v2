@@ -13,7 +13,7 @@ NProgress.configure({ showSpinner: false }) // NProgress Configuration
 const whiteList = ['/login','/forgot-password','/excel_preview'] // 设置白名单
 
 //由于会出现动态路由，不能使用path，取路由的name作为白名单的key
-const allowRouterList = ['personal-profile','contract-detail','project-detail','task-detail','subtask-detail','case-detail','leave-quota-management','leave-management','overtime-management','supplement-management','attendance-profile','attendance-group','schedule-list','my-leave-application','my-leave-list','my-leave-detail','my-overtime-application','my-overtime-list','my-overtime-detail','my-supplement-application','my-supplement-list','my-supplement-detail']
+const allowRouterList = ['personal-profile','contract-detail','project-detail','task-detail','subtask-detail','case-detail','leave-quota-management','leave-management','overtime-management','supplement-management','attendance-profile','attendance-group','schedule-list','schedule-swap-list','my-leave-application','my-leave-list','my-leave-detail','my-overtime-application','my-overtime-list','my-overtime-detail','my-supplement-application','my-supplement-list','my-supplement-detail']
 const attendanceRouteNameSet = new Set([
   'attendance-management',
   'leave-quota-management',
@@ -23,6 +23,7 @@ const attendanceRouteNameSet = new Set([
   'attendance-profile',
   'attendance-group',
   'schedule-list',
+  'schedule-swap-list',
   'my-attendance',
   'my-leave-application',
   'my-leave-list',
