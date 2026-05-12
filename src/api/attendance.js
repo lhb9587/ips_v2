@@ -20,6 +20,51 @@ export function queryAttendanceArchivePage(data, config = {}) {
   })
 }
 
+export function queryLeaveQuotaAccountPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryLeaveQuotaAccountPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryLeaveQuotaAccountDetail(data, config = {}) {
+  return request({
+    url: attendanceApi.queryLeaveQuotaAccountDetail,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryLeaveQuotaLedgerPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryLeaveQuotaLedgerPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function auditLeaveQuotaAccount(data, config = {}) {
+  return request({
+    url: attendanceApi.auditLeaveQuotaAccount,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function reverseAuditLeaveQuotaAccount(data, config = {}) {
+  return request({
+    url: attendanceApi.reverseAuditLeaveQuotaAccount,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryAttendanceGroupPage(data, config = {}) {
   return request({
     url: attendanceApi.queryAttendanceGroupPage,

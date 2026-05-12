@@ -240,7 +240,7 @@ export default {
     },
     filteredUserList() {
       // 你原有的 userList 数据请用 this.userList 替换
-      const userList = this.userList?.filter((item) => !['李明'].includes(item.label)) || [];
+      const userList = this.userList || [];
       if (!this.accountKeyword) return userList;
       return userList.filter(item => {
         return (

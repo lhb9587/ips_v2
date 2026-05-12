@@ -1,59 +1,21 @@
 <script setup>
-import { computed, defineEmits, defineProps, ref, watch } from "vue";
+import { defineEmits, defineProps } from "vue";
 
 const props = defineProps({
   detailInfo: {
     type: Object,
     default: () => ({}),
   },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-const emit = defineEmits(["close", "save"]);
-
-const isEditing = ref(false);
-const formData = ref({});
-
-const syncFormData = (detailInfo) => {
-  const adjustmentQuota = Number(detailInfo?.adjustmentQuota || 0);
-  formData.value = {
-    ...detailInfo,
-    extendedDate: detailInfo?.extendedDate || "",
-    adjustmentQuota: Math.max(adjustmentQuota, 0),
-  };
-};
-
-watch(
-  () => props.detailInfo,
-  (detailInfo) => {
-    syncFormData(detailInfo || {});
-    isEditing.value = false;
-  },
-  { immediate: true, deep: true },
-);
+const emit = defineEmits(["close"]);
 
 const closeSidebar = () => {
-  isEditing.value = false;
   emit("close");
-};
-
-const startEdit = () => {
-  syncFormData(props.detailInfo || {});
-  isEditing.value = true;
-};
-
-const cancelEdit = () => {
-  syncFormData(props.detailInfo || {});
-  isEditing.value = false;
-};
-
-const saveEdit = () => {
-  const adjustmentQuota = Math.max(Number(formData.value.adjustmentQuota || 0), 0);
-  emit("save", {
-    ...props.detailInfo,
-    extendedDate: formData.value.extendedDate || "",
-    adjustmentQuota,
-  });
-  isEditing.value = false;
 };
 
 const employeeFields = [
@@ -87,7 +49,7 @@ const leaveFields = [
   ],
   [
     { label: "生效日期", key: "effectDate" },
-    { label: "延期假期", key: "extendedDate", editable: true, type: "date" },
+    { label: "延期日期", key: "extendedDate" },
   ],
 ];
 
@@ -102,61 +64,37 @@ const quotaFields = [
   ],
   [
     { label: "标准额度", key: "standardQuota" },
-    { label: "增减额度", key: "adjustmentQuota", editable: true, type: "number" },
+    { label: "增减额度", key: "adjustmentQuota" },
   ],
-  [{ label: "上期结转额度", key: "carriedForwardQuota" }],
+  [{ label: "上期延支额度", key: "carriedForwardQuota" }],
 ];
 
 const formatValue = (field) => {
-  const value = props.detailInfo[field.key];
+  const value = props.detailInfo?.[field.key];
   if (value || value === 0) {
     return value;
   }
-  return field.type === "number" ? 0 : "-";
+  return "-";
 };
-
-const canSave = computed(() => formData.value.extendedDate);
 </script>
 
 <template>
-  <div class="leave-quota-detail">
+  <div
+    class="leave-quota-detail"
+    v-loading="loading"
+  >
     <div class="leave-quota-detail__header">
       <div class="leave-quota-detail__title">假期额度详情</div>
-      <div class="leave-quota-detail__actions">
-        <template v-if="isEditing">
-          <el-button
-            plain
-            @click="cancelEdit"
-          >
-            取消
-          </el-button>
-          <el-button
-            type="primary"
-            :disabled="!canSave"
-            @click="saveEdit"
-          >
-            保存
-          </el-button>
-        </template>
-        <el-button
-          v-else
-          type="primary"
-          plain
-          @click="startEdit"
-        >
-          编辑
-        </el-button>
-        <el-tooltip
-          content="关闭"
-          placement="top"
-          :teleported="false"
-        >
-          <div
-            class="leave-quota-detail__close mdi mdi-window-close"
-            @click="closeSidebar"
-          ></div>
-        </el-tooltip>
-      </div>
+      <el-tooltip
+        content="关闭"
+        placement="top"
+        :teleported="false"
+      >
+        <div
+          class="leave-quota-detail__close mdi mdi-window-close"
+          @click="closeSidebar"
+        ></div>
+      </el-tooltip>
     </div>
 
     <div class="leave-quota-detail__content">
@@ -174,9 +112,7 @@ const canSave = computed(() => formData.value.extendedDate);
               class="detail-item"
             >
               <div class="detail-item__label">{{ field.label }}</div>
-              <div class="detail-item__value">
-                {{ formatValue(field) }}
-              </div>
+              <div class="detail-item__value">{{ formatValue(field) }}</div>
             </div>
           </div>
         </div>
@@ -197,25 +133,7 @@ const canSave = computed(() => formData.value.extendedDate);
               class="detail-item"
             >
               <div class="detail-item__label">{{ field.label }}</div>
-              <div
-                v-if="isEditing && field.editable && field.type === 'date'"
-                class="detail-item__editor"
-              >
-                <el-date-picker
-                  v-model="formData[field.key]"
-                  type="date"
-                  format="YYYY-MM-DD"
-                  value-format="YYYY-MM-DD"
-                  placeholder="请选择日期"
-                  style="width: 220px"
-                />
-              </div>
-              <div
-                v-else
-                class="detail-item__value"
-              >
-                {{ formatValue(field) }}
-              </div>
+              <div class="detail-item__value">{{ formatValue(field) }}</div>
             </div>
           </div>
         </div>
@@ -236,25 +154,7 @@ const canSave = computed(() => formData.value.extendedDate);
               class="detail-item"
             >
               <div class="detail-item__label">{{ field.label }}</div>
-              <div
-                v-if="isEditing && field.editable && field.type === 'number'"
-                class="detail-item__editor"
-              >
-                <el-input-number
-                  v-model="formData[field.key]"
-                  :min="0"
-                  :step="1"
-                  :precision="0"
-                  controls-position="right"
-                  style="width: 160px"
-                />
-              </div>
-              <div
-                v-else
-                class="detail-item__value"
-              >
-                {{ formatValue(field) }}
-              </div>
+              <div class="detail-item__value">{{ formatValue(field) }}</div>
             </div>
           </div>
         </div>
@@ -297,12 +197,6 @@ const canSave = computed(() => formData.value.extendedDate);
   background: #4f80c2;
 }
 
-.leave-quota-detail__actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 .leave-quota-detail__close {
   color: #7d8aa5;
   font-size: 22px;
@@ -310,7 +204,7 @@ const canSave = computed(() => formData.value.extendedDate);
 }
 
 .leave-quota-detail__content {
-  padding: 24px 40px 40px;
+  padding: 26px 34px 40px;
 }
 
 .detail-section + .detail-section {
@@ -333,8 +227,8 @@ const canSave = computed(() => formData.value.extendedDate);
 .detail-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 72px;
-  row-gap: 16px;
+  column-gap: 100px;
+  row-gap: 20px;
 }
 
 .detail-row--single {
@@ -348,29 +242,19 @@ const canSave = computed(() => formData.value.extendedDate);
 }
 
 .detail-item__label {
-  flex: 0 0 96px;
-  color: #6d7b92;
+  flex: 0 0 92px;
+  color: #4c5d78;
   font-size: 14px;
-  line-height: 1.6;
-}
-
-.detail-item__value,
-.detail-item__editor {
-  flex: 1;
-  min-width: 0;
+  line-height: 1.7;
 }
 
 .detail-item__value {
+  flex: 1;
+  min-width: 0;
   color: #1f2d49;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.7;
   word-break: break-all;
-}
-
-:deep(.detail-item__editor .el-input__wrapper),
-:deep(.detail-item__editor .el-input-number),
-:deep(.detail-item__editor .el-date-editor.el-input) {
-  width: 100%;
 }
 
 @media (max-width: 960px) {
@@ -381,10 +265,6 @@ const canSave = computed(() => formData.value.extendedDate);
   .detail-row {
     grid-template-columns: 1fr;
     row-gap: 14px;
-  }
-
-  .leave-quota-detail__actions {
-    gap: 8px;
   }
 }
 </style>

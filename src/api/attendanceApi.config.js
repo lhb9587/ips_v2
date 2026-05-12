@@ -3,6 +3,11 @@ const ATTENDANCE_URL = '/ip_attendance'
 const attendanceApi = {
   attendanceAuthScope: `${ATTENDANCE_URL}/api/auth/scope`,
   queryAttendanceArchivePage: `${ATTENDANCE_URL}/api/attendance/archive/page`,
+  queryLeaveQuotaAccountPage: `${ATTENDANCE_URL}/api/leave/quota/account/page`,
+  queryLeaveQuotaAccountDetail: `${ATTENDANCE_URL}/api/leave/quota/account/detail`,
+  queryLeaveQuotaLedgerPage: `${ATTENDANCE_URL}/api/leave/quota/ledger/page`,
+  auditLeaveQuotaAccount: `${ATTENDANCE_URL}/api/leave/quota/account/audit`,
+  reverseAuditLeaveQuotaAccount: `${ATTENDANCE_URL}/api/leave/quota/account/reverse-audit`,
   queryAttendanceGroupPage: `${ATTENDANCE_URL}/api/attendance/group/page`,
   queryAttendanceGroupDetail: `${ATTENDANCE_URL}/api/attendance/group/detail`,
   saveAttendanceGroup: `${ATTENDANCE_URL}/api/attendance/group/save`,

@@ -631,7 +631,7 @@ export default {
             <el-select-v2
               v-model="accountValue"
               :options="
-                userList?.filter((item) => !['李明'].includes(item.label)) || []
+                userList || []
               "
               placeholder="请选择"
               style="width: 240px"

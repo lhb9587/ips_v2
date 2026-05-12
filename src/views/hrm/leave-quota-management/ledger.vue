@@ -1,0 +1,250 @@
+<!-- 假期额度维护子页面，展示额度日志信息分页列表。 -->
+<script setup>
+import { onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useStore } from "vuex";
+import dayjs from "dayjs";
+import Layout from "@/layouts/main";
+import GridView from "@/components/common/grid-table/index.vue";
+import Pagination from "@/components/common/pagination/index.vue";
+import { queryLeaveQuotaLedgerPage } from "@/api/attendance";
+
+const route = useRoute();
+const router = useRouter();
+const store = useStore();
+
+const gridName = "leaveQuotaLedgerGrid";
+const TEXT_BACK = "\u8fd4\u56de";
+const TEXT_SEARCH_PLACEHOLDER = "\u641c\u7d22...";
+const LEDGER_COLUMN_LABELS = {
+  sid: "\u5e8f\u53f7",
+  quotaAccountId: "\u989d\u5ea6ID",
+  leaveTypeName: "\u5047\u671f\u7c7b\u578b",
+  bizNo: "\u5355\u636e\u7f16\u7801",
+  talentName: "\u59d3\u540d",
+  changeFieldName: "\u4fee\u6539\u5b57\u6bb5\u540d",
+  fieldOldValue: "\u5b57\u6bb5\u65e7\u503c",
+  fieldNewValue: "\u5b57\u6bb5\u65b0\u503c",
+  beforeRemainQuota: "\u5269\u4f59\u989d\u5ea6\u65e7\u503c",
+  afterRemainQuota: "\u5269\u4f59\u989d\u5ea6\u65b0\u503c",
+  operateByName: "\u64cd\u4f5c\u4eba",
+  operateTime: "\u64cd\u4f5c\u65f6\u95f4",
+  description: "\u63cf\u8ff0",
+};
+const DEFAULT_COLUMNS = [
+  { title: LEDGER_COLUMN_LABELS.sid, value: "sid", width: 70, minWidth: 70, maxWidth: 90 },
+  { title: LEDGER_COLUMN_LABELS.quotaAccountId, value: "quotaAccountId", minWidth: 120 },
+  { title: LEDGER_COLUMN_LABELS.leaveTypeName, value: "leaveTypeName", minWidth: 120 },
+  { title: LEDGER_COLUMN_LABELS.bizNo, value: "bizNo", minWidth: 180 },
+  { title: LEDGER_COLUMN_LABELS.talentName, value: "talentName", minWidth: 120 },
+  { title: LEDGER_COLUMN_LABELS.changeFieldName, value: "changeFieldName", minWidth: 140 },
+  { title: LEDGER_COLUMN_LABELS.fieldOldValue, value: "fieldOldValue", minWidth: 120 },
+  { title: LEDGER_COLUMN_LABELS.fieldNewValue, value: "fieldNewValue", minWidth: 120 },
+  { title: LEDGER_COLUMN_LABELS.beforeRemainQuota, value: "beforeRemainQuota", minWidth: 140 },
+  { title: LEDGER_COLUMN_LABELS.afterRemainQuota, value: "afterRemainQuota", minWidth: 140 },
+  { title: LEDGER_COLUMN_LABELS.operateByName, value: "operateByName", minWidth: 120 },
+  { title: LEDGER_COLUMN_LABELS.operateTime, value: "operateTime", minWidth: 180 },
+  { title: LEDGER_COLUMN_LABELS.description, value: "description", minWidth: 220 },
+];
+
+const gridHeight = ref(0);
+const columnList = ref([...DEFAULT_COLUMNS]);
+const rowHeight = ref(40);
+const diminput = ref("");
+const loading = ref(false);
+const ledgerList = ref([]);
+const total = ref(0);
+
+const calculateGridHeight = () => {
+  const layout = store.state.layout.layoutType;
+  const windowHeight = document.documentElement.clientHeight;
+  if (layout === "vertical") {
+    return windowHeight - 244;
+  }
+  return windowHeight - 290;
+};
+
+gridHeight.value = calculateGridHeight();
+
+watch(
+  () => store.state.layout.layoutType,
+  () => {
+    gridHeight.value = calculateGridHeight();
+  },
+);
+
+const fetchLocalPageSize = () => {
+  const pageSizeData = JSON.parse(localStorage.getItem("pageSize")) || [];
+  const savedData = pageSizeData.find((item) => item.name === route.name);
+  const pageSize = savedData ? savedData.pageSize : 10;
+  return Math.min(pageSize, 100);
+};
+
+const listQuery = ref({
+  pageNo: 1,
+  pageSize: fetchLocalPageSize(),
+});
+const pageSizesList = ref([10, 20, 50, 100]);
+
+const formatDisplayValue = (value) => {
+  return value || value === 0 ? value : "-";
+};
+
+const formatOperateTime = (value) => {
+  if (!value) {
+    return "-";
+  }
+  const dateValue = dayjs(value);
+  if (!dateValue.isValid()) {
+    return formatDisplayValue(value);
+  }
+  return dateValue.format("YYYY-MM-DD hh:mm:ss");
+};
+
+const cellRenderer = (params) => {
+  const value = params.value || params.value === 0 ? params.value : "";
+  return `<span title="${value}">${value}</span>`;
+};
+
+const mapLedgerRecord = (item, index) => {
+  return {
+    ...item,
+    sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index,
+    quotaAccountId: formatDisplayValue(item.quotaAccountId),
+    leaveTypeName: formatDisplayValue(item.leaveTypeName),
+    bizNo: formatDisplayValue(item.bizNo),
+    talentName: formatDisplayValue(item.talentName),
+    changeFieldName: formatDisplayValue(item.changeSubType || item.changeType),
+    fieldOldValue: formatDisplayValue(item.beforeActualQuota),
+    fieldNewValue: formatDisplayValue(item.afterActualQuota),
+    beforeRemainQuota: formatDisplayValue(item.beforeRemainQuota),
+    afterRemainQuota: formatDisplayValue(item.afterRemainQuota),
+    operateByName: formatDisplayValue(item.operateByName),
+    operateTime: formatOperateTime(item.operateTime),
+    description: formatDisplayValue(item.changeReason),
+  };
+};
+
+const fetchLedgerList = () => {
+  loading.value = true;
+  queryLeaveQuotaLedgerPage(
+    {
+      pageNo: listQuery.value.pageNo,
+      pageSize: Math.min(listQuery.value.pageSize, 100),
+      talentCode: diminput.value || undefined,
+      talentName: diminput.value || undefined,
+      bizNo: diminput.value || undefined,
+    },
+    {
+      isLoading: false,
+    },
+  )
+    .then((res) => {
+      const records = Array.isArray(res?.data) ? res.data : res?.data?.records || [];
+      ledgerList.value = records.map((item, index) => mapLedgerRecord(item, index));
+      total.value = Number(res?.total || 0);
+    })
+    .catch(() => {
+      ledgerList.value = [];
+      total.value = 0;
+    })
+    .finally(() => {
+      loading.value = false;
+    });
+};
+
+const handlePagination = () => {
+  fetchLedgerList();
+};
+
+const fuzzySearch = () => {
+  listQuery.value.pageNo = 1;
+  fetchLedgerList();
+};
+
+const goBack = () => {
+  router.push({
+    name: "leave-quota-management",
+  });
+};
+
+onMounted(() => {
+  fetchLedgerList();
+});
+</script>
+
+<template>
+  <Layout>
+    <div class="row">
+      <div class="col-lg-12">
+        <div class="card box">
+          <div
+            class="card-body"
+            style="padding-bottom: 10px"
+          >
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex gap-2">
+                <el-input
+                  v-model="diminput"
+                  style="width: 200px"
+                  :placeholder="TEXT_SEARCH_PLACEHOLDER"
+                  clearable
+                  class="top-search"
+                  @keyup.enter="fuzzySearch"
+                >
+                  <template #prepend>
+                    <el-button @click="fuzzySearch">
+                      <i class="bx bx-search-alt"></i>
+                    </el-button>
+                  </template>
+                </el-input>
+              </div>
+              <el-button
+                plain
+                @click="goBack"
+              >
+                {{ TEXT_BACK }}
+              </el-button>
+            </div>
+          </div>
+
+          <div style="padding: 0 10px">
+            <GridView
+              :gridName="gridName"
+              :height="gridHeight"
+              :rowHeight="rowHeight"
+              :columnDefs="columnList"
+              :grid-data="ledgerList"
+              :cellRenderer="cellRenderer"
+              :isLoading="loading"
+            />
+          </div>
+
+          <div
+            v-if="total > 0"
+            class="card-body border-bottom ledger-page__pagination"
+          >
+            <Pagination
+              :total="total"
+              v-model:page="listQuery.pageNo"
+              v-model:limit="listQuery.pageSize"
+              :pageSizes="pageSizesList"
+              :storage="false"
+              storageName="leaveQuotaLedgerPage"
+              @pagination="handlePagination"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </Layout>
+</template>
+
+<style scoped lang="scss">
+.card-body {
+  flex: none;
+}
+.ledger-page__pagination {
+  padding-top: 10px;
+}
+</style>

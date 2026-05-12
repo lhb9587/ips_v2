@@ -29,6 +29,12 @@
         component: () => import("@/views/hrm/leave-quota-management/index"),
       },
       {
+        path: "/hrm/leave-quota-management/ledger",
+        name: "leave-quota-management-ledger",
+        meta: { title: "额度日志信息", authRequired: true },
+        component: () => import("@/views/hrm/leave-quota-management/ledger"),
+      },
+      {
         path: "/hrm/leave-management",
         name: "leave-management",
         meta: { title: "请假单", authRequired: true },
