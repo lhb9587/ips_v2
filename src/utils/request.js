@@ -192,15 +192,25 @@ service.interceptors.response.use(
     }
   },
   (error) => {
-    hideLoading();
+    if (error?.config?.isLoading) {
+      hideLoading();
+    }
+    if (error?.config?.showErrorMessage !== false) {
+      const message =
+        error?.response?.data?.message ||
+        (error?.message?.includes('timeout') ? '请求超时' : '') ||
+        (error?.message === 'Network Error' ? '网络异常，请稍后重试' : '') ||
+        '请求出错';
 
-    // ElMessage({
-    //   message: '系统超时,请检查网络后重试！',
-    //   type: 'error',
-    //   duration: 5 * 1000
-    // })
+      ElMessage({
+        message,
+        type: 'error',
+        duration: 5 * 1000,
+        grouping: true
+      });
+    }
 
-    return Promise.reject({ message: error });
+    return Promise.reject(error);
   }
 );
 export default service;
