@@ -365,7 +365,7 @@ const handleConfirm = () => {
           v-model="candidateQuery.deptCodes"
           class="candidate-toolbar__dept"
           :options="departmentCascaderOptions"
-          :props="{ multiple: true, emitPath: false, checkStrictly: true }"
+          :props="{ multiple: true, emitPath: false }"
           collapse-tags
           collapse-tags-tooltip
           clearable

@@ -8,6 +8,7 @@ const attendanceApi = {
   queryLeaveQuotaLedgerPage: `${ATTENDANCE_URL}/api/leave/quota/ledger/page`,
   queryLeaveTypeList: `${ATTENDANCE_URL}/api/leave/type/list`,
   generateLeaveQuotaAccount: `${ATTENDANCE_URL}/api/leave/quota/account/generate`,
+  batchExtendLeaveQuotaAccount: `${ATTENDANCE_URL}/api/leave/quota/account/batch-extend`,
   updateLeaveQuotaAccount: `${ATTENDANCE_URL}/api/leave/quota/account/update`,
   deleteLeaveQuotaAccount: `${ATTENDANCE_URL}/api/leave/quota/account/delete`,
   auditLeaveQuotaAccount: `${ATTENDANCE_URL}/api/leave/quota/account/audit`,

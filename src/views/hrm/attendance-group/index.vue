@@ -529,7 +529,7 @@ onUnmounted(() => {
               :grid-data="gridData"
               :activeClass="activeClass"
               :cellRenderer="cellRenderer"
-              :rowDoubleClicked="openGroupDetail"
+              :rowClick="openGroupDetail"
               :gridOptions="gridOptions"
             />
           </div>

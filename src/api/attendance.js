@@ -64,6 +64,15 @@ export function generateLeaveQuotaAccount(data, config = {}) {
   })
 }
 
+export function batchExtendLeaveQuotaAccount(data, config = {}) {
+  return request({
+    url: attendanceApi.batchExtendLeaveQuotaAccount,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function updateLeaveQuotaAccount(data, config = {}) {
   return request({
     url: attendanceApi.updateLeaveQuotaAccount,

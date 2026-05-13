@@ -15,6 +15,7 @@ import GenerateDialog from "@/views/hrm/leave-quota-management/generate-dialog.v
 import { saveTableConfig } from "@/utils";
 import {
   auditLeaveQuotaAccount,
+  batchExtendLeaveQuotaAccount,
   deleteLeaveQuotaAccount,
   generateLeaveQuotaAccount,
   queryLeaveQuotaAccountDetail,
@@ -45,6 +46,7 @@ const selectedQuotaDetail = ref({});
 const detailLoading = ref(false);
 const batchDialogVisible = ref(false);
 const generateDialogVisible = ref(false);
+const batchExtendLeaveTypeOptions = ref([]);
 const generateLeaveTypeOptions = ref([]);
 const quotaList = ref([]);
 const total = ref(0);
@@ -52,6 +54,7 @@ const auditLoading = ref(false);
 const reverseAuditLoading = ref(false);
 const deleteLoading = ref(false);
 const generateLoading = ref(false);
+const batchExtendLoading = ref(false);
 const gridOptions = {
   rowMultiSelectWithClick: true,
 };
@@ -139,10 +142,6 @@ const listQuery = ref({
 
 const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
 const formInline = ref({});
-
-const leaveTypeOptions = computed(() => {
-  return [...new Set(quotaList.value.map((item) => item.leaveType).filter(Boolean))];
-});
 
 const attendanceScope = computed(() => store.getters["attendanceScope/scope"] || {});
 
@@ -265,35 +264,17 @@ const openLedgerPage = () => {
   });
 };
 
-const getQuotaRecordKey = (item) => {
-  return [
-    item.id || item.quotaAccountId || "",
-    item.employeeCode || "",
-    item.leaveTypeCode || "",
-    item.periodStartDate || "",
-  ].join("|");
-};
-
-const addMonthsToDate = (dateString, months) => {
-  const baseDate = new Date(`${dateString}T00:00:00`);
-  if (Number.isNaN(baseDate.getTime())) {
-    return dateString;
-  }
-  const day = baseDate.getDate();
-  const nextDate = new Date(baseDate);
-  nextDate.setMonth(nextDate.getMonth() + months + 1, 0);
-  const maxDay = nextDate.getDate();
-  const safeDay = Math.min(day, maxDay);
-  const finalDate = new Date(baseDate);
-  finalDate.setMonth(finalDate.getMonth() + months, safeDay);
-  const year = finalDate.getFullYear();
-  const month = `${finalDate.getMonth() + 1}`.padStart(2, "0");
-  const date = `${finalDate.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${date}`;
-};
-
 const openBatchExtendDialog = () => {
-  batchDialogVisible.value = true;
+  if (batchExtendLeaveTypeOptions.value.length > 0) {
+    batchDialogVisible.value = true;
+    return;
+  }
+  queryLeaveTypeList({
+    isLoading: true,
+  }).then((res) => {
+    batchExtendLeaveTypeOptions.value = Array.isArray(res?.data) ? res.data : [];
+    batchDialogVisible.value = true;
+  });
 };
 
 const openGenerateDialog = () => {
@@ -532,54 +513,62 @@ const handleMoreCommand = (command) => {
   commandMap[command]?.();
 };
 
-const buildBatchTargets = (formData) => {
-  if (formData.targetType === "all") {
-    return quotaList.value;
+const buildBatchExtendPayload = (formData) => {
+  const payload = {
+    reason: formData.reason || undefined,
+  };
+
+  if (formData.extensionType === "fixedDate") {
+    payload.extendMode = "TO_DATE";
+    payload.newPeriodEndDate = formData.fixedDate;
+  } else {
+    payload.extendMode = "ADD_MONTHS";
+    payload.extendMonths = Number(formData.monthCount || 0);
   }
 
   if (formData.targetType === "selected") {
-    return getSelectedRows();
+    const selectedRows = getSelectedQuotaRows();
+    payload.extendTargetType = "SELECTED";
+    payload.quotaAccountIds = selectedRows
+      .map((item) => item.id || item.quotaAccountId)
+      .filter(Boolean)
+      .join(",");
+    return payload;
   }
 
-  let targets = [...quotaList.value];
-
-  if (formData.leaveType) {
-    targets = targets.filter((item) => item.leaveType === formData.leaveType);
+  if (formData.targetType === "all") {
+    payload.extendTargetType = "ALL_LIST";
+    payload.talentCode = diminput.value || undefined;
+    payload.talentName = diminput.value || undefined;
+    return payload;
   }
 
-  if (formData.periodMode === "exact") {
-    targets = targets.filter(
-      (item) =>
-        item.periodStartDate === formData.periodStartDate &&
-        item.periodEndDate === formData.periodEndDate,
-    );
-  } else if (targets.length > 0) {
-    const latestPeriodEndDate = targets.reduce((latest, item) => {
-      return item.periodEndDate > latest ? item.periodEndDate : latest;
-    }, targets[0].periodEndDate);
-    targets = targets.filter((item) => item.periodEndDate === latestPeriodEndDate);
+  payload.extendTargetType = "CONDITION";
+  payload.leaveTypeCode = formData.leaveTypeCode || undefined;
+  payload.periodMatchMode =
+    formData.periodMode === "exact" ? "EXACT_PERIOD" : "LATEST_EFFECTIVE";
+  payload.periodStartDate = formData.periodStartDate || undefined;
+  payload.periodEndDate = formData.periodEndDate || undefined;
+  if (formData.employeeScope === "specifiedEmployees") {
+    payload.employeeScope = "SELECTED_EMPLOYEES";
+    payload.talentCodes =
+      formData.employees
+        ?.map((item) => item.employeeCode)
+        .filter(Boolean)
+        .join(",") || undefined;
+  } else {
+    payload.employeeScope = "ALL_IN_SCOPE";
   }
-
-  if (formData.employeeScope === "specifiedDate") {
-    targets = targets.filter(
-      (item) => item.extendedDate === formData.specifiedExtendedDate,
-    );
-  }
-
-  return targets;
-};
-
-const getNextExtendedDate = (item, formData) => {
-  if (formData.extensionType === "fixedDate") {
-    return formData.fixedDate;
-  }
-  const baseDate = item.extendedDate || item.periodEndDate;
-  return addMonthsToDate(baseDate, Number(formData.monthCount || 0));
+  return payload;
 };
 
 const handleBatchExtend = (formData) => {
-  if (formData.targetType === "selected" && getSelectedRows().length === 0) {
+  if (formData.targetType === "selected" && getSelectedQuotaRows().length === 0) {
     return ElMessage.warning("请先选择需要延期的记录");
+  }
+
+  if (formData.targetType === "condition" && !formData.leaveTypeCode) {
+    return ElMessage.warning("请选择假期类型");
   }
 
   if (formData.targetType === "condition" && formData.periodMode === "exact") {
@@ -588,9 +577,12 @@ const handleBatchExtend = (formData) => {
     }
   }
 
-  if (formData.targetType === "condition" && formData.employeeScope === "specifiedDate") {
-    if (!formData.specifiedExtendedDate) {
-      return ElMessage.warning("请选择指定延期日期");
+  if (
+    formData.targetType === "condition" &&
+    formData.employeeScope === "specifiedEmployees"
+  ) {
+    if (!Array.isArray(formData.employees) || formData.employees.length === 0) {
+      return ElMessage.warning("请选择员工");
     }
   }
 
@@ -602,34 +594,20 @@ const handleBatchExtend = (formData) => {
     return ElMessage.warning("按月数延期时请输入大于 0 的月数");
   }
 
-  const targets = buildBatchTargets(formData);
-  if (targets.length === 0) {
-    return ElMessage.warning("没有匹配到可延期的记录");
-  }
-
-  const targetKeys = new Set(targets.map((item) => getQuotaRecordKey(item)));
-  quotaList.value = quotaList.value.map((item) => {
-    if (!targetKeys.has(getQuotaRecordKey(item))) {
-      return item;
-    }
-    return {
-      ...item,
-      extendedDate: getNextExtendedDate(item, formData),
-    };
-  });
-
-  if (
-    selectedQuotaDetail.value &&
-    targetKeys.has(getQuotaRecordKey(selectedQuotaDetail.value))
-  ) {
-    selectedQuotaDetail.value = {
-      ...selectedQuotaDetail.value,
-      extendedDate: getNextExtendedDate(selectedQuotaDetail.value, formData),
-    };
-  }
-
-  batchDialogVisible.value = false;
-  ElMessage.success(`已完成 ${targets.length} 条记录的延期处理`);
+  batchExtendLoading.value = true;
+  batchExtendLeaveQuotaAccount(buildBatchExtendPayload(formData), {
+    isLoading: true,
+  })
+    .then((res) => {
+      batchDialogVisible.value = false;
+      quotaDetailVisible.value = false;
+      selectedQuotaDetail.value = {};
+      ElMessage.success(res?.data?.message || "批量延期成功");
+      fetchLeaveQuotaList();
+    })
+    .finally(() => {
+      batchExtendLoading.value = false;
+    });
 };
 
 const handleQuotaDetailSaved = (detail) => {
@@ -823,7 +801,8 @@ onUnmounted(() => {
 
     <BatchExtendDialog
       v-model="batchDialogVisible"
-      :leaveTypeOptions="leaveTypeOptions"
+      :leaveTypeOptions="batchExtendLeaveTypeOptions"
+      :organizationOptions="attendanceOrganizationOptions"
       @confirm="handleBatchExtend"
     />
 
