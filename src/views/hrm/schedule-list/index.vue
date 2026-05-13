@@ -485,6 +485,12 @@ const handleOpenScheduleSwapList = () => {
   });
 };
 
+const handleOpenUnscheduledList = () => {
+  router.push({
+    name: "schedule-unscheduled-list",
+  });
+};
+
 const handleEmployeeSelectionChange = (rows) => {
   selectedEmployees.value = rows;
 };
@@ -714,6 +720,13 @@ onUnmounted(() => {
                     @click="handleOpenScheduleSwapList"
                   >
                     调班单
+                  </el-button>
+                  <el-button
+                    type="primary"
+                    plain
+                    @click="handleOpenUnscheduledList"
+                  >
+                    未排班列表
                   </el-button>
                 </div>
               </span>

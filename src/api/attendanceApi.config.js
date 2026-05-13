@@ -32,6 +32,7 @@ const attendanceApi = {
   queryAttendanceShiftList: `${ATTENDANCE_URL}/api/attendance/setting/shift/list`,
   queryAttendanceShiftDetail: `${ATTENDANCE_URL}/api/attendance/setting/shift/detail`,
   queryScheduleHorizontalPage: `${ATTENDANCE_URL}/api/attendance/schedule/list/horizontal/page`,
+  queryScheduleUnscheduledPage: `${ATTENDANCE_URL}/api/attendance/schedule/list/unscheduled/page`,
   queryScheduleDetail: `${ATTENDANCE_URL}/api/attendance/schedule/list/detail`,
   submitScheduleDetailUpdate: `${ATTENDANCE_URL}/api/attendance/schedule/list/update`,
   submitScheduleSwap: `${ATTENDANCE_URL}/api/attendance/schedule/list/swap`,

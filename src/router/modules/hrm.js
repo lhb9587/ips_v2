@@ -17,6 +17,12 @@
         component: () => import("@/views/hrm/schedule-list/index"),
       },
       {
+        path: "/hrm/schedule-unscheduled-list",
+        name: "schedule-unscheduled-list",
+        meta: { title: "未排班列表", authRequired: true },
+        component: () => import("@/views/hrm/schedule-unscheduled-list/index"),
+      },
+      {
         path: "/hrm/schedule-swap-list",
         name: "schedule-swap-list",
         meta: { title: "调班单", authRequired: true },

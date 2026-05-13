@@ -217,6 +217,15 @@ export function queryScheduleHorizontalPage(data, config = {}) {
   })
 }
 
+export function queryScheduleUnscheduledPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryScheduleUnscheduledPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryScheduleDetail(data, config = {}) {
   return request({
     url: attendanceApi.queryScheduleDetail,
