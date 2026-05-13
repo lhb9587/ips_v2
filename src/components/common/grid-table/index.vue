@@ -420,7 +420,7 @@ const saveColumnsWidth = (params) => {
   localStorage.setItem("TABLE_HEADER", JSON.stringify(obj));
 };
 // 计算列宽
-const getLoactionWidth = (label, value) => {
+const getLoactionWidth = (label, columnKey) => {
   if (label == "序号" || label == "类别") {
     return "80px";
   }
@@ -431,7 +431,7 @@ const getLoactionWidth = (label, value) => {
     if (obj[props.gridName]) {
       let localWidth;
       obj[props.gridName].map((item) => {
-        if (item.prop === value) {
+        if (item.prop === columnKey) {
           localWidth = item.width;
         }
       });
@@ -498,10 +498,14 @@ const init = (list) => {
     headerName: item.title,
     field: item.field || item.value,
     width:
-      item.width ??
-      (getLoactionWidth(item.title, item.value) == "auto"
-        ? 200
-        : getLoactionWidth(item.title, item.value)),
+      (() => {
+        const columnKey = item.field || item.value;
+        const localWidth = getLoactionWidth(item.title, columnKey);
+        if (localWidth !== "auto" && localWidth !== undefined) {
+          return localWidth;
+        }
+        return item.width ?? 200;
+      })(),
     resizable: item.resizable ?? true,
     sortable: item.sortable ?? true,
     maxWidth: item.maxWidth ?? getColumnMaxWidth(),
