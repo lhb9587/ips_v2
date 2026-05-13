@@ -18,6 +18,8 @@ module.exports = {
   devServer: {
     port: 9528,
     https: false,
+    liveReload: true,
+    watchFiles: ['src/**/*', 'public/**/*'],
     hot: true, // 启用热更新
     client: {
       overlay: false, // 禁用错误覆盖层
@@ -125,6 +127,11 @@ module.exports = {
 		}
   },
   configureWebpack: {
+    watchOptions: {
+      aggregateTimeout: 300,
+      ignored: /node_modules/,
+      poll: 1000,
+    },
     // module: {
     //   rules: [
     //     {
