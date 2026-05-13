@@ -47,6 +47,41 @@ export function queryLeaveQuotaLedgerPage(data, config = {}) {
   })
 }
 
+export function queryLeaveTypeList(config = {}) {
+  return request({
+    url: attendanceApi.queryLeaveTypeList,
+    method: 'get',
+    ...config
+  })
+}
+
+export function generateLeaveQuotaAccount(data, config = {}) {
+  return request({
+    url: attendanceApi.generateLeaveQuotaAccount,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function updateLeaveQuotaAccount(data, config = {}) {
+  return request({
+    url: attendanceApi.updateLeaveQuotaAccount,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function deleteLeaveQuotaAccount(data, config = {}) {
+  return request({
+    url: attendanceApi.deleteLeaveQuotaAccount,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function auditLeaveQuotaAccount(data, config = {}) {
   return request({
     url: attendanceApi.auditLeaveQuotaAccount,

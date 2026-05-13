@@ -1,4 +1,4 @@
-<!-- 假期额度维护列表页，负责列表查询、审核反审核、台账查看与详情侧栏展示。 -->
+﻿<!-- 假期额度维护列表页，负责列表查询、审核反审核、台账查看与详情侧栏展示。 -->
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -11,11 +11,15 @@ import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import LeaveQuotaDetailSidebar from "@/views/hrm/leave-quota-management/detail-sidebar.vue";
 import BatchExtendDialog from "@/views/hrm/leave-quota-management/batch-extend-dialog.vue";
+import GenerateDialog from "@/views/hrm/leave-quota-management/generate-dialog.vue";
 import { saveTableConfig } from "@/utils";
 import {
   auditLeaveQuotaAccount,
+  deleteLeaveQuotaAccount,
+  generateLeaveQuotaAccount,
   queryLeaveQuotaAccountDetail,
   queryLeaveQuotaAccountPage,
+  queryLeaveTypeList,
   reverseAuditLeaveQuotaAccount,
 } from "@/api/attendance";
 
@@ -40,50 +44,17 @@ const quotaDetailVisible = ref(false);
 const selectedQuotaDetail = ref({});
 const detailLoading = ref(false);
 const batchDialogVisible = ref(false);
+const generateDialogVisible = ref(false);
+const generateLeaveTypeOptions = ref([]);
 const quotaList = ref([]);
 const total = ref(0);
 const auditLoading = ref(false);
 const reverseAuditLoading = ref(false);
+const deleteLoading = ref(false);
+const generateLoading = ref(false);
 const gridOptions = {
   rowMultiSelectWithClick: true,
 };
-
-const STATUS_UNAUDITED = "\u672a\u5ba1\u6838";
-const STATUS_AUDITED = "\u5df2\u5ba1\u6838";
-const TEXT_SEARCH_PLACEHOLDER = "\u641c\u7d22...";
-const TEXT_AUDIT = "\u5ba1\u6838";
-const TEXT_REVERSE_AUDIT = "\u53cd\u5ba1\u6838";
-const TEXT_LEDGER = "\u989d\u5ea6\u65e5\u5fd7\u4fe1\u606f";
-const TEXT_BATCH_EXTEND = "\u6279\u91cf\u5ef6\u671f";
-const TEXT_CANCEL = "\u53d6\u6d88";
-const TEXT_AUDIT_CONFIRM_TITLE = "\u5ba1\u6838\u786e\u8ba4";
-const TEXT_REVERSE_AUDIT_CONFIRM_TITLE = "\u53cd\u5ba1\u6838\u786e\u8ba4";
-const TEXT_AUDIT_SUCCESS = "\u5ba1\u6838\u6210\u529f";
-const TEXT_REVERSE_AUDIT_SUCCESS = "\u53cd\u5ba1\u6838\u6210\u529f";
-const TEXT_SELECT_AUDIT = "\u8bf7\u5148\u9009\u62e9\u9700\u8981\u5ba1\u6838\u7684\u8bb0\u5f55";
-const TEXT_SELECT_REVERSE_AUDIT =
-  "\u8bf7\u5148\u9009\u62e9\u9700\u8981\u53cd\u5ba1\u6838\u7684\u8bb0\u5f55";
-const TEXT_AUDIT_ROW_INVALID =
-  "\u4ec5\u652f\u6301\u9009\u62e9\u672a\u5ba1\u6838\u8bb0\u5f55\u8fdb\u884c\u5ba1\u6838";
-const TEXT_REVERSE_AUDIT_ROW_INVALID =
-  "\u4ec5\u652f\u6301\u9009\u62e9\u5df2\u5ba1\u6838\u8bb0\u5f55\u8fdb\u884c\u53cd\u5ba1\u6838";
-const TEXT_REVERSE_AUDIT_QUOTA_INVALID =
-  "\u5df2\u53d1\u751f\u8bf7\u5047\u6263\u51cf\u6216\u51bb\u7ed3\u7684\u989d\u5ea6\u4e0d\u652f\u6301\u53cd\u5ba1\u6838";
-const TEXT_SELECT_EXTEND = "\u8bf7\u5148\u9009\u62e9\u9700\u8981\u5ef6\u671f\u7684\u8bb0\u5f55";
-const TEXT_SELECT_PERIOD = "\u8bf7\u9009\u62e9\u5b8c\u6574\u7684\u5468\u671f\u65e5\u671f";
-const TEXT_SELECT_SPECIFIED_EXTEND =
-  "\u8bf7\u9009\u62e9\u6307\u5b9a\u5ef6\u671f\u65e5\u671f";
-const TEXT_SELECT_FIXED_DATE = "\u8bf7\u9009\u62e9\u56fa\u5b9a\u65e5\u671f";
-const TEXT_EXTEND_MONTH_INVALID =
-  "\u6309\u6708\u6570\u5ef6\u671f\u65f6\u8bf7\u8f93\u5165\u5927\u4e8e 0 \u7684\u6708\u6570";
-const TEXT_EXTEND_EMPTY = "\u6ca1\u6709\u5339\u914d\u5230\u53ef\u5ef6\u671f\u7684\u8bb0\u5f55";
-const TEXT_AUDIT_CONFIRM_MESSAGE =
-  "\u786e\u8ba4\u5ba1\u6838\u9009\u4e2d\u7684 {count} \u6761\u8bb0\u5f55\u5417\uff1f";
-const TEXT_REVERSE_AUDIT_CONFIRM_MESSAGE =
-  "\u786e\u8ba4\u53cd\u5ba1\u6838\u9009\u4e2d\u7684 {count} \u6761\u8bb0\u5f55\u5417\uff1f";
-const TEXT_BATCH_EXTEND_SUCCESS =
-  "\u5df2\u5b8c\u6210 {count} \u6761\u8bb0\u5f55\u7684\u5ef6\u671f\u5904\u7406";
-const formatMessage = (template, count) => template.replace("{count}", count);
 
 const changeBorder = (newVal) => {
   if (newVal) {
@@ -173,6 +144,18 @@ const leaveTypeOptions = computed(() => {
   return [...new Set(quotaList.value.map((item) => item.leaveType).filter(Boolean))];
 });
 
+const attendanceScope = computed(() => store.getters["attendanceScope/scope"] || {});
+
+const attendanceOrganizationOptions = computed(() => {
+  if (
+    Array.isArray(attendanceScope.value?.deptScopeTree) &&
+    attendanceScope.value.deptScopeTree.length > 0
+  ) {
+    return attendanceScope.value.deptScopeTree;
+  }
+  return store.getters["attendanceScope/deptScopes"] || [];
+});
+
 const gridData = computed(() => quotaList.value);
 
 const mapQuotaBaseRecord = (item) => {
@@ -183,7 +166,7 @@ const mapQuotaBaseRecord = (item) => {
     employeeName: item.talentName || "",
     organizationCode: item.deptCode || "",
     organizationName: item.deptName || "",
-    positionName: item.positionName || "",
+    positionName: item.positionName || item.position || "",
     hireDate: item.hireDate || item.joinDate || "",
     regularDate: item.regularDate || "",
     groupJoinDate: item.groupJoinDate || "",
@@ -264,8 +247,8 @@ const openQuotaDetail = (params) => {
   )
     .then((res) => {
       selectedQuotaDetail.value = {
-        ...mapQuotaBaseRecord(res?.data || {}),
         ...rowData,
+        ...mapQuotaBaseRecord(res?.data || {}),
       };
     })
     .catch(() => {
@@ -313,6 +296,19 @@ const openBatchExtendDialog = () => {
   batchDialogVisible.value = true;
 };
 
+const openGenerateDialog = () => {
+  if (generateLeaveTypeOptions.value.length > 0) {
+    generateDialogVisible.value = true;
+    return;
+  }
+  queryLeaveTypeList({
+    isLoading: true,
+  }).then((res) => {
+    generateLeaveTypeOptions.value = Array.isArray(res?.data) ? res.data : [];
+    generateDialogVisible.value = true;
+  });
+};
+
 const getSelectedRows = () => {
   return gridRef.value?.getRowList?.() || [];
 };
@@ -323,12 +319,12 @@ const getSelectedQuotaRows = () => {
 
 const validateAuditRows = (rows) => {
   if (rows.length === 0) {
-    ElMessage.warning(TEXT_SELECT_AUDIT);
+    ElMessage.warning("请先选择需要审核的记录");
     return false;
   }
-  const invalidRows = rows.filter((item) => item.auditStatus !== STATUS_UNAUDITED);
+  const invalidRows = rows.filter((item) => item.auditStatus !== "未审核");
   if (invalidRows.length > 0) {
-    ElMessage.warning(TEXT_AUDIT_ROW_INVALID);
+    ElMessage.warning("仅支持选择未审核记录进行审核");
     return false;
   }
   return true;
@@ -336,19 +332,39 @@ const validateAuditRows = (rows) => {
 
 const validateReverseAuditRows = (rows) => {
   if (rows.length === 0) {
-    ElMessage.warning(TEXT_SELECT_REVERSE_AUDIT);
+    ElMessage.warning("请先选择需要反审核的记录");
     return false;
   }
-  const invalidStatusRows = rows.filter((item) => item.auditStatus !== STATUS_AUDITED);
+  const invalidStatusRows = rows.filter((item) => item.auditStatus !== "已审核");
   if (invalidStatusRows.length > 0) {
-    ElMessage.warning(TEXT_REVERSE_AUDIT_ROW_INVALID);
+    ElMessage.warning("仅支持选择已审核记录进行反审核");
     return false;
   }
   const invalidQuotaRows = rows.filter(
     (item) => Number(item.usedQuota || 0) > 0 || Number(item.frozenQuota || 0) > 0,
   );
   if (invalidQuotaRows.length > 0) {
-    ElMessage.warning(TEXT_REVERSE_AUDIT_QUOTA_INVALID);
+    ElMessage.warning("已发生请假扣减或冻结的额度不支持反审核");
+    return false;
+  }
+  return true;
+};
+
+const validateDeleteRows = (rows) => {
+  if (rows.length === 0) {
+    ElMessage.warning("请先选择需要删除的记录");
+    return false;
+  }
+  const invalidStatusRows = rows.filter((item) => item.auditStatus !== "未审核");
+  if (invalidStatusRows.length > 0) {
+    ElMessage.warning("仅支持删除未审核记录");
+    return false;
+  }
+  const invalidQuotaRows = rows.filter(
+    (item) => Number(item.usedQuota || 0) > 0 || Number(item.frozenQuota || 0) > 0,
+  );
+  if (invalidQuotaRows.length > 0) {
+    ElMessage.warning("已发生请假扣减或冻结的额度禁止删除");
     return false;
   }
   return true;
@@ -384,12 +400,12 @@ const handleAudit = async () => {
     return;
   }
   await ElMessageBox.confirm(
-    formatMessage(TEXT_AUDIT_CONFIRM_MESSAGE, rows.length),
-    TEXT_AUDIT_CONFIRM_TITLE,
+    `确认审核选中的 ${rows.length} 条记录吗？`,
+    "审核确认",
     {
       type: "warning",
-      confirmButtonText: TEXT_AUDIT,
-      cancelButtonText: TEXT_CANCEL,
+      confirmButtonText: "审核",
+      cancelButtonText: "取消",
     },
   );
   auditLoading.value = true;
@@ -402,8 +418,8 @@ const handleAudit = async () => {
     },
   )
     .then((res) => {
-      updateQuotaAuditStatus(rows, STATUS_AUDITED);
-      ElMessage.success(res?.data?.message || TEXT_AUDIT_SUCCESS);
+      updateQuotaAuditStatus(rows, "已审核");
+      ElMessage.success(res?.data?.message || "审核成功");
       fetchLeaveQuotaList();
     })
     .finally(() => {
@@ -417,12 +433,12 @@ const handleReverseAudit = async () => {
     return;
   }
   await ElMessageBox.confirm(
-    formatMessage(TEXT_REVERSE_AUDIT_CONFIRM_MESSAGE, rows.length),
-    TEXT_REVERSE_AUDIT_CONFIRM_TITLE,
+    `确认反审核选中的 ${rows.length} 条记录吗？`,
+    "反审核确认",
     {
       type: "warning",
-      confirmButtonText: TEXT_REVERSE_AUDIT,
-      cancelButtonText: TEXT_CANCEL,
+      confirmButtonText: "反审核",
+      cancelButtonText: "取消",
     },
   );
   reverseAuditLoading.value = true;
@@ -435,13 +451,85 @@ const handleReverseAudit = async () => {
     },
   )
     .then((res) => {
-      updateQuotaAuditStatus(rows, STATUS_UNAUDITED);
-      ElMessage.success(res?.data?.message || TEXT_REVERSE_AUDIT_SUCCESS);
+      updateQuotaAuditStatus(rows, "未审核");
+      ElMessage.success(res?.data?.message || "反审核成功");
       fetchLeaveQuotaList();
     })
     .finally(() => {
       reverseAuditLoading.value = false;
     });
+};
+
+const handleDeleteQuota = async () => {
+  const rows = getSelectedQuotaRows();
+  if (!validateDeleteRows(rows)) {
+    return;
+  }
+  await ElMessageBox.confirm(
+    `确认删除选中的 ${rows.length} 条假期额度吗？`,
+    "删除确认",
+    {
+      type: "warning",
+      confirmButtonText: "删除",
+      cancelButtonText: "取消",
+    },
+  );
+  deleteLoading.value = true;
+  deleteLeaveQuotaAccount(
+    {
+      quotaAccountIds: rows.map((item) => item.id || item.quotaAccountId).join(","),
+    },
+    {
+      isLoading: true,
+    },
+  )
+    .then((res) => {
+      const deletedIds = new Set(
+        rows.map((item) => item.id || item.quotaAccountId).filter(Boolean),
+      );
+      quotaList.value = quotaList.value.filter((item) => {
+        const currentId = item.id || item.quotaAccountId;
+        return !deletedIds.has(currentId);
+      });
+      if (
+        selectedQuotaDetail.value?.id &&
+        deletedIds.has(selectedQuotaDetail.value.id)
+      ) {
+        quotaDetailVisible.value = false;
+        selectedQuotaDetail.value = {};
+      }
+      ElMessage.success(res?.data?.message || "删除成功");
+      fetchLeaveQuotaList();
+    })
+    .finally(() => {
+      deleteLoading.value = false;
+    });
+};
+
+const handleGenerateQuota = (formData) => {
+  generateLoading.value = true;
+  generateLeaveQuotaAccount(formData, {
+    isLoading: true,
+  })
+    .then((res) => {
+      generateDialogVisible.value = false;
+      ElMessage.success(res?.data?.message || "生成额度成功");
+      listQuery.value.pageNo = 1;
+      fetchLeaveQuotaList();
+    })
+    .finally(() => {
+      generateLoading.value = false;
+    });
+};
+
+const handleMoreCommand = (command) => {
+  const commandMap = {
+    audit: handleAudit,
+    reverseAudit: handleReverseAudit,
+    ledger: openLedgerPage,
+    delete: handleDeleteQuota,
+  };
+  commandMap[command]?.();
 };
 
 const buildBatchTargets = (formData) => {
@@ -491,32 +579,32 @@ const getNextExtendedDate = (item, formData) => {
 
 const handleBatchExtend = (formData) => {
   if (formData.targetType === "selected" && getSelectedRows().length === 0) {
-    return ElMessage.warning(TEXT_SELECT_EXTEND);
+    return ElMessage.warning("请先选择需要延期的记录");
   }
 
   if (formData.targetType === "condition" && formData.periodMode === "exact") {
     if (!formData.periodStartDate || !formData.periodEndDate) {
-      return ElMessage.warning(TEXT_SELECT_PERIOD);
+      return ElMessage.warning("请选择完整的周期日期");
     }
   }
 
   if (formData.targetType === "condition" && formData.employeeScope === "specifiedDate") {
     if (!formData.specifiedExtendedDate) {
-      return ElMessage.warning(TEXT_SELECT_SPECIFIED_EXTEND);
+      return ElMessage.warning("请选择指定延期日期");
     }
   }
 
   if (formData.extensionType === "fixedDate" && !formData.fixedDate) {
-    return ElMessage.warning(TEXT_SELECT_FIXED_DATE);
+    return ElMessage.warning("请选择固定日期");
   }
 
   if (formData.extensionType === "byMonths" && Number(formData.monthCount || 0) <= 0) {
-    return ElMessage.warning(TEXT_EXTEND_MONTH_INVALID);
+    return ElMessage.warning("按月数延期时请输入大于 0 的月数");
   }
 
   const targets = buildBatchTargets(formData);
   if (targets.length === 0) {
-    return ElMessage.warning(TEXT_EXTEND_EMPTY);
+    return ElMessage.warning("没有匹配到可延期的记录");
   }
 
   const targetKeys = new Set(targets.map((item) => getQuotaRecordKey(item)));
@@ -541,7 +629,28 @@ const handleBatchExtend = (formData) => {
   }
 
   batchDialogVisible.value = false;
-  ElMessage.success(formatMessage(TEXT_BATCH_EXTEND_SUCCESS, targets.length));
+  ElMessage.success(`已完成 ${targets.length} 条记录的延期处理`);
+};
+
+const handleQuotaDetailSaved = (detail) => {
+  const quotaAccountId = detail?.id || detail?.quotaAccountId;
+  if (!quotaAccountId) {
+    return;
+  }
+  selectedQuotaDetail.value = {
+    ...selectedQuotaDetail.value,
+    ...detail,
+  };
+  quotaList.value = quotaList.value.map((item) => {
+    const currentId = item.id || item.quotaAccountId;
+    if (currentId !== quotaAccountId) {
+      return item;
+    }
+    return {
+      ...item,
+      ...detail,
+    };
+  });
 };
 
 const closeQuotaDetail = () => {
@@ -584,7 +693,7 @@ onUnmounted(() => {
                     v-model="diminput"
                     class="top-search"
                     style="width: 200px"
-                    :placeholder="TEXT_SEARCH_PLACEHOLDER"
+                    placeholder="搜索..."
                     clearable
                     @keyup.enter="fuzzySearch"
                   >
@@ -597,33 +706,49 @@ onUnmounted(() => {
                   <el-button
                     type="primary"
                     plain
-                    :loading="auditLoading"
-                    @click="handleAudit"
+                    :loading="generateLoading"
+                    @click="openGenerateDialog"
                   >
-                    {{ TEXT_AUDIT }}
-                  </el-button>
-                  <el-button
-                    type="warning"
-                    plain
-                    :loading="reverseAuditLoading"
-                    @click="handleReverseAudit"
-                  >
-                    {{ TEXT_REVERSE_AUDIT }}
-                  </el-button>
-                  <el-button
-                    type="success"
-                    plain
-                    @click="openLedgerPage"
-                  >
-                    {{ TEXT_LEDGER }}
+                    生成额度
                   </el-button>
                   <el-button
                     type="primary"
                     plain
                     @click="openBatchExtendDialog"
                   >
-                    {{ TEXT_BATCH_EXTEND }}
+                    批量延期
                   </el-button>
+                  <el-dropdown @command="handleMoreCommand">
+                    <el-button>
+                      更多
+                      <i class="mdi mdi-chevron-down ms-1"></i>
+                    </el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item
+                          command="audit"
+                          :disabled="auditLoading"
+                        >
+                          审核
+                        </el-dropdown-item>
+                        <el-dropdown-item
+                          command="reverseAudit"
+                          :disabled="reverseAuditLoading"
+                        >
+                          反审核
+                        </el-dropdown-item>
+                        <el-dropdown-item command="ledger">
+                          额度日志信息
+                        </el-dropdown-item>
+                        <el-dropdown-item
+                          command="delete"
+                          :disabled="deleteLoading"
+                        >
+                          删除
+                        </el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
                 </div>
               </span>
               <div class="d-flex gap-2">
@@ -691,6 +816,7 @@ onUnmounted(() => {
       <LeaveQuotaDetailSidebar
         :detailInfo="selectedQuotaDetail"
         :loading="detailLoading"
+        @saved="handleQuotaDetailSaved"
         @close="closeQuotaDetail"
       />
     </DragSidebar>
@@ -699,6 +825,13 @@ onUnmounted(() => {
       v-model="batchDialogVisible"
       :leaveTypeOptions="leaveTypeOptions"
       @confirm="handleBatchExtend"
+    />
+
+    <GenerateDialog
+      v-model="generateDialogVisible"
+      :leaveTypeOptions="generateLeaveTypeOptions"
+      :organizationOptions="attendanceOrganizationOptions"
+      @confirm="handleGenerateQuota"
     />
 
   </Layout>

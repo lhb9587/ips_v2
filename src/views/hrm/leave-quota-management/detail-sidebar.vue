@@ -1,5 +1,8 @@
 <script setup>
-import { defineEmits, defineProps } from "vue";
+import { computed, defineEmits, defineProps, reactive, ref, watch } from "vue";
+import dayjs from "dayjs";
+import { ElMessage } from "element-plus";
+import { updateLeaveQuotaAccount } from "@/api/attendance";
 
 const props = defineProps({
   detailInfo: {
@@ -12,11 +15,17 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["close"]);
+const emit = defineEmits(["close", "saved"]);
 
-const closeSidebar = () => {
-  emit("close");
-};
+const STATUS_UNAUDITED = "未审核";
+const editableKeys = ["effectDate", "extendedDate", "adjustmentQuota"];
+const editForm = reactive({
+  effectDate: "",
+  extendedDate: "",
+  adjustmentQuota: "",
+});
+const isEditing = ref(false);
+const saveLoading = ref(false);
 
 const employeeFields = [
   [
@@ -48,8 +57,8 @@ const leaveFields = [
     { label: "周期结束日期", key: "periodEndDate" },
   ],
   [
-    { label: "生效日期", key: "effectDate" },
-    { label: "延期日期", key: "extendedDate" },
+    { label: "生效日期", key: "effectDate", editable: true, type: "date" },
+    { label: "延期日期", key: "extendedDate", editable: true, type: "date" },
   ],
 ];
 
@@ -64,10 +73,67 @@ const quotaFields = [
   ],
   [
     { label: "标准额度", key: "standardQuota" },
-    { label: "增减额度", key: "adjustmentQuota" },
+    { label: "增减额度", key: "adjustmentQuota", editable: true, type: "number" },
   ],
-  [{ label: "上期延支额度", key: "carriedForwardQuota" }],
+  [{ label: "上期结转额度", key: "carriedForwardQuota" }],
 ];
+
+const canEdit = computed(() => props.detailInfo?.auditStatus === STATUS_UNAUDITED);
+
+const closeSidebar = () => {
+  emit("close");
+};
+
+const normalizeDate = (value) => {
+  if (!value) {
+    return "";
+  }
+  if (dayjs(value).isValid()) {
+    return dayjs(value).format("YYYY-MM-DD");
+  }
+  const matched = String(value).match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+  if (!matched) {
+    return String(value);
+  }
+  const [, year, month, day] = matched;
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+};
+
+const resetEditForm = () => {
+  editForm.effectDate = normalizeDate(
+    props.detailInfo?.effectDate || props.detailInfo?.periodStartDate,
+  );
+  editForm.extendedDate = normalizeDate(
+    props.detailInfo?.extendedDate || props.detailInfo?.periodEndDate,
+  );
+  editForm.adjustmentQuota = props.detailInfo?.adjustmentQuota ?? "";
+};
+
+watch(
+  () => props.detailInfo,
+  () => {
+    isEditing.value = false;
+    resetEditForm();
+  },
+  {
+    deep: true,
+    immediate: true,
+  },
+);
+
+const startEdit = () => {
+  if (!canEdit.value) {
+    ElMessage.warning("只有未审核的假期额度支持编辑");
+    return;
+  }
+  resetEditForm();
+  isEditing.value = true;
+};
+
+const cancelEdit = () => {
+  resetEditForm();
+  isEditing.value = false;
+};
 
 const formatValue = (field) => {
   const value = props.detailInfo?.[field.key];
@@ -75,6 +141,94 @@ const formatValue = (field) => {
     return value;
   }
   return "-";
+};
+
+const getFieldValue = (field) => {
+  if (isEditing.value && field.editable) {
+    return editForm[field.key];
+  }
+  return formatValue(field);
+};
+
+const isChanged = () => {
+  return editableKeys.some((key) => {
+    const currentValue =
+      key === "adjustmentQuota"
+        ? props.detailInfo?.[key]
+        : normalizeDate(props.detailInfo?.[key]);
+    const formValue = key === "adjustmentQuota" ? editForm[key] : normalizeDate(editForm[key]);
+    return String(currentValue ?? "") !== String(formValue ?? "");
+  });
+};
+
+const validateEditForm = () => {
+  if (!editForm.effectDate) {
+    ElMessage.warning("请选择生效日期");
+    return false;
+  }
+  if (!editForm.extendedDate) {
+    ElMessage.warning("请选择延期日期");
+    return false;
+  }
+  if (dayjs(editForm.extendedDate).isBefore(dayjs(editForm.effectDate))) {
+    ElMessage.warning("延期日期不能早于生效日期");
+    return false;
+  }
+  if (editForm.adjustmentQuota === "" || editForm.adjustmentQuota === null) {
+    ElMessage.warning("请输入增减额度");
+    return false;
+  }
+  if (!isChanged()) {
+    ElMessage.warning("请先修改需要保存的内容");
+    return false;
+  }
+  return true;
+};
+
+const saveEdit = () => {
+  if (!validateEditForm()) {
+    return;
+  }
+  const quotaAccountId = props.detailInfo?.id || props.detailInfo?.quotaAccountId;
+  if (!quotaAccountId) {
+    ElMessage.warning("缺少额度账户ID，无法保存");
+    return;
+  }
+  saveLoading.value = true;
+  updateLeaveQuotaAccount(
+    {
+      quotaAccountId,
+      periodStartDate: editForm.effectDate,
+      periodEndDate: editForm.extendedDate,
+      adjustQuota: editForm.adjustmentQuota,
+      versionNo: props.detailInfo?.versionNo,
+    },
+    {
+      isLoading: true,
+    },
+  )
+    .then((res) => {
+      const responseData = res?.data || {};
+      const updatedDetail = {
+        ...props.detailInfo,
+        effectDate: editForm.effectDate,
+        periodStartDate: editForm.effectDate,
+        extendedDate: editForm.extendedDate,
+        periodEndDate: editForm.extendedDate,
+        adjustmentQuota: editForm.adjustmentQuota,
+        adjustQuota: editForm.adjustmentQuota,
+        actualQuota: responseData.afterActualQuota ?? props.detailInfo?.actualQuota,
+        remainingQuota: responseData.afterRemainQuota ?? props.detailInfo?.remainingQuota,
+        remainQuota: responseData.afterRemainQuota ?? props.detailInfo?.remainQuota,
+        versionNo: responseData.versionNo ?? props.detailInfo?.versionNo,
+      };
+      emit("saved", updatedDetail);
+      isEditing.value = false;
+      ElMessage.success(responseData.message || "保存成功");
+    })
+    .finally(() => {
+      saveLoading.value = false;
+    });
 };
 </script>
 
@@ -85,16 +239,43 @@ const formatValue = (field) => {
   >
     <div class="leave-quota-detail__header">
       <div class="leave-quota-detail__title">假期额度详情</div>
-      <el-tooltip
-        content="关闭"
-        placement="top"
-        :teleported="false"
-      >
-        <div
-          class="leave-quota-detail__close mdi mdi-window-close"
-          @click="closeSidebar"
-        ></div>
-      </el-tooltip>
+      <div class="leave-quota-detail__actions">
+        <template v-if="isEditing">
+          <el-button
+            size="small"
+            @click="cancelEdit"
+          >
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            size="small"
+            :loading="saveLoading"
+            @click="saveEdit"
+          >
+            保存
+          </el-button>
+        </template>
+        <el-button
+          v-else-if="canEdit"
+          type="primary"
+          size="small"
+          plain
+          @click="startEdit"
+        >
+          编辑
+        </el-button>
+        <el-tooltip
+          content="关闭"
+          placement="top"
+          :teleported="false"
+        >
+          <div
+            class="leave-quota-detail__close mdi mdi-window-close"
+            @click="closeSidebar"
+          ></div>
+        </el-tooltip>
+      </div>
     </div>
 
     <div class="leave-quota-detail__content">
@@ -133,7 +314,17 @@ const formatValue = (field) => {
               class="detail-item"
             >
               <div class="detail-item__label">{{ field.label }}</div>
-              <div class="detail-item__value">{{ formatValue(field) }}</div>
+              <div class="detail-item__value">
+                <el-date-picker
+                  v-if="isEditing && field.type === 'date'"
+                  v-model="editForm[field.key]"
+                  type="date"
+                  value-format="YYYY-MM-DD"
+                  placeholder="请选择日期"
+                  style="width: 100%"
+                />
+                <span v-else>{{ getFieldValue(field) }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -154,7 +345,17 @@ const formatValue = (field) => {
               class="detail-item"
             >
               <div class="detail-item__label">{{ field.label }}</div>
-              <div class="detail-item__value">{{ formatValue(field) }}</div>
+              <div class="detail-item__value">
+                <el-input-number
+                  v-if="isEditing && field.type === 'number'"
+                  v-model="editForm[field.key]"
+                  :precision="2"
+                  :step="0.5"
+                  controls-position="right"
+                  style="width: 100%"
+                />
+                <span v-else>{{ getFieldValue(field) }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -197,6 +398,12 @@ const formatValue = (field) => {
   background: #4f80c2;
 }
 
+.leave-quota-detail__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .leave-quota-detail__close {
   color: #7d8aa5;
   font-size: 22px;
@@ -227,7 +434,7 @@ const formatValue = (field) => {
 .detail-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 100px;
+  column-gap: 60px;
   row-gap: 20px;
 }
 

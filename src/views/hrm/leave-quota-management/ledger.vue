@@ -14,22 +14,22 @@ const router = useRouter();
 const store = useStore();
 
 const gridName = "leaveQuotaLedgerGrid";
-const TEXT_BACK = "\u8fd4\u56de";
-const TEXT_SEARCH_PLACEHOLDER = "\u641c\u7d22...";
+const TEXT_BACK = "返回";
+const TEXT_SEARCH_PLACEHOLDER = "搜索...";
 const LEDGER_COLUMN_LABELS = {
-  sid: "\u5e8f\u53f7",
-  quotaAccountId: "\u989d\u5ea6ID",
-  leaveTypeName: "\u5047\u671f\u7c7b\u578b",
-  bizNo: "\u5355\u636e\u7f16\u7801",
-  talentName: "\u59d3\u540d",
-  changeFieldName: "\u4fee\u6539\u5b57\u6bb5\u540d",
-  fieldOldValue: "\u5b57\u6bb5\u65e7\u503c",
-  fieldNewValue: "\u5b57\u6bb5\u65b0\u503c",
-  beforeRemainQuota: "\u5269\u4f59\u989d\u5ea6\u65e7\u503c",
-  afterRemainQuota: "\u5269\u4f59\u989d\u5ea6\u65b0\u503c",
-  operateByName: "\u64cd\u4f5c\u4eba",
-  operateTime: "\u64cd\u4f5c\u65f6\u95f4",
-  description: "\u63cf\u8ff0",
+  sid: "序号",
+  quotaAccountId: "额度ID",
+  leaveTypeName: "假期类型",
+  bizNo: "单据编码",
+  talentName: "姓名",
+  changeFieldName: "修改字段名",
+  fieldOldValue: "字段旧值",
+  fieldNewValue: "字段新值",
+  beforeRemainQuota: "剩余额度旧值",
+  afterRemainQuota: "剩余额度新值",
+  operateByName: "操作人",
+  operateTime: "操作时间",
+  description: "描述",
 };
 const DEFAULT_COLUMNS = [
   { title: LEDGER_COLUMN_LABELS.sid, value: "sid", width: 70, minWidth: 70, maxWidth: 90 },
