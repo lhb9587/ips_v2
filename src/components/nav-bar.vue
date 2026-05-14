@@ -214,9 +214,9 @@ export default {
       }
     },
     handleLink(item) {
-      if (item.name === "case" || item.name === "project") {
+      // if (item.name === "case" || item.name === "project" ) {
         this.toFirstChild(item);
-      }
+      // }
     },
     onAccountFilter(keyword) {
       this.accountKeyword = keyword;
@@ -336,7 +336,8 @@ export default {
             >
               <span
                 v-if="
-                  item.redirect === 'noRedirect' || index == matched.length - 1
+                  item.redirect === 'noRedirect' ||
+                  index == matched.length - 1
                 "
                 class="no-redirect"
                 >{{ item.meta.title }}</span
