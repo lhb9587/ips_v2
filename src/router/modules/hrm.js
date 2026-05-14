@@ -45,6 +45,12 @@
             ],
           },
           {
+            path: "/hrm/schedule-wizard",
+            name: "schedule-wizard",
+            meta: { title: "排班向导", authRequired: true },
+            component: () => import("@/views/hrm/schedule-wizard/index"),
+          },
+          {
             path: "/hrm/leave-quota-management",
             name: "leave-quota-management-root",
             meta: { title: "假期额度维护", authRequired: true },

@@ -4,6 +4,7 @@ import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { ArrowDown } from "@element-plus/icons-vue";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
@@ -12,7 +13,14 @@ import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import AttendanceProfileDetailSidebar from "@/views/hrm/attendance-profile/detail-sidebar.vue";
 import AttendanceProfileUnarchivedDialog from "@/views/hrm/attendance-profile/unarchived-dialog.vue";
 import { saveTableConfig } from "@/utils";
-import { queryAttendanceArchivePage, queryAttendanceShiftList } from "@/api/attendance";
+import {
+  queryAttendanceArchiveDetail,
+  queryAttendanceArchivePage,
+  queryAttendanceShiftList,
+  updateAttendanceArchive,
+  deleteAttendanceArchive,
+  changeAttendanceArchiveStatus,
+} from "@/api/attendance";
 
 const route = useRoute();
 const store = useStore();
@@ -224,13 +232,44 @@ const openUnarchivedDialog = () => {
   unarchivedDialogVisible.value = true;
 };
 
-const openProfileDetail = (params) => {
+const openProfileDetail = async (params) => {
   if (!params?.data) {
     return;
   }
   selectedDetail.value = { ...params.data };
   detailMode.value = "view";
   detailVisible.value = true;
+
+  const archiveId = params.data.archiveId || params.data.id;
+  if (!archiveId) {
+    return;
+  }
+
+  const res = await queryAttendanceArchiveDetail(
+    {
+      archiveId,
+    },
+    {
+      isLoading: true,
+    },
+  );
+  const detail = res?.data || {};
+  selectedDetail.value = {
+    ...selectedDetail.value,
+    ...detail,
+    id: detail.archiveId || selectedDetail.value.id,
+    archiveId: detail.archiveId || selectedDetail.value.archiveId,
+    employeeCode: detail.talentCode || selectedDetail.value.employeeCode,
+    employeeName: detail.talentName || selectedDetail.value.employeeName,
+    organizationCode: detail.attendanceOrgCode || selectedDetail.value.organizationCode || "",
+    organizationName: detail.attendanceOrgName || selectedDetail.value.organizationName || "",
+    holidaySystem: detail.leavePolicyCode || selectedDetail.value.holidaySystem || defaultHolidaySystem,
+    attendanceSystem:
+      detail.attendancePolicyCode ||
+      selectedDetail.value.attendanceSystem ||
+      defaultAttendanceSystem,
+    defaultShift: detail.defaultShiftCode || selectedDetail.value.defaultShift || "",
+  };
 };
 
 const closeDetail = () => {
@@ -238,53 +277,167 @@ const closeDetail = () => {
   selectedDetail.value = {};
 };
 
-const handleSaveProfile = (payload) => {
-  const targetIndex = gridData.value.findIndex((item) => item.id === payload.id);
-  if (targetIndex > -1) {
-    gridData.value.splice(targetIndex, 1, {
-      ...gridData.value[targetIndex],
-      ...payload,
-      holidaySystem: payload.holidaySystem || defaultHolidaySystem,
-      attendanceSystem: payload.attendanceSystem || defaultAttendanceSystem,
-    });
-    selectedDetail.value = { ...gridData.value[targetIndex] };
-    ElMessage.success("考勤档案已更新");
+const handleSaveProfile = async (payload) => {
+  const archiveId = payload.archiveId || payload.id;
+  if (!archiveId) {
+    ElMessage.warning("缺少档案ID，无法保存");
     return;
   }
 
+  const requestData = {
+    archiveId,
+    talentCode: payload.employeeCode || payload.talentCode,
+    attendanceNo: payload.attendanceNo,
+    attendanceOrgCode: payload.organizationCode || payload.attendanceOrgCode,
+    defaultShiftCode: payload.defaultShiftCode || payload.defaultShift,
+    attendancePolicyCode: payload.attendancePolicyCode,
+    leavePolicyCode: payload.leavePolicyCode,
+  };
+
+  Object.keys(requestData).forEach((key) => {
+    if (requestData[key] === undefined || requestData[key] === null || requestData[key] === "") {
+      delete requestData[key];
+    }
+  });
+
+  await updateAttendanceArchive(requestData, { isLoading: true });
+
   selectedDetail.value = {
+    ...selectedDetail.value,
     ...payload,
     holidaySystem: payload.holidaySystem || defaultHolidaySystem,
     attendanceSystem: payload.attendanceSystem || defaultAttendanceSystem,
   };
   detailMode.value = "view";
-  listQuery.value.pageNo = 1;
-  ElMessage.success("考勤档案已新增");
+  ElMessage.success("考勤档案已更新");
   fetchAttendanceArchiveList();
 };
 
-const deleteProfiles = (rows) => {
-  const targetIds = new Set(rows.map((item) => item.id));
-  gridData.value = gridData.value.filter((item) => !targetIds.has(item.id));
-  if (gridData.value.length === 0 && listQuery.value.pageNo > 1) {
-    listQuery.value.pageNo -= 1;
-  }
+const getSelectedArchiveRows = () => {
+  return gridRef.value?.getRowList?.() || [];
 };
 
-const handleDeleteDetail = (record) => {
-  if (!record?.id) {
-    closeDetail();
+const handleBatchChangeStatus = (status) => {
+  const selectedRows = getSelectedArchiveRows();
+  const actionText = status === 1 ? "启用" : "禁用";
+  if (!selectedRows.length) {
+    ElMessage.warning(`请先选择需要${actionText}的考勤档案`);
+    return;
+  }
+  const invalidRows = selectedRows.filter((item) => !(item?.archiveId || item?.id));
+  if (invalidRows.length) {
+    ElMessage.warning("所选档案存在无效数据，请刷新后重试");
+    return;
+  }
+  const sameStatusRows = selectedRows.filter((item) => Number(item.status) === status);
+  if (sameStatusRows.length) {
+    ElMessage.warning(`所选档案中包含已是${actionText}状态的数据，请调整后再操作`);
     return;
   }
 
-  ElMessageBox.confirm(`确认删除 ${record.employeeName} 的考勤档案吗？`, "删除确认", {
+  ElMessageBox.confirm(
+    `确认${actionText}选中的 ${selectedRows.length} 条考勤档案吗？`,
+    `${actionText}确认`,
+    {
+      type: "warning",
+      confirmButtonText: actionText,
+      cancelButtonText: "取消",
+    },
+  ).then(async () => {
+    await Promise.all(
+      selectedRows.map((item) =>
+        changeAttendanceArchiveStatus(
+          {
+            archiveId: item.archiveId || item.id,
+            status,
+          },
+          {
+            isLoading: false,
+          },
+        ),
+      ),
+    );
+    ElMessage.success(`已${actionText} ${selectedRows.length} 条考勤档案`);
+    fetchAttendanceArchiveList();
+  });
+};
+
+const handleBatchEnable = () => {
+  handleBatchChangeStatus(1);
+};
+
+const handleBatchDisable = () => {
+  handleBatchChangeStatus(0);
+};
+
+const handleBatchDelete = () => {
+  const selectedRows = getSelectedArchiveRows();
+  if (!selectedRows.length) {
+    ElMessage.warning("请先选择需要删除的考勤档案");
+    return;
+  }
+  const invalidRows = selectedRows.filter((item) => !(item?.archiveId || item?.id));
+  if (invalidRows.length) {
+    ElMessage.warning("所选档案存在无效数据，请刷新后重试");
+    return;
+  }
+  const enabledRows = selectedRows.filter((item) => Number(item.status) === 1);
+  if (enabledRows.length > 0) {
+    ElMessage.warning("启用状态的考勤档案不允许删除");
+    return;
+  }
+
+  ElMessageBox.confirm(
+    `确认删除选中的 ${selectedRows.length} 条考勤档案吗？`,
+    "删除确认",
+    {
+      type: "warning",
+      confirmButtonText: "删除",
+      cancelButtonText: "取消",
+    },
+  ).then(async () => {
+    await Promise.all(
+      selectedRows.map((item) =>
+        deleteAttendanceArchive(
+          {
+            archiveId: item.archiveId || item.id,
+          },
+          { isLoading: false },
+        ),
+      ),
+    );
+    ElMessage.success(`已删除 ${selectedRows.length} 条考勤档案`);
+    fetchAttendanceArchiveList();
+  });
+};
+
+const handleDisableDetail = (record) => {
+  if (!record?.id && !record?.archiveId) {
+    ElMessage.warning("缺少档案ID，无法禁用");
+    return;
+  }
+  if (Number(record.status) === 0) {
+    ElMessage.warning("当前档案已是禁用状态");
+    return;
+  }
+
+  ElMessageBox.confirm("确认禁用该考勤档案吗？", "禁用确认", {
     type: "warning",
-    confirmButtonText: "删除",
+    confirmButtonText: "禁用",
     cancelButtonText: "取消",
-  }).then(() => {
-    deleteProfiles([record]);
+  }).then(async () => {
+    await changeAttendanceArchiveStatus(
+      {
+        archiveId: record.archiveId || record.id,
+        status: 0,
+      },
+      {
+        isLoading: true,
+      },
+    );
+    ElMessage.success("考勤档案已禁用");
     closeDetail();
-    ElMessage.success("考勤档案已删除");
+    fetchAttendanceArchiveList();
   });
 };
 
@@ -343,6 +496,27 @@ onUnmounted(() => {
                     新增
                   </el-button>
                   <el-button @click="openUnarchivedDialog">未建档案</el-button>
+                  <el-button
+                    type="success"
+                    plain
+                    @click="handleBatchEnable"
+                  >
+                    启用
+                  </el-button>
+                  <el-dropdown trigger="click">
+                    <el-button plain>
+                      更多
+                      <el-icon class="el-icon--right">
+                        <ArrowDown />
+                      </el-icon>
+                    </el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item @click="handleBatchDisable">禁用</el-dropdown-item>
+                        <el-dropdown-item @click="handleBatchDelete">删除</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
                 </div>
               </span>
               <div class="d-flex gap-2">
@@ -375,6 +549,7 @@ onUnmounted(() => {
               :columnDefs="columnList"
               :grid-data="gridData"
               :activeClass="activeClass"
+              :showSelectionColumn="true"
               :cellRenderer="cellRenderer"
               :rowClick="openProfileDetail"
             />
@@ -411,7 +586,7 @@ onUnmounted(() => {
         :mode="detailMode"
         :shiftOptions="shiftOptions"
         @save="handleSaveProfile"
-        @delete="handleDeleteDetail"
+        @disable="handleDisableDetail"
         @close="closeDetail"
       />
     </DragSidebar>

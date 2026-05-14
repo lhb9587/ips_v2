@@ -71,7 +71,7 @@ const ruleLoading = ref(false);
 const submitRuleLoading = ref(false);
 const swapLoading = ref(false);
 const selectedEmployees = ref([]);
-const ruleForm = ref({
+const createInitialRuleForm = () => ({
   attendanceSystem: "默认考勤制度",
   attendanceGroup: "",
   organization: "",
@@ -80,6 +80,9 @@ const ruleForm = ref({
   startDate: dayjs().format("YYYY-MM-DD"),
   endDate: dayjs().add(30, "day").format("YYYY-MM-DD"),
   holidayHandling: "顺延",
+});
+const ruleForm = ref({
+  ...createInitialRuleForm(),
 });
 
 const ruleOptions = ref([]);
@@ -418,11 +421,26 @@ const handleDateRangeChange = (value) => {
 };
 
 const openRuleDialog = () => {
-  selectedEmployees.value = [];
-  employeePagination.value.pageNo = 1;
+  resetRuleDialogState();
   fetchRotationRuleOptions();
   fetchWizardMembers();
   showRuleDialog.value = true;
+};
+
+const resetRuleDialogState = () => {
+  ruleForm.value = createInitialRuleForm();
+  selectedEmployees.value = [];
+  employeeSource.value = [];
+  employeeTotal.value = 0;
+  employeePagination.value = {
+    pageNo: 1,
+    pageSize: 100,
+  };
+  employeeTableRef.value?.clearSelection?.();
+};
+
+const handleRuleDialogClose = () => {
+  resetRuleDialogState();
 };
 
 const getScheduleDayId = (row = {}) => row.scheduleDayId || row.id;
@@ -488,6 +506,12 @@ const handleOpenScheduleSwapList = () => {
 const handleOpenUnscheduledList = () => {
   router.push({
     name: "schedule-unscheduled-list",
+  });
+};
+
+const handleOpenVerticalList = () => {
+  router.push({
+    name: "schedule-vertical-list",
   });
 };
 
@@ -728,6 +752,13 @@ onUnmounted(() => {
                   >
                     未排班列表
                   </el-button>
+                  <el-button
+                    type="primary"
+                    plain
+                    @click="handleOpenVerticalList"
+                  >
+                    纵向显示
+                  </el-button>
                 </div>
               </span>
               <div class="d-flex gap-2">
@@ -789,6 +820,8 @@ onUnmounted(() => {
       width="980px"
       destroy-on-close
       class="schedule-rule-dialog"
+      :close-on-click-modal="false"
+      @closed="handleRuleDialogClose"
     >
       <div class="schedule-rule-dialog__body">
         <div class="schedule-rule-dialog__filter">

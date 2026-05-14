@@ -110,6 +110,35 @@ service.interceptors.request.use(
   }
 );
 let isTokenInvalid = false;
+const handleLoginExpired = () => {
+  if (isTokenInvalid) return;
+
+  isTokenInvalid = true;
+  // 判断当前是否是iframe，目前只有合同页是iframe
+  if (window.self !== window.top) {
+    const data = {
+      code: "-200",
+    };
+    window.parent.postMessage(data, "*");
+    isTokenInvalid = false;
+    return;
+  }
+
+  ElMessageBox.confirm("登录已过期请重新登录", "重新登录", {
+    confirmButtonText: "重新登录",
+    cancelButtonText: "取消",
+    type: "warning",
+    confirmButtonClass: "reLogin-primary",
+  })
+    .then(() => {
+      store.dispatch("user/resetToken").then(() => {
+        location.reload();
+      });
+    })
+    .finally(() => {
+      isTokenInvalid = false;
+    });
+};
 // response interceptor
 service.interceptors.response.use(
   /**
@@ -146,33 +175,9 @@ service.interceptors.response.use(
         });
       }
       // 50008: Illegal token; 50012: Other clients logged in; 50014: Token expired;
-      if (res.messageType == '-100' || res.message == '身份无效。' || res.message == '身份认证失败') {
+      if (res.messageType == "-100" || res.message == "身份无效。" || res.message == "身份认证失败") {
         // to re-login
-        if (!isTokenInvalid) {
-          isTokenInvalid = true;
-          //判断当前是否是iframe，目前只有合同页是iframe
-          if (window.self !== window.top){
-            const data = {
-              code:'-200'
-            }
-            window.parent.postMessage(data, '*')
-          }else{
-            ElMessageBox.confirm("登录已过期请重新登录", "重新登录", {
-              confirmButtonText: "重新登录",
-              cancelButtonText: "取消",
-              type: "warning",
-              confirmButtonClass:'reLogin-primary'
-            })
-              .then(() => {
-                store.dispatch("user/resetToken").then(() => {
-                  location.reload();
-                });
-              })
-              .finally(() => {
-                isTokenInvalid = false;
-              });
-          }
-        }
+        handleLoginExpired();
       }
       return Promise.reject(res);
     } else {
@@ -195,7 +200,15 @@ service.interceptors.response.use(
     if (error?.config?.isLoading) {
       hideLoading();
     }
-    if (error?.config?.showErrorMessage !== false) {
+
+    const isUnauthorized =
+      error?.response?.data?.messageType == "-100";
+
+    if (isUnauthorized) {
+      handleLoginExpired();
+    }
+
+    if (error?.config?.showErrorMessage !== false && !isUnauthorized) {
       const message =
         error?.response?.data?.message ||
         (error?.message?.includes('timeout') ? '请求超时' : '') ||

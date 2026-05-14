@@ -26,7 +26,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["close", "save", "delete"]);
+const emit = defineEmits(["close", "save", "disable"]);
 
 const isEditing = ref(false);
 const formData = ref({});
@@ -173,8 +173,8 @@ const saveEdit = () => {
   isEditing.value = false;
 };
 
-const deleteRecord = () => {
-  emit("delete", props.detailInfo);
+const disableRecord = () => {
+  emit("disable", props.detailInfo);
 };
 
 const detailRows = [
@@ -243,11 +243,12 @@ const canEditField = (field) => {
             编辑
           </el-button>
           <el-button
-            type="danger"
+            v-if="Number(props.detailInfo?.status) !== 0"
+            type="warning"
             plain
-            @click="deleteRecord"
+            @click="disableRecord"
           >
-            删除
+            禁用
           </el-button>
         </template>
         <el-tooltip

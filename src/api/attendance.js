@@ -20,6 +20,42 @@ export function queryAttendanceArchivePage(data, config = {}) {
   })
 }
 
+export function queryAttendanceArchiveDetail(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceArchiveDetail,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function updateAttendanceArchive(data, config = {}) {
+  return request({
+    url: attendanceApi.updateAttendanceArchive,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function deleteAttendanceArchive(data, config = {}) {
+  return request({
+    url: attendanceApi.deleteAttendanceArchive,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function changeAttendanceArchiveStatus(data, config = {}) {
+  return request({
+    url: attendanceApi.changeAttendanceArchiveStatus,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryLeaveQuotaAccountPage(data, config = {}) {
   return request({
     url: attendanceApi.queryLeaveQuotaAccountPage,
@@ -211,6 +247,15 @@ export function queryAttendanceShiftDetail(data, config = {}) {
 export function queryScheduleHorizontalPage(data, config = {}) {
   return request({
     url: attendanceApi.queryScheduleHorizontalPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryScheduleVerticalPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryScheduleVerticalPage,
     method: 'post',
     data,
     ...config

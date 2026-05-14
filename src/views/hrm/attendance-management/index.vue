@@ -81,6 +81,11 @@ const moduleGroups = [
         route: "/hrm/schedule-list",
       },
       {
+        title: "排班向导",
+        description: "自定义排班：日历式排班可以改变当天的排班",
+        route: "/hrm/schedule-wizard",
+      },
+      {
         title: "考勤组",
         description:
           "按照相同班次、相同考勤制度、管理范围等维度将员工进行分类，便于排班、快捷过滤等操作",
