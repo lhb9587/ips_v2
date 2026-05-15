@@ -1,7 +1,7 @@
 <script setup>
 import dayjs from "dayjs";
 import { onMounted, onUnmounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { ArrowDown } from "@element-plus/icons-vue";
@@ -23,6 +23,7 @@ import {
 } from "@/api/attendance";
 
 const route = useRoute();
+const router = useRouter();
 const store = useStore();
 
 const bussId = 456;
@@ -173,7 +174,8 @@ const fetchAttendanceArchiveList = () => {
       organizationName: item.attendanceOrgName || "",
       holidaySystem: item.leavePolicyCode || defaultHolidaySystem,
       attendanceSystem: item.attendancePolicyCode || defaultAttendanceSystem,
-      defaultShift: item.defaultShiftCode || "",
+      defaultShiftCode: item.defaultShiftCode || "",
+      defaultShift: item.defaultShiftName || item.defaultShiftCode || "",
       sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index,
     }));
     total.value = res?.total || 0;
@@ -268,13 +270,33 @@ const openProfileDetail = async (params) => {
       detail.attendancePolicyCode ||
       selectedDetail.value.attendanceSystem ||
       defaultAttendanceSystem,
-    defaultShift: detail.defaultShiftCode || selectedDetail.value.defaultShift || "",
+    defaultShiftCode:
+      detail.defaultShiftCode || selectedDetail.value.defaultShiftCode || "",
+    defaultShift:
+      detail.defaultShiftName ||
+      selectedDetail.value.defaultShift ||
+      detail.defaultShiftCode ||
+      "",
   };
 };
 
 const closeDetail = () => {
   detailVisible.value = false;
   selectedDetail.value = {};
+};
+
+const openProfileHistory = (record) => {
+  const archiveId = record?.archiveId || record?.id;
+  if (!archiveId) {
+    ElMessage.warning("缺少档案ID，无法查看历史");
+    return;
+  }
+  router.push({
+    name: "attendance-profile-history",
+    query: {
+      archiveId: String(archiveId),
+    },
+  });
 };
 
 const handleSaveProfile = async (payload) => {
@@ -289,7 +311,7 @@ const handleSaveProfile = async (payload) => {
     talentCode: payload.employeeCode || payload.talentCode,
     attendanceNo: payload.attendanceNo,
     attendanceOrgCode: payload.organizationCode || payload.attendanceOrgCode,
-    defaultShiftCode: payload.defaultShiftCode || payload.defaultShift,
+    defaultShiftCode: payload.defaultShiftCode,
     attendancePolicyCode: payload.attendancePolicyCode,
     leavePolicyCode: payload.leavePolicyCode,
   };
@@ -435,8 +457,44 @@ const handleDisableDetail = (record) => {
         isLoading: true,
       },
     );
+    selectedDetail.value = {
+      ...selectedDetail.value,
+      status: 0,
+    };
     ElMessage.success("考勤档案已禁用");
-    closeDetail();
+    fetchAttendanceArchiveList();
+  });
+};
+
+const handleEnableDetail = (record) => {
+  if (!record?.id && !record?.archiveId) {
+    ElMessage.warning("缺少档案ID，无法启用");
+    return;
+  }
+  if (Number(record.status) === 1) {
+    ElMessage.warning("当前档案已是启用状态");
+    return;
+  }
+
+  ElMessageBox.confirm("确认启用该考勤档案吗？", "启用确认", {
+    type: "warning",
+    confirmButtonText: "启用",
+    cancelButtonText: "取消",
+  }).then(async () => {
+    await changeAttendanceArchiveStatus(
+      {
+        archiveId: record.archiveId || record.id,
+        status: 1,
+      },
+      {
+        isLoading: true,
+      },
+    );
+    selectedDetail.value = {
+      ...selectedDetail.value,
+      status: 1,
+    };
+    ElMessage.success("考勤档案已启用");
     fetchAttendanceArchiveList();
   });
 };
@@ -586,7 +644,9 @@ onUnmounted(() => {
         :mode="detailMode"
         :shiftOptions="shiftOptions"
         @save="handleSaveProfile"
+        @history="openProfileHistory"
         @disable="handleDisableDetail"
+        @enable="handleEnableDetail"
         @close="closeDetail"
       />
     </DragSidebar>

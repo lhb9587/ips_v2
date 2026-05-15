@@ -226,6 +226,15 @@ export function batchCreateAttendanceArchiveByDefault(data, config = {}) {
   })
 }
 
+export function queryAttendanceArchiveHistoryPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceArchiveHistoryPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryAttendanceShiftList(data, config = {}) {
   return request({
     url: attendanceApi.queryAttendanceShiftList,

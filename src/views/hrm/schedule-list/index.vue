@@ -420,12 +420,12 @@ const handleDateRangeChange = (value) => {
   fuzzySearch();
 };
 
-const openRuleDialog = () => {
-  resetRuleDialogState();
-  fetchRotationRuleOptions();
-  fetchWizardMembers();
-  showRuleDialog.value = true;
-};
+// const openRuleDialog = () => {
+//   resetRuleDialogState();
+//   fetchRotationRuleOptions();
+//   fetchWizardMembers();
+//   showRuleDialog.value = true;
+// };
 
 const resetRuleDialogState = () => {
   ruleForm.value = createInitialRuleForm();
@@ -500,6 +500,12 @@ const handleScheduleSwap = () => {
 const handleOpenScheduleSwapList = () => {
   router.push({
     name: "schedule-swap-list",
+  });
+};
+
+const handleOpenScheduleWizard = () => {
+  router.push({
+    name: "schedule-wizard",
   });
 };
 
@@ -726,17 +732,17 @@ onUnmounted(() => {
                   <el-button
                     type="primary"
                     plain
-                    @click="openRuleDialog"
-                  >
-                    轮班规则
-                  </el-button>
-                  <el-button
-                    type="primary"
-                    plain
                     :loading="swapLoading"
                     @click="handleScheduleSwap"
                   >
                     调班
+                  </el-button>
+                  <el-button
+                    type="primary"
+                    plain
+                    @click="handleOpenScheduleWizard"
+                  >
+                    排班向导
                   </el-button>
                   <el-button
                     type="primary"

@@ -1,4 +1,5 @@
 <script setup>
+import dayjs from "dayjs";
 import { computed, defineEmits, defineProps, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
 import { queryUnarchivedAttendanceArchivePage } from "@/api/attendance";
@@ -26,7 +27,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["close", "save", "disable"]);
+const emit = defineEmits(["close", "save", "disable", "enable", "history"]);
 
 const isEditing = ref(false);
 const formData = ref({});
@@ -47,6 +48,8 @@ const syncFormData = (detailInfo) => {
     attendanceSystem: defaultPolicy.attendanceSystem,
     organizationCode: detailInfo.organizationCode || "",
     organizationName: detailInfo.organizationName || "",
+    defaultShift: detailInfo.defaultShift || "",
+    defaultShiftCode: detailInfo.defaultShiftCode || "",
   };
 };
 
@@ -62,6 +65,14 @@ watch(
 const titleText = computed(() =>
   props.mode === "create" ? "新增考勤档案" : "考勤档案详情",
 );
+
+const summaryName = computed(() => formData.value.employeeName || props.detailInfo.employeeName || "-");
+
+const summaryOrganization = computed(
+  () => formData.value.organizationName || props.detailInfo.organizationName || "-",
+);
+
+const summaryStatus = computed(() => formatStatusValue(formData.value.status ?? props.detailInfo.status));
 
 const filteredShiftOptions = computed(() => props.shiftOptions);
 
@@ -146,6 +157,7 @@ const openShiftDialog = () => {
 
 const chooseShift = (row) => {
   formData.value.defaultShift = row.shiftName;
+  formData.value.defaultShiftCode = row.shiftCode;
   formData.value.organizationCode = row.organizationCode;
   formData.value.organizationName = row.organizationName;
   shiftDialogVisible.value = false;
@@ -165,6 +177,7 @@ const saveEdit = () => {
     employeeName: formData.value.employeeName || props.detailInfo.employeeName,
     attendanceNo: formData.value.attendanceNo || props.detailInfo.attendanceNo,
     defaultShift: formData.value.defaultShift,
+    defaultShiftCode: formData.value.defaultShiftCode || props.detailInfo.defaultShiftCode,
     organizationCode: formData.value.organizationCode || props.detailInfo.organizationCode,
     organizationName: formData.value.organizationName || props.detailInfo.organizationName,
     holidaySystem: defaultPolicy.holidaySystem,
@@ -177,20 +190,74 @@ const disableRecord = () => {
   emit("disable", props.detailInfo);
 };
 
-const detailRows = [
-  [
-    { label: "员工编码", key: "employeeCode" },
-    { label: "姓名", key: "employeeName", editable: true, type: "employee-dialog" },
-  ],
-  [
-    { label: "考勤编号", key: "attendanceNo" },
-    { label: "默认班次", key: "defaultShift", editable: true, type: "shift-dialog" },
-  ],
-  [
-    { label: "假期制度", key: "holidaySystem" },
-    { label: "考勤制度", key: "attendanceSystem" },
-  ],
+const enableRecord = () => {
+  emit("enable", props.detailInfo);
+};
+
+const openHistoryPage = () => {
+  if (!props.detailInfo?.archiveId && !props.detailInfo?.id) {
+    return ElMessage.warning("缺少档案ID，无法查看历史");
+  }
+  emit("history", props.detailInfo);
+};
+
+const detailSections = [
+  {
+    title: "考勤信息",
+    rows: [
+      [
+        { label: "员工编码", key: "employeeCode" },
+        { label: "打卡考勤", key: "isPunchAttendance", format: "boolean" },
+      ],
+      [
+        { label: "考勤制度", key: "attendanceSystem" },
+        { label: "假期制度", key: "holidaySystem" },
+      ],
+      [
+        { label: "默认班次", key: "defaultShift", editable: true, type: "shift-dialog" },
+        { label: "考勤状态", key: "status", format: "status" },
+      ],
+    ],
+  },
 ];
+
+function formatDateValue(value, pattern = "YYYY-MM-DD") {
+  if (!value) {
+    return "-";
+  }
+  const target = dayjs(value);
+  return target.isValid() ? target.format(pattern) : value;
+}
+
+function formatBooleanValue(value) {
+  if (value === 1 || value === "1") {
+    return "是";
+  }
+  if (value === 0 || value === "0") {
+    return "否";
+  }
+  return value || value === 0 ? value : "-";
+}
+
+function formatStatusValue(value) {
+  if (value === 1 || value === "1") {
+    return "启用";
+  }
+  if (value === 0 || value === "0") {
+    return "禁用";
+  }
+  return value || value === 0 ? value : "-";
+}
+
+function formatScheduleModeValue(value) {
+  if (value === "fixed") {
+    return "固定班次";
+  }
+  if (value === "rotation") {
+    return "轮班";
+  }
+  return value || "-";
+}
 
 const formatValue = (field) => {
   const value = formData.value[field.key] ?? props.detailInfo[field.key];
@@ -201,8 +268,37 @@ const formatValue = (field) => {
   ) {
     return "";
   }
+  if (field.format === "datetime") {
+    return formatDateValue(value, "YYYY-MM-DD HH:mm:ss");
+  }
+  if (field.format === "date") {
+    return formatDateValue(value);
+  }
+  if (field.format === "boolean") {
+    return formatBooleanValue(value);
+  }
+  if (field.format === "status") {
+    return formatStatusValue(value);
+  }
+  if (field.format === "scheduleMode") {
+    return formatScheduleModeValue(value);
+  }
   return value || "-";
 };
+
+const getValueClass = (field) => {
+  if (field.key !== "status") {
+    return "";
+  }
+  const value = formData.value[field.key] ?? props.detailInfo[field.key];
+  return Number(value) === 0 ? "detail-item__value--danger" : "detail-item__value--primary";
+};
+
+const summaryBadgeClass = computed(() =>
+  Number(formData.value.status ?? props.detailInfo.status) === 0
+    ? "detail-summary__badge--danger"
+    : "detail-summary__badge--primary",
+);
 
 const canEditField = (field) => {
   if (!isEditing.value || !field.editable) {
@@ -236,6 +332,13 @@ const canEditField = (field) => {
         </template>
         <template v-else>
           <el-button
+            v-if="props.mode !== 'create'"
+            plain
+            @click="openHistoryPage"
+          >
+            档案历史
+          </el-button>
+          <el-button
             type="primary"
             plain
             @click="startEdit"
@@ -249,6 +352,14 @@ const canEditField = (field) => {
             @click="disableRecord"
           >
             禁用
+          </el-button>
+          <el-button
+            v-else
+            type="success"
+            plain
+            @click="enableRecord"
+          >
+            开启
           </el-button>
         </template>
         <el-tooltip
@@ -265,10 +376,40 @@ const canEditField = (field) => {
     </div>
 
     <div class="attendance-profile-detail__content">
-      <section class="detail-section">
+      <section class="detail-summary">
+        <div class="detail-summary__avatar">
+          <i class="bx bx-user"></i>
+        </div>
+        <div class="detail-summary__main">
+          <div class="detail-summary__name">{{ summaryName }}</div>
+          <div class="detail-summary__meta">{{ summaryOrganization }}</div>
+          <div class="detail-summary__meta">考勤档案详情信息</div>
+        </div>
+        <div class="detail-summary__aside">
+          <div
+            class="detail-summary__badge"
+            :class="summaryBadgeClass"
+          >
+            {{ summaryStatus }}
+          </div>
+          <div class="detail-summary__aside-text">
+            默认班次：{{ formatValue({ key: "defaultShift" }) }}
+          </div>
+          <div class="detail-summary__aside-text">
+            考勤编号：{{ formatValue({ key: "attendanceNo" }) }}
+          </div>
+        </div>
+      </section>
+
+      <section
+        v-for="section in detailSections"
+        :key="section.title"
+        class="detail-section"
+      >
+        <div class="detail-section__title">{{ section.title }}</div>
         <div class="detail-section__rows">
           <div
-            v-for="(row, rowIndex) in detailRows"
+            v-for="(row, rowIndex) in section.rows"
             :key="rowIndex"
             class="detail-row"
           >
@@ -276,6 +417,7 @@ const canEditField = (field) => {
               v-for="field in row"
               :key="field.key"
               class="detail-item"
+              :class="{ 'detail-item--full': field.span === 2 }"
             >
               <div class="detail-item__label">{{ field.label }}</div>
               <div
@@ -311,6 +453,7 @@ const canEditField = (field) => {
               <div
                 v-else
                 class="detail-item__value"
+                :class="getValueClass(field)"
               >
                 {{ formatValue(field) }}
               </div>
@@ -476,7 +619,7 @@ const canEditField = (field) => {
 <style scoped lang="scss">
 .attendance-profile-detail {
   height: 100%;
-  background: #fff;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
 }
 
 .attendance-profile-detail__header {
@@ -520,31 +663,138 @@ const canEditField = (field) => {
 }
 
 .attendance-profile-detail__content {
-  padding: 24px 40px 40px;
+  padding: 24px 28px 32px;
+  display: grid;
+  gap: 18px;
+  overflow-y: auto;
+}
+
+.detail-summary,
+.detail-section {
+  border: 1px solid #e6edf7;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(65, 92, 136, 0.06);
+}
+
+.detail-summary {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) 220px;
+  gap: 20px;
+  align-items: center;
+  padding: 22px 24px;
+}
+
+.detail-summary__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #eef4fd 0%, #dfe9f8 100%);
+  color: #6d88b4;
+  font-size: 42px;
+}
+
+.detail-summary__main {
+  min-width: 0;
+}
+
+.detail-summary__name {
+  color: #1f2d49;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.detail-summary__meta {
+  margin-top: 8px;
+  color: #607089;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.detail-summary__aside {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding-left: 20px;
+  border-left: 1px solid #edf2f8;
+}
+
+.detail-summary__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-width: 72px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  background: #edf5ff;
+  color: #3666a8;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.detail-summary__badge--primary {
+  background: #edf5ff;
+  color: #3666a8;
+}
+
+.detail-summary__badge--danger {
+  background: #faecec;
+  color: #b85c5c;
+}
+
+.detail-summary__aside-text {
+  color: #5f6f89;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.detail-section {
+  padding: 22px 24px 24px;
+}
+
+.detail-section__title {
+  margin-bottom: 18px;
+  color: #1f2d49;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .detail-section__rows {
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
 .detail-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 72px;
-  row-gap: 16px;
+  column-gap: 24px;
+  row-gap: 14px;
 }
 
 .detail-item {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   min-width: 0;
+  min-height: 58px;
+  padding: 14px 16px;
+  border-radius: 4px;
+  background: #f8fbff;
+  border: 1px solid #edf2f8;
+}
+
+.detail-item--full {
+  grid-column: 1 / -1;
 }
 
 .detail-item__label {
   flex: 0 0 96px;
   color: #6d7b92;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
@@ -557,13 +807,26 @@ const canEditField = (field) => {
 .detail-item__value {
   color: #1f2d49;
   font-size: 14px;
-  line-height: 1.6;
+  font-weight: 500;
+  line-height: 1.7;
   word-break: break-all;
+}
+
+.detail-item__value--primary {
+  color: #3666a8;
+}
+
+.detail-item__value--danger {
+  color: #b85c5c;
 }
 
 :deep(.detail-item__editor .el-input__wrapper),
 :deep(.detail-item__editor .el-select) {
   width: 100%;
+}
+
+:deep(.detail-item__editor .el-input__wrapper) {
+  background: #fff;
 }
 
 .attendance-profile-dialog__body {
@@ -574,7 +837,7 @@ const canEditField = (field) => {
 .attendance-profile-dialog__filter {
   padding: 8px 12px;
   border: 1px solid #e7edf5;
-  border-radius: 8px;
+  border-radius: 4px;
   background: #fafcff;
 }
 
@@ -598,7 +861,7 @@ const canEditField = (field) => {
 
 .attendance-profile-dialog__table-wrap {
   border: 1px solid #e7edf5;
-  border-radius: 8px;
+  border-radius: 4px;
   overflow: hidden;
 }
 
@@ -621,7 +884,18 @@ const canEditField = (field) => {
 
 @media (max-width: 960px) {
   .attendance-profile-detail__content {
-    padding: 20px 24px 32px;
+    padding: 18px 18px 28px;
+  }
+
+  .detail-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-summary__aside {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid #edf2f8;
+    padding-top: 14px;
   }
 
   .detail-row {
@@ -631,6 +905,16 @@ const canEditField = (field) => {
 
   .attendance-profile-detail__actions {
     gap: 8px;
+  }
+
+  .detail-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .detail-item__label {
+    flex: none;
   }
 
   .attendance-profile-dialog__field {

@@ -91,9 +91,24 @@
           },
           {
             path: "/hrm/attendance-profile",
-            name: "attendance-profile",
+            name: "attendance-profile-root",
             meta: { title: "考勤档案", authRequired: true },
-            component: () => import("@/views/hrm/attendance-profile/index"),
+            component: () => import("@/views/common/route-view.vue"),
+            children: [
+              {
+                path: "/hrm/attendance-profile",
+                name: "attendance-profile",
+                meta: { title: "考勤档案", authRequired: true },
+                component: () => import("@/views/hrm/attendance-profile/index"),
+              },
+              {
+                path: "history",
+                name: "attendance-profile-history",
+                meta: { title: "档案历史", authRequired: true },
+                hidden: true,
+                component: () => import("@/views/hrm/attendance-profile/history"),
+              },
+            ],
           },
           {
             path: "/hrm/attendance-group",

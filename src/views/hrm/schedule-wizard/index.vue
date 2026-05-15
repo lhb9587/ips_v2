@@ -358,6 +358,11 @@ const handleSubmit = () => {
   )
     .then((res) => {
       ElMessage.success(res?.data?.message || "排班保存成功");
+      selectedEmployees.value = [];
+      dialogSelectedEmployees.value = [];
+      form.value.ruleId = "";
+      form.value.startDate = "";
+      form.value.endDate = "";
     })
     .finally(() => {
       submitLoading.value = false;
@@ -421,6 +426,7 @@ onMounted(() => {
               class="schedule-wizard-cell"
               :class="{
                 'is-outside': !cell.inMonth,
+                'is-current-month': cell.inMonth,
                 'is-weekend': cell.isWeekend,
               }"
             >
@@ -712,8 +718,12 @@ onMounted(() => {
 .schedule-wizard-cell-day {
   font-size: 24px;
   line-height: 1;
-  color: #c5cbd1;
+  color: #d7dde2;
   font-weight: 700;
+}
+
+.schedule-wizard-cell.is-current-month .schedule-wizard-cell-day {
+  color: #9aa7b3;
 }
 
 .schedule-wizard-cell.is-weekend {
@@ -721,7 +731,7 @@ onMounted(() => {
 }
 
 .schedule-wizard-cell.is-outside .schedule-wizard-cell-day {
-  color: #d7dde2;
+  color: #dde3e8;
 }
 
 .schedule-wizard-cell-shift {
