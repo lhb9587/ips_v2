@@ -1,0 +1,4 @@
+﻿interface:
+  display_name: "IPS V2 Frontend"
+  short_description: "面向 ips_v2 的 Vue3 中后台开发约束技能"
+  default_prompt: "Use $ips-v2-frontend 参考 ips_v2 现有实现新增或修改功能模块，并保持代码格式、文件结构和页面风格一致。"
