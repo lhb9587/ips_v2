@@ -780,6 +780,15 @@ const handleOpenVerticalList = () => {
   });
 };
 
+const handleMoreCommand = (command) => {
+  const commandMap = {
+    swapList: handleOpenScheduleSwapList,
+    unscheduledList: handleOpenUnscheduledList,
+    verticalList: handleOpenVerticalList,
+  };
+  commandMap[command]?.();
+};
+
 const handleEmployeeSelectionChange = (rows) => {
   selectedEmployees.value = rows;
 };
@@ -1010,27 +1019,25 @@ onUnmounted(() => {
                   >
                     排班时间修订
                   </el-button>
-                  <el-button
-                    type="primary"
-                    plain
-                    @click="handleOpenScheduleSwapList"
-                  >
-                    调班单
-                  </el-button>
-                  <el-button
-                    type="primary"
-                    plain
-                    @click="handleOpenUnscheduledList"
-                  >
-                    未排班列表
-                  </el-button>
-                  <el-button
-                    type="primary"
-                    plain
-                    @click="handleOpenVerticalList"
-                  >
-                    纵向显示
-                  </el-button>
+                  <el-dropdown @command="handleMoreCommand">
+                    <el-button>
+                      更多
+                      <i class="mdi mdi-chevron-down ms-1"></i>
+                    </el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="swapList">
+                          调班单
+                        </el-dropdown-item>
+                        <el-dropdown-item command="unscheduledList">
+                          未排班列表
+                        </el-dropdown-item>
+                        <el-dropdown-item command="verticalList">
+                          纵向显示
+                        </el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
                 </div>
               </span>
               <div class="d-flex gap-2">
@@ -1294,6 +1301,7 @@ onUnmounted(() => {
       width="860px"
       destroy-on-close
       :close-on-click-modal="false"
+      class="schedule-time-revision-dialog"
       @closed="resetTimeRevisionForm"
     >
       <div class="schedule-time-revision">
@@ -1371,44 +1379,56 @@ onUnmounted(() => {
               :key="item.segmentNo || index"
               class="schedule-time-revision__segment-card"
             >
-              <el-time-picker
-                v-model="item.workStartTime"
-                value-format="HH:mm"
-                format="HH:mm"
-                placeholder="上班时间"
-              />
-              <el-select
-                v-model="item.startNeedPunch"
-                placeholder="上班打卡"
-              >
-                <el-option
-                  label="是"
-                  :value="1"
+              <div class="schedule-time-revision__segment-field">
+                <div class="schedule-time-revision__segment-label">上班时间</div>
+                <el-time-picker
+                  v-model="item.workStartTime"
+                  value-format="HH:mm"
+                  format="HH:mm"
+                  placeholder="上班时间"
                 />
-                <el-option
-                  label="否"
-                  :value="0"
+              </div>
+              <div class="schedule-time-revision__segment-field">
+                <div class="schedule-time-revision__segment-label">上班是否打卡</div>
+                <el-select
+                  v-model="item.startNeedPunch"
+                  placeholder="上班是否打卡"
+                >
+                  <el-option
+                    label="是"
+                    :value="1"
+                  />
+                  <el-option
+                    label="否"
+                    :value="0"
+                  />
+                </el-select>
+              </div>
+              <div class="schedule-time-revision__segment-field">
+                <div class="schedule-time-revision__segment-label">下班时间</div>
+                <el-time-picker
+                  v-model="item.workEndTime"
+                  value-format="HH:mm"
+                  format="HH:mm"
+                  placeholder="下班时间"
                 />
-              </el-select>
-              <el-time-picker
-                v-model="item.workEndTime"
-                value-format="HH:mm"
-                format="HH:mm"
-                placeholder="下班时间"
-              />
-              <el-select
-                v-model="item.endNeedPunch"
-                placeholder="下班打卡"
-              >
-                <el-option
-                  label="是"
-                  :value="1"
-                />
-                <el-option
-                  label="否"
-                  :value="0"
-                />
-              </el-select>
+              </div>
+              <div class="schedule-time-revision__segment-field">
+                <div class="schedule-time-revision__segment-label">下班是否打卡</div>
+                <el-select
+                  v-model="item.endNeedPunch"
+                  placeholder="下班是否打卡"
+                >
+                  <el-option
+                    label="是"
+                    :value="1"
+                  />
+                  <el-option
+                    label="否"
+                    :value="0"
+                  />
+                </el-select>
+              </div>
             </div>
           </div>
           <div
@@ -1437,48 +1457,39 @@ onUnmounted(() => {
         append-to-body
       >
         <div class="candidate-toolbar">
-          <div class="candidate-toolbar__item">
-            <div class="candidate-toolbar__label">考勤组织</div>
-            <el-cascader
-              v-model="timeRevisionCandidateQuery.deptCodes"
-              class="candidate-toolbar__dept"
-              :options="organizationCascaderOptions"
-              :props="{ multiple: true, emitPath: false }"
-              collapse-tags
-              collapse-tags-tooltip
-              clearable
-              filterable
-              :show-all-levels="false"
-              placeholder="请选择考勤组织"
-              @change="handleTimeRevisionCandidateDeptChange"
-            />
-          </div>
-          <div class="candidate-toolbar__item">
-            <div class="candidate-toolbar__label">员工编码</div>
-            <el-input
-              v-model="timeRevisionCandidateQuery.talentCode"
-              class="candidate-toolbar__field"
-              placeholder="请输入员工编码"
-              clearable
-              @keyup.enter="handleTimeRevisionEmployeeSearch"
-            />
-          </div>
-          <div class="candidate-toolbar__item">
-            <div class="candidate-toolbar__label">员工姓名</div>
-            <el-input
-              v-model="timeRevisionCandidateQuery.talentName"
-              class="candidate-toolbar__field"
-              placeholder="请输入员工姓名"
-              clearable
-              @keyup.enter="handleTimeRevisionEmployeeSearch"
-            >
-              <template #prepend>
-                <el-button @click="handleTimeRevisionEmployeeSearch">
-                  <i class="bx bx-search-alt"></i>
-                </el-button>
-              </template>
-            </el-input>
-          </div>
+          <el-cascader
+            v-model="timeRevisionCandidateQuery.deptCodes"
+            class="candidate-toolbar__dept"
+            :options="organizationCascaderOptions"
+            :props="{ multiple: true, emitPath: false }"
+            collapse-tags
+            collapse-tags-tooltip
+            clearable
+            filterable
+            :show-all-levels="false"
+            placeholder="请选择考勤组织"
+            @change="handleTimeRevisionCandidateDeptChange"
+          />
+          <el-input
+            v-model="timeRevisionCandidateQuery.talentCode"
+            class="candidate-toolbar__field"
+            placeholder="请输入员工编码"
+            clearable
+            @keyup.enter="handleTimeRevisionEmployeeSearch"
+          />
+          <el-input
+            v-model="timeRevisionCandidateQuery.talentName"
+            class="candidate-toolbar__field"
+            placeholder="请输入员工姓名"
+            clearable
+            @keyup.enter="handleTimeRevisionEmployeeSearch"
+          >
+            <template #prepend>
+              <el-button @click="handleTimeRevisionEmployeeSearch">
+                <i class="bx bx-search-alt"></i>
+              </el-button>
+            </template>
+          </el-input>
           <el-button
             type="primary"
             @click="handleTimeRevisionEmployeeSearch"
@@ -1632,51 +1643,67 @@ onUnmounted(() => {
 
 .schedule-time-revision {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .schedule-time-revision__filter {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px 20px;
+  padding: 4px 4px 0;
 }
 
 .schedule-time-revision__field {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: 76px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .schedule-time-revision__label {
   color: #4c5d78;
   font-size: 14px;
   text-align: right;
+  line-height: 32px;
 }
 
 .schedule-time-revision__segment {
   border: 1px solid #e7edf5;
-  border-radius: 8px;
-  background: #fbfcfe;
-  padding: 12px;
+  border-radius: 10px;
+  background: #f9fbff;
+  padding: 14px;
 }
 
 .schedule-time-revision__segment-title {
   font-size: 14px;
   font-weight: 600;
   color: #243449;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .schedule-time-revision__segment-list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .schedule-time-revision__segment-card {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.schedule-time-revision__segment-field {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
   gap: 10px;
+}
+
+.schedule-time-revision__segment-label {
+  color: #4c5d78;
+  font-size: 14px;
+  text-align: right;
+  line-height: 32px;
 }
 
 .schedule-time-revision__empty {
@@ -1699,21 +1726,40 @@ onUnmounted(() => {
 
 .candidate-toolbar {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 16px;
 }
 
-.candidate-toolbar__item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.schedule-time-revision-dialog :deep(.el-dialog__header) {
+  padding: 18px 22px 12px;
+  margin-right: 0;
+  border-bottom: 1px solid #edf1f7;
 }
 
-.candidate-toolbar__label {
-  color: #4c5d78;
-  font-size: 14px;
-  white-space: nowrap;
+.schedule-time-revision-dialog :deep(.el-dialog__title) {
+  color: #1f2d49;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.schedule-time-revision-dialog :deep(.el-dialog__body) {
+  padding: 16px 22px 12px;
+}
+
+.schedule-time-revision-dialog :deep(.el-dialog__footer) {
+  padding: 8px 22px 16px;
+  border-top: 1px solid #edf1f7;
+}
+
+.schedule-time-revision-dialog :deep(.schedule-time-revision__field .el-input__wrapper),
+.schedule-time-revision-dialog :deep(.schedule-time-revision__field .el-select .el-input__wrapper),
+.schedule-time-revision-dialog :deep(.schedule-time-revision__field .el-date-editor),
+.schedule-time-revision-dialog :deep(.schedule-time-revision__segment-card .el-input__wrapper),
+.schedule-time-revision-dialog :deep(.schedule-time-revision__segment-card .el-select .el-input__wrapper),
+.schedule-time-revision-dialog :deep(.schedule-time-revision__segment-card .el-date-editor) {
+  min-height: 36px;
 }
 
 .candidate-toolbar__field {
@@ -1722,6 +1768,16 @@ onUnmounted(() => {
 
 .candidate-toolbar__dept {
   width: 260px;
+}
+
+.candidate-toolbar__dept :deep(.el-tag) {
+  max-width: 180px;
+}
+
+.candidate-toolbar__dept :deep(.el-tag__content) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .candidate-pagination {
@@ -1764,6 +1820,26 @@ onUnmounted(() => {
   .schedule-time-revision__filter,
   .schedule-time-revision__segment-card {
     grid-template-columns: 1fr;
+  }
+
+  .schedule-time-revision__field {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .schedule-time-revision__segment-field {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .schedule-time-revision__label {
+    text-align: left;
+    line-height: 1.4;
+  }
+
+  .schedule-time-revision__segment-label {
+    text-align: left;
+    line-height: 1.4;
   }
 }
 </style>

@@ -169,6 +169,7 @@ watch(
     class="attendance-profile-unarchived-dialog"
     :close-on-click-modal="false"
     destroy-on-close
+    top="5vh"
   >
     <div class="attendance-profile-unarchived">
       <div class="attendance-profile-unarchived__hero">

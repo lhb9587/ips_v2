@@ -312,6 +312,8 @@ const handleSaveProfile = async (payload) => {
     attendanceNo: payload.attendanceNo,
     attendanceOrgCode: payload.organizationCode || payload.attendanceOrgCode,
     defaultShiftCode: payload.defaultShiftCode,
+    processMode: payload.processMode,
+    effectiveDate: payload.effectiveDate,
     attendancePolicyCode: payload.attendancePolicyCode,
     leavePolicyCode: payload.leavePolicyCode,
   };
@@ -339,6 +341,11 @@ const getSelectedArchiveRows = () => {
   return gridRef.value?.getRowList?.() || [];
 };
 
+const getDisableConfirmMessage = () => {
+  const currentDateText = dayjs().format("YYYY年MM月DD日");
+  return `员工考勤档案禁用后，${currentDateText}及以后的排班记录将会删除，您确认要禁用吗？`;
+};
+
 const handleBatchChangeStatus = (status) => {
   const selectedRows = getSelectedArchiveRows();
   const actionText = status === 1 ? "启用" : "禁用";
@@ -358,7 +365,9 @@ const handleBatchChangeStatus = (status) => {
   }
 
   ElMessageBox.confirm(
-    `确认${actionText}选中的 ${selectedRows.length} 条考勤档案吗？`,
+    status === 0
+      ? getDisableConfirmMessage()
+      : `确认${actionText}选中的 ${selectedRows.length} 条考勤档案吗？`,
     `${actionText}确认`,
     {
       type: "warning",
@@ -443,7 +452,7 @@ const handleDisableDetail = (record) => {
     return;
   }
 
-  ElMessageBox.confirm("确认禁用该考勤档案吗？", "禁用确认", {
+  ElMessageBox.confirm(getDisableConfirmMessage(), "禁用确认", {
     type: "warning",
     confirmButtonText: "禁用",
     cancelButtonText: "取消",

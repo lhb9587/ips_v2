@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import dayjs from "dayjs";
 import { computed, defineEmits, defineProps, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
@@ -50,6 +50,8 @@ const syncFormData = (detailInfo) => {
     organizationName: detailInfo.organizationName || "",
     defaultShift: detailInfo.defaultShift || "",
     defaultShiftCode: detailInfo.defaultShiftCode || "",
+    processMode: detailInfo.processMode || "correct",
+    effectiveDate: detailInfo.effectiveDate || "",
   };
 };
 
@@ -170,6 +172,9 @@ const saveEdit = () => {
   if (!formData.value.defaultShift) {
     return ElMessage.warning("请选择默认班次");
   }
+  if (formData.value.processMode === "change" && !formData.value.effectiveDate) {
+    return ElMessage.warning("请选择生效日期");
+  }
 
   emit("save", {
     ...props.detailInfo,
@@ -178,6 +183,9 @@ const saveEdit = () => {
     attendanceNo: formData.value.attendanceNo || props.detailInfo.attendanceNo,
     defaultShift: formData.value.defaultShift,
     defaultShiftCode: formData.value.defaultShiftCode || props.detailInfo.defaultShiftCode,
+    processMode: formData.value.processMode || "correct",
+    effectiveDate:
+      formData.value.processMode === "change" ? formData.value.effectiveDate : undefined,
     organizationCode: formData.value.organizationCode || props.detailInfo.organizationCode,
     organizationName: formData.value.organizationName || props.detailInfo.organizationName,
     holidaySystem: defaultPolicy.holidaySystem,
@@ -201,25 +209,51 @@ const openHistoryPage = () => {
   emit("history", props.detailInfo);
 };
 
-const detailSections = [
-  {
-    title: "考勤信息",
-    rows: [
-      [
-        { label: "员工编码", key: "employeeCode" },
-        { label: "打卡考勤", key: "isPunchAttendance", format: "boolean" },
-      ],
-      [
-        { label: "考勤制度", key: "attendanceSystem" },
-        { label: "假期制度", key: "holidaySystem" },
-      ],
-      [
-        { label: "默认班次", key: "defaultShift", editable: true, type: "shift-dialog" },
-        { label: "考勤状态", key: "status", format: "status" },
-      ],
+const detailSections = computed(() => {
+  const rows = [
+    [
+      { label: "员工编码", key: "employeeCode" },
+      { label: "打卡考勤", key: "isPunchAttendance", format: "boolean" },
     ],
-  },
-];
+    [
+      { label: "考勤制度", key: "attendanceSystem" },
+      { label: "假期制度", key: "holidaySystem" },
+    ],
+    [
+      { label: "默认班次", key: "defaultShift", editable: true, type: "shift-dialog" },
+      { label: "考勤状态", key: "status", format: "status" },
+    ],
+  ];
+  if (isEditing.value) {
+    rows.unshift([
+      {
+        label: "档案信息处理",
+        key: "processMode",
+        editable: true,
+        type: "process-mode",
+        span: 2,
+      },
+    ]);
+  }
+  if (formData.value.processMode === "change") {
+    rows.push([
+      {
+        label: "生效日期",
+        key: "effectiveDate",
+        editable: true,
+        type: "effective-date",
+        format: "date",
+        span: 2,
+      },
+    ]);
+  }
+  return [
+    {
+      title: "考勤信息",
+      rows,
+    },
+  ];
+});
 
 function formatDateValue(value, pattern = "YYYY-MM-DD") {
   if (!value) {
@@ -259,6 +293,13 @@ function formatScheduleModeValue(value) {
   return value || "-";
 }
 
+function formatProcessModeValue(value) {
+  if (value === "change") {
+    return "变更档案信息";
+  }
+  return "纠正档案信息";
+}
+
 const formatValue = (field) => {
   const value = formData.value[field.key] ?? props.detailInfo[field.key];
   if (
@@ -282,6 +323,9 @@ const formatValue = (field) => {
   }
   if (field.format === "scheduleMode") {
     return formatScheduleModeValue(value);
+  }
+  if (field.key === "processMode") {
+    return formatProcessModeValue(value);
   }
   return value || "-";
 };
@@ -307,7 +351,10 @@ const canEditField = (field) => {
   if (field.key === "employeeName") {
     return props.mode === "create";
   }
-  return field.key === "defaultShift";
+  if (field.key === "effectiveDate") {
+    return formData.value.processMode === "change";
+  }
+  return ["defaultShift", "processMode"].includes(field.key);
 };
 </script>
 
@@ -383,7 +430,7 @@ const canEditField = (field) => {
         <div class="detail-summary__main">
           <div class="detail-summary__name">{{ summaryName }}</div>
           <div class="detail-summary__meta">{{ summaryOrganization }}</div>
-          <div class="detail-summary__meta">考勤档案详情信息</div>
+          <div class="detail-summary__meta">{{ formData.empTypeName }}</div>
         </div>
         <div class="detail-summary__aside">
           <div
@@ -407,6 +454,13 @@ const canEditField = (field) => {
         class="detail-section"
       >
         <div class="detail-section__title">{{ section.title }}</div>
+        <div
+          v-if="isEditing"
+          class="detail-section__tips"
+        >
+          温馨提示：纠正档案信息：对不准确的档案信息进行纠正，即修改最新的档案信息，不产生新的档案历史记录；
+          变更档案信息：档案信息从“生效日期”时间点发生变更，变更将会产生新的档案历史记录。
+        </div>
         <div class="detail-section__rows">
           <div
             v-for="(row, rowIndex) in section.rows"
@@ -449,6 +503,28 @@ const canEditField = (field) => {
                     <el-button @click="openShiftDialog">选择</el-button>
                   </template>
                 </el-input>
+              </div>
+              <div
+                v-else-if="canEditField(field) && field.type === 'process-mode'"
+                class="detail-item__editor"
+              >
+                <el-radio-group v-model="formData.processMode">
+                  <el-radio value="correct">纠正档案信息</el-radio>
+                  <el-radio value="change">变更档案信息</el-radio>
+                </el-radio-group>
+              </div>
+              <div
+                v-else-if="canEditField(field) && field.type === 'effective-date'"
+                class="detail-item__editor"
+              >
+                <el-date-picker
+                  v-model="formData.effectiveDate"
+                  type="date"
+                  value-format="YYYY-MM-DD"
+                  format="YYYY-MM-DD"
+                  placeholder="请选择生效日期"
+                  style="width: 100%"
+                />
               </div>
               <div
                 v-else
@@ -767,6 +843,13 @@ const canEditField = (field) => {
 .detail-section__rows {
   display: grid;
   gap: 14px;
+}
+
+.detail-section__tips {
+  margin: -6px 0 12px;
+  color: #d03050;
+  font-size: 13px;
+  line-height: 1.7;
 }
 
 .detail-row {
