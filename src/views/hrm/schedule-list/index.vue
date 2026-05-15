@@ -14,11 +14,13 @@ import { saveTableConfig } from "@/utils";
 import {
   queryAttendanceGroupPage,
   queryAttendanceRotationRuleList,
+  queryAttendanceShiftDetail,
   queryAttendanceShiftList,
   queryScheduleDetail,
   queryScheduleHorizontalPage,
   queryScheduleWizardMemberPage,
   submitScheduleDetailUpdate,
+  submitScheduleTimeRevision,
   submitScheduleSwap,
   submitScheduleWizard,
 } from "@/api/attendance";
@@ -52,6 +54,29 @@ const detailSubmitLoading = ref(false);
 const selectedDetail = ref({});
 const detailShiftLoading = ref(false);
 const detailShiftOptions = ref([]);
+const showTimeRevisionDialog = ref(false);
+const showTimeRevisionEmployeeDialog = ref(false);
+const timeRevisionLoading = ref(false);
+const timeRevisionShiftDetailLoading = ref(false);
+const timeRevisionMemberLoading = ref(false);
+const timeRevisionMemberOptions = ref([]);
+const timeRevisionEmployeeTableRef = ref(null);
+const timeRevisionSelectedCandidates = ref([]);
+const timeRevisionMemberTotal = ref(0);
+const timeRevisionCandidateQuery = ref({
+  talentCode: "",
+  talentName: "",
+  deptCodes: [],
+  pageNo: 1,
+  pageSize: 10,
+});
+const timeRevisionForm = ref({
+  startDate: dayjs().format("YYYY-MM-DD"),
+  endDate: dayjs().add(7, "day").format("YYYY-MM-DD"),
+  shiftCode: "",
+  employees: [],
+  segments: [],
+});
 const total = ref(0);
 const gridData = ref([]);
 const formInline = ref({
@@ -509,6 +534,240 @@ const handleOpenScheduleWizard = () => {
   });
 };
 
+const buildRevisionSegmentRecord = (item = {}, index = 0) => ({
+  segmentNo: item.segmentNo || index + 1,
+  attendanceType: item.attendanceType || "",
+  referenceDate: item.referenceDate || item.onDutyRefDate || "current",
+  workStartTime: item.workStartTime || item.onDutyTime || "",
+  startNeedPunch:
+    item.startNeedPunch === false
+      ? 0
+      : item.startNeedPunch === true
+        ? 1
+        : Number(item.startNeedPunch ?? item.onDutyNeedPunch ?? 1),
+  workEndTime: item.workEndTime || item.offDutyTime || "",
+  endNeedPunch:
+    item.endNeedPunch === false
+      ? 0
+      : item.endNeedPunch === true
+        ? 1
+        : Number(item.endNeedPunch ?? item.offDutyNeedPunch ?? 1),
+});
+
+const resetTimeRevisionForm = () => {
+  timeRevisionForm.value = {
+    startDate: dayjs().format("YYYY-MM-DD"),
+    endDate: dayjs().add(7, "day").format("YYYY-MM-DD"),
+    shiftCode: "",
+    employees: [],
+    segments: [],
+  };
+  timeRevisionMemberOptions.value = [];
+  timeRevisionMemberTotal.value = 0;
+  timeRevisionCandidateQuery.value = {
+    talentCode: "",
+    talentName: "",
+    deptCodes: [],
+    pageNo: 1,
+    pageSize: 10,
+  };
+  timeRevisionSelectedCandidates.value = [];
+  timeRevisionEmployeeTableRef.value?.clearSelection?.();
+};
+
+const fetchTimeRevisionMembers = () => {
+  timeRevisionMemberLoading.value = true;
+  return queryScheduleWizardMemberPage(
+    {
+      deptCode: undefined,
+      deptCodes: timeRevisionCandidateQuery.value.deptCodes?.length
+        ? timeRevisionCandidateQuery.value.deptCodes
+        : undefined,
+      talentCode: timeRevisionCandidateQuery.value.talentCode || undefined,
+      talentName: timeRevisionCandidateQuery.value.talentName || undefined,
+      pageNo: timeRevisionCandidateQuery.value.pageNo,
+      pageSize: timeRevisionCandidateQuery.value.pageSize,
+    },
+    {
+      isLoading: false,
+    },
+  )
+    .then((res) => {
+      const records = Array.isArray(res?.data) ? res.data : res?.data?.records || [];
+      timeRevisionMemberOptions.value = records.map((item) => ({
+        employeeCode: item.talentCode || "",
+        employeeName: item.talentName || "",
+        attendanceOrganization: item.deptName || "",
+        attendanceOrganizationCode: item.deptCode || "",
+        selectionDisabled: timeRevisionForm.value.employees.some(
+          (employee) => employee.employeeCode === (item.talentCode || ""),
+        ),
+      }));
+      timeRevisionMemberTotal.value = Number(res?.total) || Number(res?.data?.total) || 0;
+      if (Number(res?.currPage)) {
+        timeRevisionCandidateQuery.value.pageNo = Number(res.currPage);
+      }
+      timeRevisionSelectedCandidates.value = [];
+      nextTick(() => {
+        timeRevisionEmployeeTableRef.value?.clearSelection?.();
+      });
+    })
+    .finally(() => {
+      timeRevisionMemberLoading.value = false;
+    });
+};
+
+const handleOpenTimeRevisionDialog = () => {
+  resetTimeRevisionForm();
+  fetchDetailShiftOptions();
+  showTimeRevisionDialog.value = true;
+};
+
+const handleTimeRevisionShiftChange = (value) => {
+  if (!value) {
+    timeRevisionForm.value.segments = [];
+    return;
+  }
+  timeRevisionShiftDetailLoading.value = true;
+  queryAttendanceShiftDetail(
+    {
+      shiftCode: value,
+    },
+    {
+      isLoading: false,
+    },
+  )
+    .then((res) => {
+      const segments = Array.isArray(res?.data?.segments) ? res.data.segments : [];
+      timeRevisionForm.value.segments = segments.map((item, index) =>
+        buildRevisionSegmentRecord(item, index),
+      );
+    })
+    .finally(() => {
+      timeRevisionShiftDetailLoading.value = false;
+    });
+};
+
+const timeRevisionEmployeeNames = computed(() =>
+  (timeRevisionForm.value.employees || []).map((item) => item.employeeName).join("，"),
+);
+
+const openTimeRevisionEmployeeDialog = () => {
+  timeRevisionCandidateQuery.value.pageNo = 1;
+  timeRevisionCandidateQuery.value.talentCode = "";
+  timeRevisionCandidateQuery.value.talentName = "";
+  timeRevisionCandidateQuery.value.deptCodes = [];
+  showTimeRevisionEmployeeDialog.value = true;
+  fetchTimeRevisionMembers();
+};
+
+const handleTimeRevisionEmployeeSelection = (rows) => {
+  timeRevisionSelectedCandidates.value = rows;
+};
+
+const handleTimeRevisionEmployeeSearch = () => {
+  timeRevisionCandidateQuery.value.pageNo = 1;
+  fetchTimeRevisionMembers();
+};
+
+const handleTimeRevisionCandidateDeptChange = (value) => {
+  timeRevisionCandidateQuery.value.deptCodes = Array.isArray(value) ? value : [];
+  timeRevisionCandidateQuery.value.pageNo = 1;
+  fetchTimeRevisionMembers();
+};
+
+const handleTimeRevisionEmployeePagination = () => {
+  fetchTimeRevisionMembers();
+};
+
+const timeRevisionCandidateRowSelectable = (row) => !row.selectionDisabled;
+
+const confirmTimeRevisionEmployees = () => {
+  if (!timeRevisionSelectedCandidates.value.length) {
+    ElMessage.warning("请先选择员工");
+    return;
+  }
+  const employeeMap = new Map(
+    (timeRevisionForm.value.employees || []).map((item) => [item.employeeCode, item]),
+  );
+  timeRevisionSelectedCandidates.value.forEach((item) => {
+    employeeMap.set(item.employeeCode, {
+      employeeCode: item.employeeCode,
+      employeeName: item.employeeName,
+    });
+  });
+  timeRevisionForm.value.employees = [...employeeMap.values()];
+  showTimeRevisionEmployeeDialog.value = false;
+  timeRevisionSelectedCandidates.value = [];
+};
+
+const clearTimeRevisionEmployees = () => {
+  timeRevisionForm.value.employees = [];
+};
+
+const submitTimeRevision = () => {
+  if (!timeRevisionForm.value.startDate || !timeRevisionForm.value.endDate) {
+    ElMessage.warning("请选择开始日期和结束日期");
+    return;
+  }
+  if (!timeRevisionForm.value.shiftCode) {
+    ElMessage.warning("请选择班次");
+    return;
+  }
+  if (!timeRevisionForm.value.employees.length) {
+    ElMessage.warning("请选择员工");
+    return;
+  }
+  if (!timeRevisionForm.value.segments.length) {
+    ElMessage.warning("请完善班次信息");
+    return;
+  }
+  const hasInvalidSegment = timeRevisionForm.value.segments.some(
+    (item) =>
+      !item.workStartTime ||
+      !item.workEndTime ||
+      (item.startNeedPunch !== 0 && item.startNeedPunch !== 1) ||
+      (item.endNeedPunch !== 0 && item.endNeedPunch !== 1),
+  );
+  if (hasInvalidSegment) {
+    ElMessage.warning("请完整填写班次信息");
+    return;
+  }
+
+  timeRevisionLoading.value = true;
+  submitScheduleTimeRevision(
+    {
+      startDate: timeRevisionForm.value.startDate,
+      endDate: timeRevisionForm.value.endDate,
+      shiftCode: timeRevisionForm.value.shiftCode,
+      talentCodes: timeRevisionForm.value.employees.map((item) => item.employeeCode),
+      segments: JSON.stringify(
+        timeRevisionForm.value.segments.map((item, index) => ({
+          segmentNo: item.segmentNo || index + 1,
+          attendanceType: item.attendanceType || undefined,
+          referenceDate: item.referenceDate || undefined,
+          workStartTime: item.workStartTime,
+          startNeedPunch: Number(item.startNeedPunch),
+          workEndTime: item.workEndTime,
+          endNeedPunch: Number(item.endNeedPunch),
+        })),
+      ),
+      ...currentOperator.value,
+    },
+    {
+      isLoading: true,
+    },
+  )
+    .then((res) => {
+      ElMessage.success(res?.message || res?.data?.message || "排班时间修订成功");
+      showTimeRevisionDialog.value = false;
+      fetchScheduleList();
+    })
+    .finally(() => {
+      timeRevisionLoading.value = false;
+    });
+};
+
 const handleOpenUnscheduledList = () => {
   router.push({
     name: "schedule-unscheduled-list",
@@ -743,6 +1002,13 @@ onUnmounted(() => {
                     @click="handleOpenScheduleWizard"
                   >
                     排班向导
+                  </el-button>
+                  <el-button
+                    type="primary"
+                    plain
+                    @click="handleOpenTimeRevisionDialog"
+                  >
+                    排班时间修订
                   </el-button>
                   <el-button
                     type="primary"
@@ -1021,6 +1287,258 @@ onUnmounted(() => {
         @close="closeDetail"
       />
     </DragSidebar>
+
+    <el-dialog
+      v-model="showTimeRevisionDialog"
+      title="排班时间修订"
+      width="860px"
+      destroy-on-close
+      :close-on-click-modal="false"
+      @closed="resetTimeRevisionForm"
+    >
+      <div class="schedule-time-revision">
+        <div class="schedule-time-revision__filter">
+          <div class="schedule-time-revision__field">
+            <div class="schedule-time-revision__label">开始日期</div>
+            <el-date-picker
+              v-model="timeRevisionForm.startDate"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="开始日期"
+            />
+          </div>
+          <div class="schedule-time-revision__field">
+            <div class="schedule-time-revision__label">结束日期</div>
+            <el-date-picker
+              v-model="timeRevisionForm.endDate"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="结束日期"
+            />
+          </div>
+          <div class="schedule-time-revision__field">
+            <div class="schedule-time-revision__label">班次</div>
+            <el-select
+              v-model="timeRevisionForm.shiftCode"
+              filterable
+              clearable
+              :loading="detailShiftLoading"
+              placeholder="请选择班次"
+              @change="handleTimeRevisionShiftChange"
+            >
+              <el-option
+                v-for="item in detailShiftOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </div>
+          <div class="schedule-time-revision__field">
+            <div class="schedule-time-revision__label">员工</div>
+            <el-input
+              :model-value="timeRevisionEmployeeNames"
+              placeholder="请选择员工"
+              readonly
+              @click="openTimeRevisionEmployeeDialog"
+            >
+              <template #suffix>
+                <i
+                  v-if="timeRevisionForm.employees.length"
+                  class="mdi mdi-close-circle employee-clear"
+                  @click.stop="clearTimeRevisionEmployees"
+                ></i>
+                <i
+                  v-else
+                  class="mdi mdi-menu employee-picker"
+                ></i>
+              </template>
+            </el-input>
+          </div>
+        </div>
+
+        <div
+          v-loading="timeRevisionShiftDetailLoading"
+          class="schedule-time-revision__segment"
+        >
+          <div class="schedule-time-revision__segment-title">班次信息</div>
+          <div
+            v-if="timeRevisionForm.segments.length"
+            class="schedule-time-revision__segment-list"
+          >
+            <div
+              v-for="(item, index) in timeRevisionForm.segments"
+              :key="item.segmentNo || index"
+              class="schedule-time-revision__segment-card"
+            >
+              <el-time-picker
+                v-model="item.workStartTime"
+                value-format="HH:mm"
+                format="HH:mm"
+                placeholder="上班时间"
+              />
+              <el-select
+                v-model="item.startNeedPunch"
+                placeholder="上班打卡"
+              >
+                <el-option
+                  label="是"
+                  :value="1"
+                />
+                <el-option
+                  label="否"
+                  :value="0"
+                />
+              </el-select>
+              <el-time-picker
+                v-model="item.workEndTime"
+                value-format="HH:mm"
+                format="HH:mm"
+                placeholder="下班时间"
+              />
+              <el-select
+                v-model="item.endNeedPunch"
+                placeholder="下班打卡"
+              >
+                <el-option
+                  label="是"
+                  :value="1"
+                />
+                <el-option
+                  label="否"
+                  :value="0"
+                />
+              </el-select>
+            </div>
+          </div>
+          <div
+            v-else
+            class="schedule-time-revision__empty"
+          >
+            请先选择班次后编辑班次信息
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showTimeRevisionDialog = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="timeRevisionLoading"
+          @click="submitTimeRevision"
+        >
+          确定
+        </el-button>
+      </template>
+
+      <el-dialog
+        v-model="showTimeRevisionEmployeeDialog"
+        title="选择员工"
+        width="860px"
+        append-to-body
+      >
+        <div class="candidate-toolbar">
+          <div class="candidate-toolbar__item">
+            <div class="candidate-toolbar__label">考勤组织</div>
+            <el-cascader
+              v-model="timeRevisionCandidateQuery.deptCodes"
+              class="candidate-toolbar__dept"
+              :options="organizationCascaderOptions"
+              :props="{ multiple: true, emitPath: false }"
+              collapse-tags
+              collapse-tags-tooltip
+              clearable
+              filterable
+              :show-all-levels="false"
+              placeholder="请选择考勤组织"
+              @change="handleTimeRevisionCandidateDeptChange"
+            />
+          </div>
+          <div class="candidate-toolbar__item">
+            <div class="candidate-toolbar__label">员工编码</div>
+            <el-input
+              v-model="timeRevisionCandidateQuery.talentCode"
+              class="candidate-toolbar__field"
+              placeholder="请输入员工编码"
+              clearable
+              @keyup.enter="handleTimeRevisionEmployeeSearch"
+            />
+          </div>
+          <div class="candidate-toolbar__item">
+            <div class="candidate-toolbar__label">员工姓名</div>
+            <el-input
+              v-model="timeRevisionCandidateQuery.talentName"
+              class="candidate-toolbar__field"
+              placeholder="请输入员工姓名"
+              clearable
+              @keyup.enter="handleTimeRevisionEmployeeSearch"
+            >
+              <template #prepend>
+                <el-button @click="handleTimeRevisionEmployeeSearch">
+                  <i class="bx bx-search-alt"></i>
+                </el-button>
+              </template>
+            </el-input>
+          </div>
+          <el-button
+            type="primary"
+            @click="handleTimeRevisionEmployeeSearch"
+          >
+            搜索
+          </el-button>
+        </div>
+
+        <el-table
+          ref="timeRevisionEmployeeTableRef"
+          :data="timeRevisionMemberOptions"
+          border
+          height="420"
+          v-loading="timeRevisionMemberLoading"
+          row-key="employeeCode"
+          @selection-change="handleTimeRevisionEmployeeSelection"
+        >
+          <el-table-column
+            type="selection"
+            width="50"
+            :selectable="timeRevisionCandidateRowSelectable"
+          />
+          <el-table-column
+            prop="employeeCode"
+            label="员工编码"
+            min-width="120"
+          />
+          <el-table-column
+            prop="employeeName"
+            label="姓名"
+            min-width="120"
+          />
+          <el-table-column
+            prop="attendanceOrganization"
+            label="考勤组织"
+            min-width="220"
+          />
+        </el-table>
+
+        <div class="candidate-pagination">
+          <Pagination
+            :total="timeRevisionMemberTotal"
+            v-model:page="timeRevisionCandidateQuery.pageNo"
+            v-model:limit="timeRevisionCandidateQuery.pageSize"
+            :pageSizes="[10, 20, 50, 100]"
+            :storage="false"
+            @pagination="handleTimeRevisionEmployeePagination"
+          />
+        </div>
+        <template #footer>
+          <el-button @click="showTimeRevisionEmployeeDialog = false">取消</el-button>
+          <el-button
+            type="primary"
+            @click="confirmTimeRevisionEmployees"
+          >
+            确定
+          </el-button>
+        </template>
+      </el-dialog>
+    </el-dialog>
   </Layout>
 </template>
 
@@ -1112,6 +1630,104 @@ onUnmounted(() => {
   width: 100%;
 }
 
+.schedule-time-revision {
+  display: grid;
+  gap: 14px;
+}
+
+.schedule-time-revision__filter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.schedule-time-revision__field {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.schedule-time-revision__label {
+  color: #4c5d78;
+  font-size: 14px;
+  text-align: right;
+}
+
+.schedule-time-revision__segment {
+  border: 1px solid #e7edf5;
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 12px;
+}
+
+.schedule-time-revision__segment-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #243449;
+  margin-bottom: 10px;
+}
+
+.schedule-time-revision__segment-list {
+  display: grid;
+  gap: 10px;
+}
+
+.schedule-time-revision__segment-card {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.schedule-time-revision__empty {
+  font-size: 13px;
+  color: #8492a6;
+}
+
+.employee-clear,
+.employee-picker {
+  color: #909399;
+}
+
+.employee-clear {
+  cursor: pointer;
+}
+
+.employee-clear:hover {
+  color: #409eff;
+}
+
+.candidate-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.candidate-toolbar__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.candidate-toolbar__label {
+  color: #4c5d78;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.candidate-toolbar__field {
+  width: 220px;
+}
+
+.candidate-toolbar__dept {
+  width: 260px;
+}
+
+.candidate-pagination {
+  margin-top: 16px;
+}
+
 :deep(.schedule-rule-dialog .el-dialog__body) {
   padding-top: 14px;
 }
@@ -1143,6 +1759,11 @@ onUnmounted(() => {
 
   .schedule-rule-dialog__label {
     text-align: left;
+  }
+
+  .schedule-time-revision__filter,
+  .schedule-time-revision__segment-card {
+    grid-template-columns: 1fr;
   }
 }
 </style>

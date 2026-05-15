@@ -36,6 +36,7 @@ const attendanceApi = {
   queryScheduleUnscheduledPage: `${ATTENDANCE_URL}/api/attendance/schedule/list/unscheduled/page`,
   queryScheduleDetail: `${ATTENDANCE_URL}/api/attendance/schedule/list/detail`,
   submitScheduleDetailUpdate: `${ATTENDANCE_URL}/api/attendance/schedule/list/update`,
+  submitScheduleTimeRevision: `${ATTENDANCE_URL}/api/attendance/schedule/list/time-revision`,
   submitScheduleSwap: `${ATTENDANCE_URL}/api/attendance/schedule/list/swap`,
   queryScheduleSwapPage: `${ATTENDANCE_URL}/api/attendance/schedule/swap/page`,
   queryScheduleSwapDetail: `${ATTENDANCE_URL}/api/attendance/schedule/swap/detail`,

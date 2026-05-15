@@ -298,6 +298,15 @@ export function submitScheduleDetailUpdate(data, config = {}) {
   })
 }
 
+export function submitScheduleTimeRevision(data, config = {}) {
+  return request({
+    url: attendanceApi.submitScheduleTimeRevision,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function submitScheduleSwap(data, config = {}) {
   return request({
     url: attendanceApi.submitScheduleSwap,
