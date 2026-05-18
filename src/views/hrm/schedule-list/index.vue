@@ -739,19 +739,21 @@ const submitTimeRevision = () => {
     {
       startDate: timeRevisionForm.value.startDate,
       endDate: timeRevisionForm.value.endDate,
+      deptCode:
+        Array.isArray(timeRevisionCandidateQuery.value.deptCodes) &&
+        timeRevisionCandidateQuery.value.deptCodes.length
+          ? timeRevisionCandidateQuery.value.deptCodes[0]
+          : undefined,
+      talentName: timeRevisionCandidateQuery.value.talentName || undefined,
       shiftCode: timeRevisionForm.value.shiftCode,
       talentCodes: timeRevisionForm.value.employees.map((item) => item.employeeCode),
-      segments: JSON.stringify(
-        timeRevisionForm.value.segments.map((item, index) => ({
-          segmentNo: item.segmentNo || index + 1,
-          attendanceType: item.attendanceType || undefined,
-          referenceDate: item.referenceDate || undefined,
-          workStartTime: item.workStartTime,
-          startNeedPunch: Number(item.startNeedPunch),
-          workEndTime: item.workEndTime,
-          endNeedPunch: Number(item.endNeedPunch),
-        })),
-      ),
+      segments: timeRevisionForm.value.segments.map((item, index) => ({
+        segmentNo: item.segmentNo || index + 1,
+        workStartTime: item.workStartTime,
+        startNeedPunch: item.startNeedPunch === 1,
+        workEndTime: item.workEndTime,
+        endNeedPunch: item.endNeedPunch === 1,
+      })),
       ...currentOperator.value,
     },
     {

@@ -176,22 +176,31 @@ const saveEdit = () => {
     return ElMessage.warning("请选择生效日期");
   }
 
-  emit("save", {
-    ...props.detailInfo,
-    employeeCode: formData.value.employeeCode || props.detailInfo.employeeCode,
-    employeeName: formData.value.employeeName || props.detailInfo.employeeName,
-    attendanceNo: formData.value.attendanceNo || props.detailInfo.attendanceNo,
-    defaultShift: formData.value.defaultShift,
-    defaultShiftCode: formData.value.defaultShiftCode || props.detailInfo.defaultShiftCode,
-    processMode: formData.value.processMode || "correct",
-    effectiveDate:
-      formData.value.processMode === "change" ? formData.value.effectiveDate : undefined,
-    organizationCode: formData.value.organizationCode || props.detailInfo.organizationCode,
-    organizationName: formData.value.organizationName || props.detailInfo.organizationName,
-    holidaySystem: defaultPolicy.holidaySystem,
-    attendanceSystem: defaultPolicy.attendanceSystem,
-  });
-  isEditing.value = false;
+  emit(
+    "save",
+    {
+      ...props.detailInfo,
+      employeeCode: formData.value.employeeCode || props.detailInfo.employeeCode,
+      employeeName: formData.value.employeeName || props.detailInfo.employeeName,
+      attendanceNo: formData.value.attendanceNo || props.detailInfo.attendanceNo,
+      defaultShift: formData.value.defaultShift,
+      defaultShiftCode: formData.value.defaultShiftCode || props.detailInfo.defaultShiftCode,
+      isPunchAttendance:
+        formData.value.isPunchAttendance === undefined || formData.value.isPunchAttendance === null
+          ? 1
+          : Number(formData.value.isPunchAttendance),
+      processMode: formData.value.processMode || "correct",
+      effectiveDate:
+        formData.value.processMode === "change" ? formData.value.effectiveDate : undefined,
+      organizationCode: formData.value.organizationCode || props.detailInfo.organizationCode,
+      organizationName: formData.value.organizationName || props.detailInfo.organizationName,
+      holidaySystem: defaultPolicy.holidaySystem,
+      attendanceSystem: defaultPolicy.attendanceSystem,
+    },
+    () => {
+      isEditing.value = false;
+    },
+  );
 };
 
 const disableRecord = () => {
@@ -213,7 +222,7 @@ const detailSections = computed(() => {
   const rows = [
     [
       { label: "员工编码", key: "employeeCode" },
-      { label: "打卡考勤", key: "isPunchAttendance", format: "boolean" },
+      { label: "打卡考勤", key: "isPunchAttendance", format: "boolean", editable: true, type: "punch-radio" },
     ],
     [
       { label: "考勤制度", key: "attendanceSystem" },
@@ -354,7 +363,7 @@ const canEditField = (field) => {
   if (field.key === "effectiveDate") {
     return formData.value.processMode === "change";
   }
-  return ["defaultShift", "processMode"].includes(field.key);
+  return ["defaultShift", "processMode", "isPunchAttendance"].includes(field.key);
 };
 </script>
 
@@ -511,6 +520,15 @@ const canEditField = (field) => {
                 <el-radio-group v-model="formData.processMode">
                   <el-radio value="correct">纠正档案信息</el-radio>
                   <el-radio value="change">变更档案信息</el-radio>
+                </el-radio-group>
+              </div>
+              <div
+                v-else-if="canEditField(field) && field.type === 'punch-radio'"
+                class="detail-item__editor"
+              >
+                <el-radio-group v-model="formData.isPunchAttendance">
+                  <el-radio :value="1">是</el-radio>
+                  <el-radio :value="0">否</el-radio>
                 </el-radio-group>
               </div>
               <div

@@ -124,11 +124,15 @@ const selectableEmployees = computed(() => {
   }));
 });
 
+const mapDepartmentOptions = (list = []) =>
+  list.map((item) => ({
+    value: item.organizationCode || item.deptCode || item.deptId || item.value,
+    label: item.organizationName || item.deptName || item.label,
+    children: Array.isArray(item.children) ? mapDepartmentOptions(item.children) : [],
+  }));
+
 const departmentCascaderOptions = computed(() =>
-  (props.organizationOptions || []).map((item) => ({
-    value: item.organizationCode,
-    label: item.organizationName,
-  })),
+  mapDepartmentOptions(props.organizationOptions || []),
 );
 
 const closeSidebar = () => {
@@ -654,15 +658,10 @@ const deleteRecord = () => {
           clearable
           @keyup.enter="handleCandidateSearch"
         >
-          <template #prepend>
-            <el-button @click="handleCandidateSearch">
-              <i class="bx bx-search-alt"></i>
-            </el-button>
-          </template>
         </el-input>
         <el-cascader
           v-model="candidateQuery.deptCodes"
-          class="candidate-toolbar__dept"
+          popper-class="candidate-toolbar__dept"
           :options="departmentCascaderOptions"
           :props="{ multiple: true, emitPath: false }"
           collapse-tags
@@ -672,6 +671,7 @@ const deleteRecord = () => {
           :show-all-levels="false"
           placeholder="请选择部门"
           @change="handleCandidateDeptChange"
+          class="candidate-toolbar__deptinput"
         />
         <el-button
           type="primary"
@@ -748,6 +748,25 @@ const deleteRecord = () => {
   </div>
 </template>
 
+<style lang="scss">
+.candidate-toolbar__deptinput{
+  width: 250px;
+}
+.candidate-toolbar__deptinput .el-tag {
+  max-width: 160px;
+}
+.candidate-toolbar__deptinput .el-cascader__search-input {
+  min-width: 40px;
+}
+
+.candidate-toolbar__deptinput .el-cascader__tags {
+  flex-wrap: nowrap;
+}
+
+.candidate-toolbar__dept .el-checkbox{
+  margin-bottom: 0 !important;
+}
+</style>
 <style scoped lang="scss">
 .attendance-group-detail {
   display: flex;
@@ -887,6 +906,7 @@ const deleteRecord = () => {
 
 .candidate-toolbar {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 16px;
@@ -894,10 +914,6 @@ const deleteRecord = () => {
 
 .candidate-toolbar__field {
   width: 220px;
-}
-
-.candidate-toolbar__dept {
-  width: 260px;
 }
 
 .candidate-pagination {

@@ -24,14 +24,47 @@ const store = useStore();
 
 const bussId = 457;
 const gridName = "attendanceGroupGrid";
+const attendanceScope = computed(() => store.getters["attendanceScope/scope"] || {});
+const mapAttendanceOrganizationTree = (list = []) =>
+  list.map((item) => ({
+    organizationCode:
+      item.organizationCode || item.deptCode || item.deptId || item.value,
+    organizationName: item.organizationName || item.deptName || item.label,
+    organizationFullName:
+      item.organizationFullName ||
+      item.deptName ||
+      item.organizationName ||
+      item.label,
+    children: Array.isArray(item.children)
+      ? mapAttendanceOrganizationTree(item.children)
+      : [],
+  }));
 
-const attendanceOrganizationOptions = computed(() =>
-  (store.getters["attendanceScope/deptScopes"] || []).map((item) => ({
-    organizationCode: item.deptId,
-    organizationName: item.deptName,
-    organizationFullName: item.deptName,
-  })),
-);
+const flattenAttendanceOrganizations = (list = []) =>
+  list.reduce((result, item) => {
+    result.push(item);
+    if (Array.isArray(item.children) && item.children.length) {
+      result.push(...flattenAttendanceOrganizations(item.children));
+    }
+    return result;
+  }, []);
+
+const attendanceOrganizationOptions = computed(() => {
+  if (
+    Array.isArray(attendanceScope.value?.deptScopeTree) &&
+    attendanceScope.value.deptScopeTree.length > 0
+  ) {
+    return mapAttendanceOrganizationTree(attendanceScope.value.deptScopeTree);
+  }
+
+  return (store.getters["attendanceScope/deptScopes"] || []).map((item) => ({
+    organizationCode: item.deptId || item.deptCode || item.organizationCode,
+    organizationName: item.deptName || item.organizationName,
+    organizationFullName:
+      item.organizationFullName || item.deptName || item.organizationName,
+    children: [],
+  }));
+});
 
 const columnList = ref([]);
 const activeClass = ref([]);
@@ -218,12 +251,15 @@ const cellRenderer = (params) => {
 };
 
 const buildNewGroup = () => {
+  const allOrganizations = flattenAttendanceOrganizations(
+    attendanceOrganizationOptions.value,
+  );
   const defaultOrganization =
-    attendanceOrganizationOptions.value.find(
+    allOrganizations.find(
       (item) => String(item.organizationCode) === "102",
     ) ||
-    (attendanceOrganizationOptions.value.length === 1
-      ? attendanceOrganizationOptions.value[0]
+    (allOrganizations.length === 1
+      ? allOrganizations[0]
       : {});
 
   return {

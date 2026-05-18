@@ -1,11 +1,10 @@
-<!-- 考勤档案历史页，展示指定档案的历史变更卡片与分页信息。 -->
+﻿<!-- 考勤档案历史页，展示指定档案的历史变更卡片与分页信息。 -->
 <script setup>
 import dayjs from "dayjs";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
 import Layout from "@/layouts/main";
-import Pagination from "@/components/common/pagination/index.vue";
 import { queryAttendanceArchiveHistoryPage } from "@/api/attendance";
 
 const route = useRoute();
@@ -16,14 +15,15 @@ const archiveId = computed(() => route.query.archiveId || "");
 const loading = ref(false);
 const historyList = ref([]);
 const total = ref(0);
+const headerInfo = computed(() => historyList.value[0] || {});
 
 const calculateContentHeight = () => {
   const layout = store.state.layout.layoutType;
   const windowHeight = document.documentElement.clientHeight;
   if (layout === "vertical") {
-    return windowHeight - 236;
+    return windowHeight - 256;
   }
-  return windowHeight - 282;
+  return windowHeight - 302;
 };
 
 const contentHeight = ref(calculateContentHeight());
@@ -35,37 +35,14 @@ watch(
   },
 );
 
-const fetchLocalPageSize = () => {
-  const pageSizeData = JSON.parse(localStorage.getItem("pageSize")) || [];
-  const savedData = pageSizeData.find((item) => item.name === route.name);
-  return savedData ? savedData.pageSize : 10;
-};
-
 const listQuery = ref({
   pageNo: 1,
-  pageSize: fetchLocalPageSize(),
+  pageSize: 50,
 });
-
-const pageSizesList = ref([10, 20, 50, 100]);
-
-const changeTypeTextMap = {
-  create: "创建",
-  update: "编辑",
-  enable: "启用",
-  disable: "禁用",
-  delete: "删除",
-  batch_assign: "批量赋值",
-  batch_create_by_default: "批量建档",
-};
 
 const yesNoTextMap = {
   0: "否",
   1: "是",
-};
-
-const statusTextMap = {
-  0: "禁用",
-  1: "启用",
 };
 
 const safeParseSnapshot = (value) => {
@@ -91,7 +68,9 @@ const formatDateTime = (value) => {
     return "-";
   }
   const target = dayjs(value);
-  return target.isValid() ? target.format("YYYY-MM-DD HH:mm:ss") : formatDisplayValue(value);
+  return target.isValid()
+    ? target.format("YYYY-MM-DD HH:mm:ss")
+    : formatDisplayValue(value);
 };
 
 const resolveHistorySnapshot = (record) => {
@@ -107,39 +86,39 @@ const formatYesNoValue = (value) => {
   return formatDisplayValue(value);
 };
 
-const formatStatusValue = (value) => {
-  if (value === 0 || value === 1 || value === "0" || value === "1") {
-    return statusTextMap[Number(value)];
-  }
-  return formatDisplayValue(value);
-};
-
 const formatHistoryCard = (record, index) => {
   const snapshot = resolveHistorySnapshot(record);
+  const source = Object.keys(snapshot).length
+    ? { ...record, ...snapshot }
+    : record;
   return {
     ...record,
     sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index + 1,
     snapshot,
-    changeTypeText: changeTypeTextMap[record.changeType] || formatDisplayValue(record.changeType),
-    operatorNameText: formatDisplayValue(record.operatorName),
     createTimeText: formatDateTime(record.createTime),
-    employeeCode: formatDisplayValue(snapshot.talentCode || record.talentCode),
-    employeeName: formatDisplayValue(snapshot.talentName),
-    organizationName: formatDisplayValue(snapshot.attendanceOrgName || snapshot.attendanceOrgCode),
-    attendanceNo: formatDisplayValue(snapshot.attendanceNo),
-    attendanceSystem: formatDisplayValue(
-      snapshot.attendancePolicyName || snapshot.attendancePolicyCode,
+    employeeCode: formatDisplayValue(source.talentCode),
+    employeeName: formatDisplayValue(source.talentName),
+    organizationName: formatDisplayValue(
+      source.attendanceOrgName || source.attendanceOrgCode,
     ),
-    holidaySystem: formatDisplayValue(snapshot.leavePolicyName || snapshot.leavePolicyCode),
-    defaultShift: formatDisplayValue(snapshot.defaultShiftName || snapshot.defaultShiftCode),
-    isPunchAttendance: formatYesNoValue(snapshot.isPunchAttendance),
-    isAutoSchedule: formatYesNoValue(snapshot.isAutoSchedule),
-    scheduleMode: formatDisplayValue(snapshot.scheduleMode),
-    statusText: formatStatusValue(snapshot.status),
-    entryDate: formatDisplayValue(snapshot.entryDate),
-    regularDate: formatDisplayValue(snapshot.regularDate),
-    resignDate: formatDisplayValue(snapshot.resignDate),
-    remark: formatDisplayValue(record.remark),
+    attendanceNo: formatDisplayValue(source.attendanceNo),
+    attendanceSystem: formatDisplayValue(
+      source.attendancePolicyName || source.attendancePolicyCode,
+    ),
+    holidaySystem: formatDisplayValue(
+      source.leavePolicyName || source.leavePolicyCode,
+    ),
+    defaultShift: formatDisplayValue(
+      source.defaultShiftName || source.defaultShiftCode,
+    ),
+    attendanceOrgName: formatDisplayValue(source.attendanceOrgName),
+    attendancePositionCode: formatDisplayValue(
+      source.attendancePositionName || source.attendancePositionCode,
+    ),
+    effectiveDate: formatDisplayValue(source.effectiveDate),
+    expireDate: formatDisplayValue(source.expireDate),
+    isPunchAttendance: formatYesNoValue(source.isPunchAttendance),
+    isAutoSchedule: formatYesNoValue(source.isAutoSchedule),
   };
 };
 
@@ -161,8 +140,14 @@ const fetchHistoryList = () => {
     },
   )
     .then((res) => {
-      const records = Array.isArray(res?.data) ? res.data : [];
-      historyList.value = records.map((item, index) => formatHistoryCard(item, index));
+      const records = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.data?.records)
+        ? res.data.records
+        : [];
+      historyList.value = records.map((item, index) =>
+        formatHistoryCard(item, index),
+      );
       total.value = Number(res?.total || 0);
     })
     .catch(() => {
@@ -172,10 +157,6 @@ const fetchHistoryList = () => {
     .finally(() => {
       loading.value = false;
     });
-};
-
-const handlePagination = () => {
-  fetchHistoryList();
 };
 
 watch(
@@ -198,8 +179,15 @@ onMounted(() => {
         <div class="history-hero__content">
           <h1 class="history-hero__title">{{ pageTitle }}</h1>
           <div class="history-hero__meta">
-            <span class="history-hero__meta-item">档案ID：{{ archiveId || "-" }}</span>
-            <span class="history-hero__meta-item">历史记录：{{ total }}</span>
+            <span class="history-hero__meta-item">
+              员工编码：{{ headerInfo.employeeCode || "-" }}
+            </span>
+            <span class="history-hero__meta-item">
+              员工姓名：{{ headerInfo.employeeName || "-" }}
+            </span>
+            <span class="history-hero__meta-item">
+              组织：{{ headerInfo.organizationName || "-" }}
+            </span>
           </div>
         </div>
       </section>
@@ -212,78 +200,72 @@ onMounted(() => {
         <template v-if="historyList.length">
           <article
             v-for="item in historyList"
-            :key="item.historyId || `${item.archiveId}-${item.sid}`"
+            :key="item.historyId || `${item.sid}`"
             class="history-card"
           >
             <header class="history-card__header">
               <div class="history-card__title-wrap">
                 <div class="history-card__index">#{{ item.sid }}</div>
-                <div>
-                  <div class="history-card__title">{{ item.changeTypeText }}</div>
-                  <div class="history-card__sub">
-                    操作人：{{ item.operatorNameText }} ｜ 操作时间：{{ item.createTimeText }}
-                  </div>
+                <div class="history-card__sub">
+                  操作时间：{{ item.createTimeText }}
                 </div>
               </div>
-              <div class="history-card__status">{{ item.statusText }}</div>
             </header>
 
             <div class="history-card__grid">
               <div class="history-field">
-                <span class="history-field__label">员工编码</span>
-                <span class="history-field__value">{{ item.employeeCode }}</span>
-              </div>
-              <div class="history-field">
-                <span class="history-field__label">员工姓名</span>
-                <span class="history-field__value">{{ item.employeeName }}</span>
-              </div>
-              <div class="history-field">
-                <span class="history-field__label">组织</span>
-                <span class="history-field__value">{{ item.organizationName }}</span>
-              </div>
-              <div class="history-field">
                 <span class="history-field__label">考勤编号</span>
-                <span class="history-field__value">{{ item.attendanceNo }}</span>
+                <span class="history-field__value">{{
+                  item.attendanceNo
+                }}</span>
               </div>
               <div class="history-field">
                 <span class="history-field__label">考勤制度</span>
-                <span class="history-field__value">{{ item.attendanceSystem }}</span>
+                <span class="history-field__value">{{
+                  item.attendanceSystem
+                }}</span>
               </div>
               <div class="history-field">
                 <span class="history-field__label">假期制度</span>
-                <span class="history-field__value">{{ item.holidaySystem }}</span>
+                <span class="history-field__value">{{
+                  item.holidaySystem
+                }}</span>
               </div>
               <div class="history-field">
                 <span class="history-field__label">是否打卡考勤</span>
-                <span class="history-field__value">{{ item.isPunchAttendance }}</span>
-              </div>
-              <div class="history-field">
-                <span class="history-field__label">是否自动排班</span>
-                <span class="history-field__value">{{ item.isAutoSchedule }}</span>
+                <span class="history-field__value">{{
+                  item.isPunchAttendance
+                }}</span>
               </div>
               <div class="history-field">
                 <span class="history-field__label">默认班次</span>
-                <span class="history-field__value">{{ item.defaultShift }}</span>
+                <span class="history-field__value">{{
+                  item.defaultShift
+                }}</span>
               </div>
               <div class="history-field">
-                <span class="history-field__label">排班模式</span>
-                <span class="history-field__value">{{ item.scheduleMode }}</span>
+                <span class="history-field__label">考勤组织</span>
+                <span class="history-field__value">{{
+                  item.attendanceOrgName
+                }}</span>
+              </div>
+
+              <div class="history-field">
+                <span class="history-field__label">考勤职位</span>
+                <span class="history-field__value">{{
+                  item.attendancePositionName
+                }}</span>
+              </div>
+
+              <div class="history-field">
+                <span class="history-field__label">生效日期</span>
+                <span class="history-field__value">{{
+                  item.effectiveDate
+                }}</span>
               </div>
               <div class="history-field">
-                <span class="history-field__label">入职日期</span>
-                <span class="history-field__value">{{ item.entryDate }}</span>
-              </div>
-              <div class="history-field">
-                <span class="history-field__label">转正日期</span>
-                <span class="history-field__value">{{ item.regularDate }}</span>
-              </div>
-              <div class="history-field">
-                <span class="history-field__label">离职日期</span>
-                <span class="history-field__value">{{ item.resignDate }}</span>
-              </div>
-              <div class="history-field history-field--wide">
-                <span class="history-field__label">备注</span>
-                <span class="history-field__value">{{ item.remark }}</span>
+                <span class="history-field__label">失效日期</span>
+                <span class="history-field__value">{{ item.expireDate }}</span>
               </div>
             </div>
           </article>
@@ -292,21 +274,6 @@ onMounted(() => {
         <el-empty
           v-else
           description="暂无档案历史"
-        />
-      </section>
-
-      <section
-        v-if="total > 0"
-        class="history-pagination card"
-      >
-        <Pagination
-          :total="total"
-          v-model:page="listQuery.pageNo"
-          v-model:limit="listQuery.pageSize"
-          :pageSizes="pageSizesList"
-          :storage="false"
-          storageName="attendanceProfileHistoryPage"
-          @pagination="handlePagination"
         />
       </section>
     </div>
@@ -319,8 +286,11 @@ onMounted(() => {
   padding-right: 16px !important;
   padding-bottom: 20px !important;
   padding-left: 16px !important;
-  background:
-    radial-gradient(circle at top right, rgba(79, 127, 193, 0.14), transparent 24%),
+  background: radial-gradient(
+      circle at top right,
+      rgba(79, 127, 193, 0.14),
+      transparent 24%
+    ),
     linear-gradient(180deg, #f4f7fb 0%, #eef3f8 100%);
 }
 
@@ -335,6 +305,7 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 16px 36px rgba(63, 91, 137, 0.08);
   backdrop-filter: blur(8px);
+  margin-bottom: 0;
 }
 
 .history-hero {
@@ -483,10 +454,6 @@ onMounted(() => {
   font-size: 15px;
   line-height: 1.6;
   word-break: break-all;
-}
-
-.history-pagination {
-  padding: 12px 20px;
 }
 
 @media (max-width: 1200px) {

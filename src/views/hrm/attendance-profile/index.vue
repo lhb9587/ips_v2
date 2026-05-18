@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import dayjs from "dayjs";
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -193,7 +193,7 @@ const formatDateTimeCell = (value) => {
     return "";
   }
   const target = dayjs(value);
-  return target.isValid() ? target.format("YYYY-MM-DD HH:mm") : "";
+  return target.isValid() ? target.format("YYYY-MM-DD HH:mm:ss") : "";
 };
 
 const formatSwitchCell = (value) => {
@@ -299,7 +299,7 @@ const openProfileHistory = (record) => {
   });
 };
 
-const handleSaveProfile = async (payload) => {
+const handleSaveProfile = async (payload, onSuccess) => {
   const archiveId = payload.archiveId || payload.id;
   if (!archiveId) {
     ElMessage.warning("缺少档案ID，无法保存");
@@ -308,14 +308,13 @@ const handleSaveProfile = async (payload) => {
 
   const requestData = {
     archiveId,
-    talentCode: payload.employeeCode || payload.talentCode,
-    attendanceNo: payload.attendanceNo,
-    attendanceOrgCode: payload.organizationCode || payload.attendanceOrgCode,
+    processMode: payload.processMode || "correct",
     defaultShiftCode: payload.defaultShiftCode,
-    processMode: payload.processMode,
     effectiveDate: payload.effectiveDate,
-    attendancePolicyCode: payload.attendancePolicyCode,
-    leavePolicyCode: payload.leavePolicyCode,
+    isPunchAttendance:
+      payload.isPunchAttendance === undefined || payload.isPunchAttendance === null
+        ? 1
+        : payload.isPunchAttendance,
   };
 
   Object.keys(requestData).forEach((key) => {
@@ -333,6 +332,7 @@ const handleSaveProfile = async (payload) => {
     attendanceSystem: payload.attendanceSystem || defaultAttendanceSystem,
   };
   detailMode.value = "view";
+  onSuccess?.();
   ElMessage.success("考勤档案已更新");
   fetchAttendanceArchiveList();
 };
