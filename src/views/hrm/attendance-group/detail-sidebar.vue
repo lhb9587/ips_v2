@@ -51,8 +51,6 @@ const buildMemberRecord = (item = {}) => ({
   employeeName: item.employeeName || item.talentName || "",
   attendancePosition: item.attendancePosition || item.posName || "",
   attendanceOrganization: item.attendanceOrganization || item.deptName || "",
-  transferTime: item.transferTime || item.transferOutTime || "",
-  transferOrganization: item.transferOrganization || item.transferOutOrg || "",
 });
 
 const syncFormData = (detailInfo) => {
@@ -291,10 +289,8 @@ const fetchCandidateList = () => {
       candidateList.value = records.map((item) => ({
         employeeCode: item.talentCode || "",
         employeeName: item.talentName || "",
-        attendancePosition: item.posId || "",
+        attendancePosition: item.posName || "",
         attendanceOrganization: item.deptName || "",
-        transferTime: item.joinDate || "",
-        transferOrganization: "",
         empStatus: item.empStatus || "",
         alreadyInGroup: Boolean(item.alreadyInGroup),
       }));
@@ -529,32 +525,22 @@ const deleteRecord = () => {
           <el-table-column
             prop="employeeCode"
             label="员工编码"
-            min-width="110"
+            min-width="80"
           />
           <el-table-column
             prop="employeeName"
             label="姓名"
-            min-width="100"
+            min-width="80"
           />
           <el-table-column
             prop="attendancePosition"
             label="考勤职位"
-            min-width="130"
+            min-width="100"
           />
           <el-table-column
             prop="attendanceOrganization"
             label="考勤组织"
             min-width="150"
-          />
-          <el-table-column
-            prop="transferTime"
-            label="调出时间"
-            min-width="120"
-          />
-          <el-table-column
-            prop="transferOrganization"
-            label="调出组织"
-            min-width="140"
           />
           <el-table-column
             v-if="isEditing"

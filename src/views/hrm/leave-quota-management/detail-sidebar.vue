@@ -41,10 +41,9 @@ const employeeFields = [
     { label: "转正日期", key: "regularDate" },
   ],
   [
-    { label: "加入集团日期", key: "groupJoinDate" },
     { label: "加入公司日期", key: "companyJoinDate" },
+    { label: "参加工作日期", key: "firstWorkDate" }
   ],
-  [{ label: "参加工作日期", key: "firstWorkDate" }],
 ];
 
 const leaveFields = [

@@ -71,7 +71,6 @@ const activeClass = ref([]);
 const rowHeight = ref(40);
 const isFull = ref(false);
 const boxRef = ref(null);
-const gridRef = ref(null);
 const diminput = ref("");
 const detailVisible = ref(false);
 const detailMode = ref("view");
@@ -84,9 +83,6 @@ const formInline = ref({});
 const total = ref(0);
 const gridData = ref([]);
 const detailLoading = ref(false);
-const gridOptions = {
-  rowMultiSelectWithClick: true,
-};
 
 const currentOperator = computed(() => ({
   operatorId: store.state.user.userId || undefined,
@@ -566,7 +562,6 @@ onUnmounted(() => {
               :activeClass="activeClass"
               :cellRenderer="cellRenderer"
               :rowClick="openGroupDetail"
-              :gridOptions="gridOptions"
             />
           </div>
           <div
