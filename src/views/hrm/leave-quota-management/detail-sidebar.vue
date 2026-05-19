@@ -34,7 +34,7 @@ const employeeFields = [
   ],
   [
     { label: "行政组织", key: "organizationName" },
-    { label: "职位", key: "positionName" },
+    { label: "职位", key: "posName" },
   ],
   [
     { label: "入职日期", key: "hireDate" },

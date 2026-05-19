@@ -244,6 +244,24 @@ export function queryAttendanceArchiveHistoryPage(data, config = {}) {
   })
 }
 
+export function queryAttendancePunchRecordPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendancePunchRecordPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryAttendanceRecordPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceRecordPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryAttendanceShiftList(data, config = {}) {
   return request({
     url: attendanceApi.queryAttendanceShiftList,
@@ -364,6 +382,69 @@ export function submitScheduleWizard(data, config = {}) {
 export function queryAttendanceRotationRuleList(data, config = {}) {
   return request({
     url: attendanceApi.queryAttendanceRotationRuleList,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryAttendanceCalendarMonth(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceCalendarMonth,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryAttendanceCalendarDayDetail(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceCalendarDayDetail,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryAttendanceCalcParams(data = {}, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceCalcParams,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function initAttendanceCalcCycleState(data, config = {}) {
+  return request({
+    url: attendanceApi.initAttendanceCalcCycleState,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryAttendanceCalcNotCalculatedPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceCalcNotCalculatedPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryAttendanceCalcPendingPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceCalcPendingPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryAttendanceCalcCalculatedPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceCalcCalculatedPage,
     method: 'post',
     data,
     ...config

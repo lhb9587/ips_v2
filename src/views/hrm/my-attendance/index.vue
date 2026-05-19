@@ -1,6 +1,7 @@
 <!-- 我的考勤首页，展示员工自助考勤工作台与常用入口。 -->
 <script setup>
 import { useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
 import Layout from "@/layouts/main";
 
 const router = useRouter();
@@ -23,7 +24,11 @@ const quickEntries = [
     icon: "bx bx-briefcase-alt-2",
     routeName: "my-overtime-application",
   },
-  { label: "我要出差", icon: "bx bx-briefcase" },
+  {
+    label: "我要出差",
+    icon: "bx bx-briefcase",
+    path: "/businesstrip-management",
+  },
   {
     label: "我要补卡",
     icon: "bx bx-id-card",
@@ -44,10 +49,25 @@ const salaryChanges = [
   { label: "累计已预扣预缴", value: "↑ 100%" },
 ];
 
+const attendanceOverview = {
+  overtimeHours: 0,
+  exceptionCount: 0,
+};
+
 const handleQuickEntry = (item) => {
   if (item.routeName) {
     router.push({ name: item.routeName });
+    return;
   }
+  if (item.path) {
+    router.push(item.path);
+    return;
+  }
+  ElMessage.info("该功能暂未开放");
+};
+
+const goAttendanceCalendar = () => {
+  router.push({ name: "my-attendance-calendar" });
 };
 </script>
 
@@ -193,27 +213,33 @@ const handleQuickEntry = (item) => {
                   <span class="status-item__icon status-item__icon--blue">
                     <i class="bx bx-briefcase-alt-2"></i>
                   </span>
-                  <div class="status-item__value">
-                    <span>加班</span>
-                    <strong>0</strong>
-                    <span>小时</span>
-                  </div>
+                <div class="status-item__value">
+                  <span>加班</span>
+                  <strong>{{ attendanceOverview.overtimeHours }}</strong>
+                  <span>小时</span>
                 </div>
-                <div class="status-item">
+              </div>
+              <div class="status-item">
                   <span class="status-item__icon status-item__icon--red">
                     <i class="bx bx-error-circle"></i>
                   </span>
-                  <div class="status-item__value">
-                    <span>异常</span>
-                    <strong>0</strong>
-                    <span>次</span>
-                  </div>
+                <div class="status-item__value">
+                  <span>异常</span>
+                  <strong>{{ attendanceOverview.exceptionCount }}</strong>
+                  <span>次</span>
                 </div>
               </div>
-              <div class="card-link-row">
-                <button type="button" class="text-link-button">详情</button>
-              </div>
-            </article>
+            </div>
+            <div class="card-link-row">
+                <button
+                  type="button"
+                  class="text-link-button text-link-button--interactive"
+                  @click="goAttendanceCalendar"
+                >
+                  详情
+                </button>
+            </div>
+          </article>
 
             <article class="attendance-card main-card leave-card">
               <div class="section-title">我的年假</div>
@@ -714,6 +740,10 @@ const handleQuickEntry = (item) => {
   font-size: 14px;
   text-decoration: none;
   cursor: default;
+}
+
+.text-link-button--interactive {
+  cursor: pointer;
 }
 
 .attendance-date-card__time {

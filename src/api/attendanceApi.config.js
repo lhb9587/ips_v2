@@ -29,6 +29,8 @@ const attendanceApi = {
   batchAssignAttendanceArchive: `${ATTENDANCE_URL}/api/attendance/archive/batch-assign`,
   batchCreateAttendanceArchiveByDefault: `${ATTENDANCE_URL}/api/attendance/archive/batch-create-by-default`,
   queryAttendanceArchiveHistoryPage: `${ATTENDANCE_URL}/api/attendance/archive/history/page`,
+  queryAttendancePunchRecordPage: `${ATTENDANCE_URL}/api/attendance/punch/record/page`,
+  queryAttendanceRecordPage: `${ATTENDANCE_URL}/api/attendance/record/page`,
   queryAttendanceShiftList: `${ATTENDANCE_URL}/api/attendance/setting/shift/list`,
   queryAttendanceShiftDetail: `${ATTENDANCE_URL}/api/attendance/setting/shift/detail`,
   queryScheduleHorizontalPage: `${ATTENDANCE_URL}/api/attendance/schedule/list/horizontal/page`,
@@ -43,6 +45,13 @@ const attendanceApi = {
   queryScheduleWizardMemberPage: `${ATTENDANCE_URL}/api/attendance/schedule/wizard/member/page`,
   submitScheduleWizard: `${ATTENDANCE_URL}/api/attendance/schedule/wizard/submit`,
   queryAttendanceRotationRuleList: `${ATTENDANCE_URL}/api/attendance/setting/rotation-rule/list`,
+  queryAttendanceCalendarMonth: `${ATTENDANCE_URL}/api/attendance/calendar/month`,
+  queryAttendanceCalendarDayDetail: `${ATTENDANCE_URL}/api/attendance/calendar/day-detail`,
+  queryAttendanceCalcParams: `${ATTENDANCE_URL}/api/attendance/calc/params`,
+  initAttendanceCalcCycleState: `${ATTENDANCE_URL}/api/attendance/calc/cycle-state/init`,
+  queryAttendanceCalcNotCalculatedPage: `${ATTENDANCE_URL}/api/attendance/calc/not-calculated/page`,
+  queryAttendanceCalcPendingPage: `${ATTENDANCE_URL}/api/attendance/calc/pending/page`,
+  queryAttendanceCalcCalculatedPage: `${ATTENDANCE_URL}/api/attendance/calc/calculated/page`,
 }
 
 export default attendanceApi

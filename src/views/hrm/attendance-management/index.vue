@@ -42,9 +42,9 @@ const moduleGroups = [
         route: "/hrm/attendance-profile",
       },
       {
-        title: "出差单",
-        description: "员工出差单的维护",
-        route: "/businesstrip-management",
+        title: "打卡记录",
+        description: "员工打卡记录的查询和导入",
+        route: "/hrm/attendance-record",
       },
       {
         title: "加班单",
@@ -60,12 +60,12 @@ const moduleGroups = [
       {
         title: "出勤记录",
         description: "员工考勤综合查询，打卡、请假和出差等",
-        route: "/workbench/hrm/attendance_record",
+        route: "/hrm/attendance-summary",
       },
       {
         title: "考勤计算",
         description: "专员考勤看板，可以查看考勤明细以及汇总",
-        route: "/workbench/hrm/attendance_calculation",
+        route: "/hrm/attendance-calculation",
       },
     ],
   },
