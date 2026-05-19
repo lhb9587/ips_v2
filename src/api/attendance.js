@@ -56,6 +56,15 @@ export function changeAttendanceArchiveStatus(data, config = {}) {
   })
 }
 
+export function batchAssignAttendanceArchive(data, config = {}) {
+  return request({
+    url: attendanceApi.batchAssignAttendanceArchive,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryLeaveQuotaAccountPage(data, config = {}) {
   return request({
     url: attendanceApi.queryLeaveQuotaAccountPage,

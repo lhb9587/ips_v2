@@ -467,7 +467,7 @@ const canEditField = (field) => {
           v-if="isEditing"
           class="detail-section__tips"
         >
-          温馨提示：纠正档案信息：对不准确的档案信息进行纠正，即修改最新的档案信息，不产生新的档案历史记录；
+          温馨提示：纠正档案信息：对不准确的档案信息进行纠正，即修改最新的档案信息，不产生新的档案历史记录；<br/>
           变更档案信息：档案信息从“生效日期”时间点发生变更，变更将会产生新的档案历史记录。
         </div>
         <div class="detail-section__rows">

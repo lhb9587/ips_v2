@@ -1,6 +1,6 @@
 ﻿<script setup>
 import dayjs from "dayjs";
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -11,9 +11,11 @@ import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import AttendanceProfileDetailSidebar from "@/views/hrm/attendance-profile/detail-sidebar.vue";
+import AttendanceProfileBatchAssignDialog from "@/views/hrm/attendance-profile/batch-assign-dialog.vue";
 import AttendanceProfileUnarchivedDialog from "@/views/hrm/attendance-profile/unarchived-dialog.vue";
 import { saveTableConfig } from "@/utils";
 import {
+  batchAssignAttendanceArchive,
   queryAttendanceArchiveDetail,
   queryAttendanceArchivePage,
   queryAttendanceShiftList,
@@ -46,6 +48,7 @@ const gridRef = ref(null);
 const diminput = ref("");
 const detailVisible = ref(false);
 const unarchivedDialogVisible = ref(false);
+const batchAssignDialogVisible = ref(false);
 const detailMode = ref("view");
 const selectedDetail = ref({});
 const total = ref(0);
@@ -130,6 +133,17 @@ const listQuery = ref({
 });
 const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
 const formInline = ref({});
+
+const attendanceOrganizationOptions = computed(() => {
+  const currentScope = store.getters["attendanceScope/scope"] || {};
+  if (
+    Array.isArray(currentScope?.deptScopeTree) &&
+    currentScope.deptScopeTree.length > 0
+  ) {
+    return currentScope.deptScopeTree;
+  }
+  return store.getters["attendanceScope/deptScopes"] || [];
+});
 
 const fetchShiftOptions = () => {
   queryAttendanceShiftList(
@@ -232,6 +246,10 @@ const cellRenderer = (params) => {
 
 const openUnarchivedDialog = () => {
   unarchivedDialogVisible.value = true;
+};
+
+const openBatchAssignDialog = () => {
+  batchAssignDialogVisible.value = true;
 };
 
 const openProfileDetail = async (params) => {
@@ -442,6 +460,15 @@ const handleBatchDelete = () => {
   });
 };
 
+const handleBatchAssign = async (payload) => {
+  await batchAssignAttendanceArchive(payload, {
+    isLoading: true,
+  });
+  batchAssignDialogVisible.value = false;
+  ElMessage.success("批量赋值成功");
+  fetchAttendanceArchiveList();
+};
+
 const handleDisableDetail = (record) => {
   if (!record?.id && !record?.archiveId) {
     ElMessage.warning("缺少档案ID，无法禁用");
@@ -562,9 +589,16 @@ onUnmounted(() => {
                   >
                     新增
                   </el-button>
-                  <el-button @click="openUnarchivedDialog">未建档案</el-button>
+                  <el-button @click="openUnarchivedDialog" type="primary">未建档案</el-button>
                   <el-button
-                    type="success"
+                    type="primary"
+                    plain
+                    @click="openBatchAssignDialog"
+                  >
+                    批量赋值
+                  </el-button>
+                  <el-button
+                    type="primary"
                     plain
                     @click="handleBatchEnable"
                   >
@@ -664,6 +698,13 @@ onUnmounted(() => {
       v-model="unarchivedDialogVisible"
       :shiftOptions="shiftOptions"
       @created="fetchAttendanceArchiveList"
+    />
+
+    <AttendanceProfileBatchAssignDialog
+      v-model="batchAssignDialogVisible"
+      :organizationOptions="attendanceOrganizationOptions"
+      :shiftOptions="shiftOptions"
+      @confirm="handleBatchAssign"
     />
   </Layout>
 </template>
