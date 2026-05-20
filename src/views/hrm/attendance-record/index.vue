@@ -4,35 +4,27 @@ import dayjs from "dayjs";
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
+import { ElMessage } from "element-plus";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
-import { saveTableConfig } from "@/utils";
-import { queryAttendancePunchRecordPage } from "@/api/attendance";
+import { downLoad, saveTableConfig } from "@/utils";
+import { getToken } from "@/utils/auth";
+import {
+  downloadAttendancePunchRecordImportTemplate,
+  importAttendancePunchRecord,
+  queryAttendancePunchRecordPage,
+} from "@/api/attendance";
 
 const route = useRoute();
 const store = useStore();
 
 const bussId = 462;
 const gridName = "attendanceRecordGrid";
-const DEFAULT_COLUMNS = [
-  { title: "序号", value: "sid", width: 70, minWidth: 70, maxWidth: 90 },
-  { title: "员工编码", value: "talentCode", minWidth: 120 },
-  { title: "员工姓名", value: "talentName", minWidth: 120 },
-  { title: "组织", value: "deptName", minWidth: 260 },
-  { title: "考勤编号", value: "attendanceNo", minWidth: 120 },
-  { title: "打卡日期", value: "punchDate", minWidth: 120 },
-  { title: "打卡时间", value: "punchTime", minWidth: 180 },
-  { title: "打卡来源", value: "sourceType", minWidth: 120 },
-  { title: "打卡地点", value: "punchLocation", minWidth: 180 },
-  { title: "描述", value: "remark", minWidth: 180 },
-  { title: "状态", value: "status", minWidth: 100 },
-];
-
-const columnList = ref([...DEFAULT_COLUMNS]);
+const columnList = ref([]);
 const setColumn = (list) => {
-  columnList.value = Array.isArray(list) && list.length ? list : [...DEFAULT_COLUMNS];
+  columnList.value = Array.isArray(list) ? list : [];
 };
 
 const activeClass = ref([]);
@@ -42,6 +34,8 @@ const boxRef = ref(null);
 const diminput = ref("");
 const total = ref(0);
 const gridData = ref([]);
+const importUploading = ref(false);
+const templateDownloading = ref(false);
 
 const today = dayjs().format("YYYY-MM-DD");
 const formInline = ref({
@@ -177,6 +171,70 @@ const handleDateRangeChange = (value) => {
   fuzzySearch();
 };
 
+const beforeImportUpload = (rawFile) => {
+  const isXlsx =
+    rawFile?.type ===
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    /\.xlsx$/i.test(rawFile?.name || "");
+  if (!isXlsx) {
+    ElMessage.warning("仅支持上传 .xlsx 格式文件");
+    return false;
+  }
+  return true;
+};
+
+const handleImportUpload = async (options) => {
+  const file = options?.file;
+  if (!file) {
+    return;
+  }
+  const formData = new FormData();
+  formData.append("tokenID", getToken() || "");
+  formData.append("file", file);
+  importUploading.value = true;
+  try {
+    const res = await importAttendancePunchRecord(formData, {
+      isLoading: true,
+      showErrorMessage: true,
+    });
+    const result = res?.data || {};
+    const totalCount = Number(result.totalCount || 0);
+    const successCount = Number(result.successCount || 0);
+    const failCount = Number(result.failCount || 0);
+    ElMessage.success(
+      `导入完成：共 ${totalCount} 条，成功 ${successCount} 条，失败 ${failCount} 条`,
+    );
+    listQuery.value.pageNo = 1;
+    fetchAttendanceRecordList();
+    options?.onSuccess?.(res);
+  } catch (error) {
+    options?.onError?.(error);
+  } finally {
+    importUploading.value = false;
+  }
+};
+
+const handleDownloadTemplate = async () => {
+  templateDownloading.value = true;
+  try {
+    const res = await downloadAttendancePunchRecordImportTemplate(
+      {},
+      {
+        isLoading: true,
+      },
+    );
+    const filePath = res?.data?.filePath;
+    const fileName = res?.data?.fileName || "打卡记录导入.xlsx";
+    if (filePath) {
+      downLoad(filePath, fileName);
+      return;
+    }
+    ElMessage.warning("未获取到模板下载地址");
+  } finally {
+    templateDownloading.value = false;
+  }
+};
+
 const cellRenderer = (params) => {
   const value = params.value || params.value === 0 ? params.value : "";
   return `<span title="${value}">${value}</span>`;
@@ -234,9 +292,32 @@ onUnmounted(() => {
                     end-placeholder="结束日期"
                     class="attendance-record__date-range"
                     style="width: 260px; min-width: 260px; max-width: 260px; flex: 0 0 260px"
-                    clearable
+                    :clearable="false"
                     @change="handleDateRangeChange"
                   />
+                  <el-upload
+                    :show-file-list="false"
+                    :auto-upload="true"
+                    accept=".xlsx"
+                    :before-upload="beforeImportUpload"
+                    :http-request="handleImportUpload"
+                    :disabled="importUploading"
+                  >
+                    <el-button
+                      type="primary"
+                      :loading="importUploading"
+                    >
+                      导入
+                    </el-button>
+                  </el-upload>
+                  <el-button
+                    type="primary"
+                    plain
+                    :loading="templateDownloading"
+                    @click="handleDownloadTemplate"
+                  >
+                    导入模板下载
+                  </el-button>
                 </div>
               </span>
               <div class="d-flex gap-2">

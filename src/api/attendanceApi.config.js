@@ -30,6 +30,8 @@ const attendanceApi = {
   batchCreateAttendanceArchiveByDefault: `${ATTENDANCE_URL}/api/attendance/archive/batch-create-by-default`,
   queryAttendanceArchiveHistoryPage: `${ATTENDANCE_URL}/api/attendance/archive/history/page`,
   queryAttendancePunchRecordPage: `${ATTENDANCE_URL}/api/attendance/punch/record/page`,
+  downloadAttendancePunchRecordImportTemplate: `${ATTENDANCE_URL}/api/attendance/punch/record/import-template`,
+  importAttendancePunchRecord: `${ATTENDANCE_URL}/api/attendance/punch/record/import`,
   queryAttendanceRecordPage: `${ATTENDANCE_URL}/api/attendance/record/page`,
   queryAttendanceShiftList: `${ATTENDANCE_URL}/api/attendance/setting/shift/list`,
   queryAttendanceShiftDetail: `${ATTENDANCE_URL}/api/attendance/setting/shift/detail`,

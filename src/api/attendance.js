@@ -253,6 +253,27 @@ export function queryAttendancePunchRecordPage(data, config = {}) {
   })
 }
 
+export function downloadAttendancePunchRecordImportTemplate(data, config = {}) {
+  return request({
+    url: attendanceApi.downloadAttendancePunchRecordImportTemplate,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function importAttendancePunchRecord(data, config = {}) {
+  return request({
+    url: attendanceApi.importAttendancePunchRecord,
+    method: 'post',
+    data,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    },
+    ...config
+  })
+}
+
 export function queryAttendanceRecordPage(data, config = {}) {
   return request({
     url: attendanceApi.queryAttendanceRecordPage,

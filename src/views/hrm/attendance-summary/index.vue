@@ -16,25 +16,9 @@ const store = useStore();
 
 const bussId = 465;
 const gridName = "attendanceSummaryGrid";
-const DEFAULT_COLUMNS = [
-  { title: "序号", value: "sid", width: 70, minWidth: 70, maxWidth: 90 },
-  { title: "出勤日期", value: "attendanceDate", minWidth: 120 },
-  { title: "员工编码", value: "talentCode", minWidth: 120 },
-  { title: "员工姓名", value: "talentName", minWidth: 120 },
-  { title: "组织", value: "deptName", minWidth: 260 },
-  { title: "职位", value: "positionName", minWidth: 140 },
-  { title: "打卡记录", value: "punchRecords", minWidth: 160 },
-  { title: "打卡次数", value: "punchCount", minWidth: 100 },
-  { title: "打卡来源", value: "punchSource", minWidth: 140 },
-  { title: "补签卡记录", value: "supplementRecords", minWidth: 180 },
-  { title: "请假摘要", value: "leaveSummary", minWidth: 180 },
-  { title: "出差摘要", value: "businessTripSummary", minWidth: 180 },
-  { title: "加班摘要", value: "overtimeSummary", minWidth: 180 },
-];
-
-const columnList = ref([...DEFAULT_COLUMNS]);
+const columnList = ref([]);
 const setColumn = (list) => {
-  columnList.value = Array.isArray(list) && list.length ? list : [...DEFAULT_COLUMNS];
+  columnList.value = Array.isArray(list) ? list : [];
 };
 
 const activeClass = ref([]);
