@@ -11,6 +11,7 @@ const hero = {
 };
 
 const entryButtonText = "进入功能";
+const pendingButtonText = "暂未开放";
 const moduleGroups = [
   {
     key: "leave",
@@ -93,9 +94,30 @@ const moduleGroups = [
       },
     ],
   },
+  {
+    key: "report",
+    title: "假勤报表",
+    icon: "bx bx-bar-chart-alt-2",
+    description: "汇总假勤相关报表入口，便于查看考勤与假期统计数据。",
+    entries: [
+      {
+        title: "考勤结果汇总",
+        description: "员工考勤结果汇总",
+        route: "/hrm/attendance-result-summary",
+      },
+      {
+        title: "假期汇总表",
+        description: "员工假期汇总查询",
+        route: "/hrm/leave-report-summary",
+      },
+    ],
+  },
 ];
 
 const goToEntry = (route) => {
+  if (!route) {
+    return;
+  }
   router.push(route);
 };
 </script>
@@ -132,11 +154,12 @@ const goToEntry = (route) => {
             v-for="entry in group.entries"
             :key="entry.title"
             class="attendance-entry-card"
-            role="button"
-            tabindex="0"
-            @click="goToEntry(entry.route)"
-            @keydown.enter.prevent="goToEntry(entry.route)"
-            @keydown.space.prevent="goToEntry(entry.route)"
+            :class="{ 'attendance-entry-card--disabled': entry.disabled }"
+            :role="entry.disabled ? 'article' : 'button'"
+            :tabindex="entry.disabled ? -1 : 0"
+            @click="!entry.disabled && goToEntry(entry.route)"
+            @keydown.enter.prevent="!entry.disabled && goToEntry(entry.route)"
+            @keydown.space.prevent="!entry.disabled && goToEntry(entry.route)"
           >
             <div class="attendance-entry-card__head">
               <h3 class="attendance-entry-card__title">{{ entry.title }}</h3>
@@ -145,10 +168,15 @@ const goToEntry = (route) => {
             <button
               type="button"
               class="attendance-entry-card__action"
+              :disabled="entry.disabled"
               @click.stop="goToEntry(entry.route)"
             >
-              {{ entryButtonText }}
-              <i class="bx bx-chevron-right"></i>
+              {{ entry.disabled ? pendingButtonText : entryButtonText }}
+              <i
+                :class="
+                  entry.disabled ? 'bx bx-time-five' : 'bx bx-chevron-right'
+                "
+              ></i>
             </button>
           </article>
         </div>
@@ -276,6 +304,17 @@ const goToEntry = (route) => {
   box-shadow: 0 14px 24px rgba(73, 104, 150, 0.08);
 }
 
+.attendance-entry-card--disabled {
+  cursor: default;
+  opacity: 0.76;
+}
+
+.attendance-entry-card--disabled:hover {
+  transform: none;
+  border-color: #d8e4f3;
+  box-shadow: none;
+}
+
 .attendance-entry-card:focus-visible {
   outline: 2px solid #3d6fe8;
   outline-offset: 2px;
@@ -315,6 +354,11 @@ const goToEntry = (route) => {
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.attendance-entry-card__action:disabled {
+  color: #8e9ab0;
+  cursor: default;
 }
 
 .attendance-entry-card__action i {

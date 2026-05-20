@@ -136,6 +136,18 @@
             component: () => import("@/views/hrm/attendance-calculation/index"),
           },
           {
+            path: "/hrm/attendance-result-summary",
+            name: "attendance-result-summary",
+            meta: { title: "考勤结果汇总", authRequired: true },
+            component: () => import("@/views/hrm/attendance-result-summary/index"),
+          },
+          {
+            path: "/hrm/leave-report-summary",
+            name: "leave-report-summary",
+            meta: { title: "假期汇总表", authRequired: true },
+            component: () => import("@/views/hrm/leave-report-summary/index"),
+          },
+          {
             path: "/hrm/attendance-group",
             name: "attendance-group",
             meta: { title: "考勤组", authRequired: true },

@@ -471,3 +471,39 @@ export function queryAttendanceCalcCalculatedPage(data, config = {}) {
     ...config
   })
 }
+
+export function queryAttendanceResultSummaryPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceResultSummaryPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function exportAttendanceResultSummary(data, config = {}) {
+  return request({
+    url: attendanceApi.exportAttendanceResultSummary,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryLeaveReportSummaryPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryLeaveReportSummaryPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function exportLeaveReportSummary(data, config = {}) {
+  return request({
+    url: attendanceApi.exportLeaveReportSummary,
+    method: 'post',
+    data,
+    ...config
+  })
+}

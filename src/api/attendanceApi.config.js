@@ -54,6 +54,10 @@ const attendanceApi = {
   queryAttendanceCalcNotCalculatedPage: `${ATTENDANCE_URL}/api/attendance/calc/not-calculated/page`,
   queryAttendanceCalcPendingPage: `${ATTENDANCE_URL}/api/attendance/calc/pending/page`,
   queryAttendanceCalcCalculatedPage: `${ATTENDANCE_URL}/api/attendance/calc/calculated/page`,
+  queryAttendanceResultSummaryPage: `${ATTENDANCE_URL}/api/attendance/result/summary/page`,
+  exportAttendanceResultSummary: `${ATTENDANCE_URL}/api/attendance/result/summary/export`,
+  queryLeaveReportSummaryPage: `${ATTENDANCE_URL}/api/leave/report/summary/page`,
+  exportLeaveReportSummary: `${ATTENDANCE_URL}/api/leave/report/summary/export`,
 }
 
 export default attendanceApi

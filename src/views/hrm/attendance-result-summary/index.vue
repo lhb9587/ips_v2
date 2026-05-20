@@ -1,64 +1,52 @@
-<!-- 考勤计算列表页，负责按考勤周期、人员、组织与考勤组筛选三类计算状态列表。 -->
+<!-- 考勤结果汇总列表页，负责按日期范围分页查询员工考勤结果汇总数据。 -->
 <script setup>
+import dayjs from "dayjs";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
+import { ElMessage } from "element-plus";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
-import { saveTableConfig } from "@/utils";
+import { downLoad, saveTableConfig } from "@/utils";
 import {
-  queryAttendanceCalcCalculatedPage,
-  queryAttendanceCalcNotCalculatedPage,
-  queryAttendanceCalcParams,
-  queryAttendanceCalcPendingPage,
-  queryAttendanceGroupPage,
+  exportAttendanceResultSummary,
+  queryAttendanceResultSummaryPage,
 } from "@/api/attendance";
 
 const route = useRoute();
 const store = useStore();
 
-const TAB_MAP = {
-  notCalculated: {
-    label: "未计算",
-    bussId: 466,
-    query: queryAttendanceCalcNotCalculatedPage,
-  },
-  pending: {
-    label: "待计算",
-    bussId: 467,
-    query: queryAttendanceCalcPendingPage,
-  },
-  calculated: {
-    label: "已计算",
-    bussId: 469,
-    query: queryAttendanceCalcCalculatedPage,
-  },
-};
-
-const activeTab = ref("notCalculated");
+const bussId = 470;
+const gridName = "attendanceResultSummaryGrid";
 const activeClass = ref([]);
 const rowHeight = ref(40);
 const isFull = ref(false);
 const boxRef = ref(null);
+const gridRef = ref(null);
 const gridData = ref([]);
 const total = ref(0);
-const periodOptions = ref([]);
-const groupOptions = ref([]);
+const columnList = ref([]);
 const deptCodes = ref([]);
-const formInline = ref({
-  periodCode: "",
-  deptCode: "",
-  groupId: "",
-});
 const keyword = ref("");
+const today = dayjs().format("YYYY-MM-DD");
+const gridOptions = {
+  rowMultiSelectWithClick: true,
+};
+
+const formInline = ref({
+  startDate: today,
+  endDate: today,
+  deptCode: "",
+});
+
+const dateRange = ref([formInline.value.startDate, formInline.value.endDate]);
 const listQuery = ref({
   pageNo: 1,
   pageSize: 50,
 });
 const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
-const columnList = ref([]);
 
 const attendanceOrganizationOptions = computed(() => {
   const scope = store.getters["attendanceScope/scope"] || {};
@@ -67,11 +55,6 @@ const attendanceOrganizationOptions = computed(() => {
   }
   return store.getters["attendanceScope/deptScopes"] || [];
 });
-
-const currentBussId = computed(() => TAB_MAP[activeTab.value].bussId);
-const currentGridName = computed(
-  () => `attendanceCalculationGrid_${activeTab.value}`,
-);
 
 const setColumn = (list) => {
   columnList.value = Array.isArray(list) ? list : [];
@@ -98,7 +81,8 @@ watch(
 const fetchLocalPageSize = () => {
   const pageSizeData = JSON.parse(localStorage.getItem("pageSize")) || [];
   const savedData = pageSizeData.find((item) => item.name === route.name);
-  return savedData ? savedData.pageSize : 50;
+  const pageSize = savedData ? savedData.pageSize : 50;
+  return Math.min(pageSize, 200);
 };
 
 listQuery.value.pageSize = fetchLocalPageSize();
@@ -111,7 +95,7 @@ const changeBorder = (newVal) => {
   } else {
     activeClass.value = activeClass.value.filter((item) => item !== "Borderline");
   }
-  saveTableConfig("isBorderline", currentGridName.value, newVal);
+  saveTableConfig("isBorderline", gridName, newVal);
 };
 
 const changeRowStyle = (newVal) => {
@@ -122,12 +106,12 @@ const changeRowStyle = (newVal) => {
   } else {
     activeClass.value = activeClass.value.filter((item) => item !== "zebra");
   }
-  saveTableConfig("iszebra", currentGridName.value, newVal);
+  saveTableConfig("iszebra", gridName, newVal);
 };
 
 const changeRowHeight = (height) => {
   rowHeight.value = height;
-  saveTableConfig("rowHeight", currentGridName.value, height);
+  saveTableConfig("rowHeight", gridName, height);
 };
 
 const changeScreenSize = () => {
@@ -155,41 +139,33 @@ const handleFullScreenChange = () => {
   }
 };
 
-const buildQueryParams = () => ({
-  pageNo: listQuery.value.pageNo,
-  pageSize: listQuery.value.pageSize,
-  periodCode: formInline.value.periodCode || undefined,
-  deptCode: formInline.value.deptCode || undefined,
-  groupId: formInline.value.groupId || undefined,
-  talentName: keyword.value || undefined,
-});
+const buildQueryParams = () => {
+  const talentKeyword = keyword.value.trim();
+  return {
+    pageNo: listQuery.value.pageNo,
+    pageSize: Math.min(listQuery.value.pageSize, 200),
+    startDate: formInline.value.startDate || undefined,
+    endDate: formInline.value.endDate || undefined,
+    deptCode: formInline.value.deptCode || undefined,
+    talentName: talentKeyword || undefined,
+  };
+};
 
 const normalizeRecord = (item = {}, index = 0) => ({
   ...item,
   id:
     item.id ||
-    item.stateId ||
-    item.calcStateId ||
+    item.userId ||
     `${item.talentCode || "talent"}-${item.periodCode || "period"}-${index}`,
   sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index + 1,
-  deptName: item.deptName || item.attendanceOrgName || item.organizationName || "",
-  groupName: item.groupName || item.attendanceGroupName || "",
-  attendancePolicyName: item.attendancePolicyName || item.policyName || "",
-  periodName: item.periodName || item.periodCode || "",
-  statusName: item.statusName || item.status || TAB_MAP[activeTab.value].label,
-  lastCalcTime: item.lastCalcTime || item.calculateTime || item.calcTime || "",
 });
 
-const fetchAttendanceCalculationList = () => {
-  const currentTab = TAB_MAP[activeTab.value];
-  currentTab
-    .query(buildQueryParams(), { isLoading: true })
+const fetchAttendanceResultSummaryList = () => {
+  queryAttendanceResultSummaryPage(buildQueryParams(), { isLoading: true })
     .then((res) => {
-      const records = Array.isArray(res?.data)
-        ? res.data
-        : res?.data?.records || [];
+      const records = Array.isArray(res?.data) ? res.data : [];
       gridData.value = records.map((item, index) => normalizeRecord(item, index));
-      total.value = Number(res?.total || res?.data?.total || 0);
+      total.value = Number(res?.total || 0);
       if (Number(res?.currPage)) {
         listQuery.value.pageNo = Number(res.currPage);
       }
@@ -200,13 +176,15 @@ const fetchAttendanceCalculationList = () => {
     });
 };
 
-const handlePagination = () => {
-  fetchAttendanceCalculationList();
-};
-
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
-  fetchAttendanceCalculationList();
+  fetchAttendanceResultSummaryList();
+};
+
+const getSelectedRows = () => gridRef.value?.getRowList?.() || [];
+
+const handlePagination = () => {
+  fetchAttendanceResultSummaryList();
 };
 
 const handleDeptChange = (value) => {
@@ -216,48 +194,55 @@ const handleDeptChange = (value) => {
   fuzzySearch();
 };
 
-const handleTabChange = () => {
-  listQuery.value.pageNo = 1;
-  fetchAttendanceCalculationList();
+const handleDateRangeChange = (value) => {
+  const range = Array.isArray(value) ? value : [];
+  if (!range.length) {
+    formInline.value.startDate = today;
+    formInline.value.endDate = today;
+    dateRange.value = [today, today];
+  } else {
+    formInline.value.startDate = range[0] || "";
+    formInline.value.endDate = range[1] || "";
+  }
+  fuzzySearch();
 };
 
-const fetchGroupOptions = () => {
-  return queryAttendanceGroupPage(
-    {
-      pageNo: 1,
-      pageSize: 1000,
-    },
-    {
-      isLoading: false,
-    },
-  ).then((res) => {
-    const records = Array.isArray(res?.data) ? res.data : res?.data?.records || [];
-    groupOptions.value = records.map((item) => ({
-      label: item.groupName,
-      value: item.groupId,
-    }));
+const handleExport = (command) => {
+  const payload = {
+    ...buildQueryParams(),
+    exportMode: command === "exportSelected" ? "selected" : "all",
+  };
+
+  if (command === "exportSelected") {
+    const selectedRows = getSelectedRows();
+    if (selectedRows.length === 0) {
+      return ElMessage.warning("请先选择需要导出的记录");
+    }
+    const selectedTalentCodes = [
+      ...new Set(
+        selectedRows
+          .map((item) => item.talentCode)
+          .filter((item) => item || item === 0),
+      ),
+    ];
+    if (selectedTalentCodes.length === 0) {
+      return ElMessage.warning("选中记录缺少员工编码，无法导出");
+    }
+    payload.selectedTalentCodes = selectedTalentCodes.join(",");
+  }
+
+  delete payload.pageNo;
+  delete payload.pageSize;
+
+  exportAttendanceResultSummary(payload, { isLoading: true }).then((res) => {
+    const filePath = res?.data?.filePath;
+    const fileName = res?.data?.fileName || "考勤结果汇总.xlsx";
+    if (!filePath) {
+      return ElMessage.warning("导出文件地址为空");
+    }
+    downLoad(filePath, fileName);
+    ElMessage.success(command === "exportSelected" ? "选中导出成功" : "全部导出成功");
   });
-};
-
-const fetchPageParams = () => {
-  return queryAttendanceCalcParams(
-    {},
-    {
-      isLoading: true,
-    },
-  ).then((res) => {
-    const data = res?.data || {};
-    periodOptions.value = Array.isArray(data.periodOptions) ? data.periodOptions : [];
-    formInline.value.periodCode =
-      data.defaultPeriodCode ||
-      periodOptions.value[0]?.periodCode ||
-      "";
-  });
-};
-
-const handlePeriodChange = () => {
-  listQuery.value.pageNo = 1;
-  fetchAttendanceCalculationList();
 };
 
 const cellRenderer = (params) => {
@@ -267,10 +252,7 @@ const cellRenderer = (params) => {
 
 onMounted(() => {
   document.addEventListener("fullscreenchange", handleFullScreenChange);
-  Promise.all([fetchPageParams(), fetchGroupOptions()])
-    .finally(() => {
-      fetchAttendanceCalculationList();
-    });
+  fetchAttendanceResultSummaryList();
 });
 
 onUnmounted(() => {
@@ -293,7 +275,7 @@ onUnmounted(() => {
             <div class="d-flex align-items-center">
               <span class="mb-0 flex-grow-1">
                 <div
-                  class="d-flex attendance-calculation__toolbar"
+                  class="d-flex attendance-result-summary__toolbar"
                   style="gap: 10px"
                 >
                   <el-input
@@ -311,23 +293,19 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
-                  <el-select
-                    v-model="formInline.periodCode"
-                    class="attendance-calculation__period"
-                    filterable
-                    placeholder="请选择考勤周期"
-                    @change="handlePeriodChange"
-                  >
-                    <el-option
-                      v-for="item in periodOptions"
-                      :key="item.periodCode"
-                      :label="item.periodName"
-                      :value="item.periodCode"
-                    />
-                  </el-select>
+                  <el-date-picker
+                    v-model="dateRange"
+                    type="daterange"
+                    value-format="YYYY-MM-DD"
+                    range-separator="-"
+                    start-placeholder="开始日期"
+                    end-placeholder="结束日期"
+                    class="attendance-result-summary__date-range"
+                    @change="handleDateRangeChange"
+                  />
                   <el-cascader
                     v-model="deptCodes"
-                    class="attendance-calculation__cascader"
+                    class="attendance-result-summary__cascader"
                     :options="attendanceOrganizationOptions"
                     :props="{
                       checkStrictly: true,
@@ -342,32 +320,32 @@ onUnmounted(() => {
                     placeholder="请选择组织"
                     @change="handleDeptChange"
                   />
-                  <el-select
-                    v-model="formInline.groupId"
-                    class="attendance-calculation__group"
-                    clearable
-                    filterable
-                    placeholder="请选择考勤组"
-                    @change="fuzzySearch"
-                  >
-                    <el-option
-                      v-for="item in groupOptions"
-                      :key="item.value"
-                      :label="item.label"
-                      :value="item.value"
-                    />
-                  </el-select>
+                  <el-dropdown @command="handleExport">
+                    <el-button>
+                      导出
+                      <i class="mdi mdi-chevron-down ms-1"></i>
+                    </el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="exportSelected">
+                          选中导出
+                        </el-dropdown-item>
+                        <el-dropdown-item command="exportAll">
+                          全部导出
+                        </el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
                 </div>
               </span>
               <div class="d-flex gap-2">
                 <TopListTool
-                  :gridName="currentGridName"
-                  :buss-id="currentBussId"
+                  :gridName="gridName"
+                  :buss-id="bussId"
                   :queryList="{
                     ...listQuery,
                     ...formInline,
                     searchWord: keyword,
-                    activeTab,
                   }"
                   :isFull="isFull"
                   @changeBorder="changeBorder"
@@ -380,30 +358,19 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="attendance-calculation__tabs">
-            <el-tabs
-              v-model="activeTab"
-              @tab-change="handleTabChange"
-            >
-              <el-tab-pane
-                v-for="(item, key) in TAB_MAP"
-                :key="key"
-                :label="item.label"
-                :name="key"
-              />
-            </el-tabs>
-          </div>
-
           <div style="padding: 0 10px">
             <GridView
-              :gridName="currentGridName"
-              :bussId="currentBussId"
+              ref="gridRef"
+              :gridName="gridName"
+              :bussId="bussId"
               :height="gridHeight"
               :rowHeight="rowHeight"
               :columnDefs="columnList"
               :grid-data="gridData"
               :activeClass="activeClass"
               :cellRenderer="cellRenderer"
+              :gridOptions="gridOptions"
+              showSelectionColumn
             />
           </div>
 
@@ -431,69 +398,18 @@ onUnmounted(() => {
   flex: none;
 }
 
-.attendance-calculation__toolbar {
+.attendance-result-summary__toolbar {
   flex-wrap: wrap;
 }
 
-.attendance-calculation__tabs {
-  padding: 0 10px 10px;
-}
-
-:deep(.attendance-calculation__tabs .el-tabs__nav-wrap::after) {
-  display: none;
-}
-
-:deep(.attendance-calculation__tabs .el-tabs__header) {
-  margin: 0;
-}
-
-:deep(.attendance-calculation__tabs .el-tabs__nav-wrap) {
-  padding: 4px;
-  border-radius: 12px;
-  background: #f3f6fb;
-}
-
-:deep(.attendance-calculation__tabs .el-tabs__nav) {
-  gap: 6px;
-  border: none !important;
-}
-
-:deep(.attendance-calculation__tabs .el-tabs__active-bar) {
-  display: none;
-}
-
-:deep(.attendance-calculation__tabs .el-tabs__item) {
-  height: 36px;
-  padding: 0 18px !important;
-  border: none !important;
-  border-radius: 10px;
-  color: #5f6b7a;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-:deep(.attendance-calculation__tabs .el-tabs__item:hover) {
-  color: #2f6bff;
-  background: rgba(47, 107, 255, 0.08);
-}
-
-:deep(.attendance-calculation__tabs .el-tabs__item.is-active) {
-  color: #2f6bff;
-  font-weight: 600;
-  background: #fff;
-  box-shadow: 0 4px 12px rgba(47, 107, 255, 0.12);
-}
-
-:deep(.attendance-calculation__period.el-select) {
-  width: 300px;
-}
-
-:deep(.attendance-calculation__group.el-select) {
-  width: 220px;
-}
-
-:deep(.attendance-calculation__cascader.el-cascader) {
+:deep(.attendance-result-summary__cascader.el-cascader) {
   width: 260px;
+}
+
+:deep(.attendance-result-summary__date-range.el-date-editor--daterange) {
+  width: 260px !important;
+  min-width: 260px !important;
+  max-width: 260px !important;
+  flex: 0 0 260px !important;
 }
 </style>
