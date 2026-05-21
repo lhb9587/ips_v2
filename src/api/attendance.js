@@ -490,9 +490,27 @@ export function calculateSelectedAttendanceCalc(data, config = {}) {
   })
 }
 
+export function queryAttendanceCalcTaskPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceCalcTaskPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryAttendanceCalcResultDetailPage(data, config = {}) {
   return request({
     url: attendanceApi.queryAttendanceCalcResultDetailPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function exportAttendanceCalcResult(data, config = {}) {
+  return request({
+    url: attendanceApi.exportAttendanceCalcResult,
     method: 'post',
     data,
     ...config

@@ -37,12 +37,20 @@ const gridData = ref([]);
 const importUploading = ref(false);
 const templateDownloading = ref(false);
 
-const today = dayjs().format("YYYY-MM-DD");
+const getDefaultDateRange = () => {
+  const now = dayjs();
+  return {
+    startDate: now.subtract(1, "month").date(21).format("YYYY-MM-DD"),
+    endDate: now.date(20).format("YYYY-MM-DD"),
+  };
+};
+
+const defaultDateRange = getDefaultDateRange();
 const formInline = ref({
-  startDate: today,
-  endDate: today,
+  startDate: defaultDateRange.startDate,
+  endDate: defaultDateRange.endDate,
 });
-const dateRange = ref([formInline.value.startDate, formInline.value.endDate]);
+const dateRange = ref([defaultDateRange.startDate, defaultDateRange.endDate]);
 
 const calculateGridHeight = () => {
   const layout = store.state.layout.layoutType;
@@ -194,7 +202,7 @@ const handleImportUpload = async (options) => {
   importUploading.value = true;
   try {
     const res = await importAttendancePunchRecord(formData, {
-      isLoading: true,
+      isLoading: false,
       showErrorMessage: true,
     });
     const result = res?.data || {};

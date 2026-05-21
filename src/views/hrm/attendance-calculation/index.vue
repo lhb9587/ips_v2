@@ -8,16 +8,18 @@ import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
-import { saveTableConfig } from "@/utils";
+import { downLoad, saveTableConfig } from "@/utils";
 import {
   calculateAllAttendanceCalc,
   calculateSelectedAttendanceCalc,
+  exportAttendanceCalcResult,
   queryAttendanceCalcNotCalculatedPage,
   queryAttendanceCalcParams,
   queryAttendanceCalcPendingPage,
   queryAttendanceCalcResultDetailPage,
   queryAttendanceGroupPage,
 } from "@/api/attendance";
+import CalcTaskDialog from "./calc-task-dialog.vue";
 
 const route = useRoute();
 const store = useStore();
@@ -65,6 +67,7 @@ const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
 const columnList = ref([]);
 const calculateAllLoading = ref(false);
 const calculateSelectedLoading = ref(false);
+const calcTaskDialogVisible = ref(false);
 
 const attendanceOrganizationOptions = computed(() => {
   const scope = store.getters["attendanceScope/scope"] || {};
@@ -79,6 +82,7 @@ const currentGridName = computed(
   () => `attendanceCalculationGrid_${activeTab.value}`,
 );
 const showCalculateActions = computed(() => true);
+const showExportAction = computed(() => activeTab.value === "calculated");
 
 const setColumn = (list) => {
   columnList.value = Array.isArray(list) ? list : [];
@@ -276,11 +280,62 @@ const handlePeriodChange = () => {
   fetchAttendanceCalculationList();
 };
 
+const getSelectedRows = () => gridRef.value?.getRowList?.() || [];
+
 const getSelectedTalentCodes = () => {
-  const rows = gridRef.value?.getRowList?.() || [];
+  const rows = getSelectedRows();
   return rows
     .map((item) => item?.talentCode)
     .filter((item, index, list) => item && list.indexOf(item) === index);
+};
+
+const buildExportParams = () => {
+  const talentKeyword = keyword.value.trim();
+  return {
+    periodCode: formInline.value.periodCode || undefined,
+    deptCode: formInline.value.deptCode || undefined,
+    talentName: talentKeyword || undefined,
+  };
+};
+
+const handleExport = (command) => {
+  if (!formInline.value.periodCode) {
+    ElMessage.warning("请先选择考勤周期");
+    return;
+  }
+
+  const payload = {
+    ...buildExportParams(),
+    exportMode: command === "exportSelected" ? "selected" : "all",
+  };
+
+  if (command === "exportSelected") {
+    const selectedRows = getSelectedRows();
+    if (!selectedRows.length) {
+      return ElMessage.warning("请先选择需要导出的记录");
+    }
+    const selectedTalentCodes = [
+      ...new Set(
+        selectedRows
+          .map((item) => item.talentCode)
+          .filter((item) => item || item === 0),
+      ),
+    ];
+    if (!selectedTalentCodes.length) {
+      return ElMessage.warning("选中记录缺少员工编码，无法导出");
+    }
+    payload.selectedTalentCodes = selectedTalentCodes.join(",");
+  }
+
+  exportAttendanceCalcResult(payload, { isLoading: true }).then((res) => {
+    const filePath = res?.data?.filePath;
+    const fileName = res?.data?.fileName || "考勤计算结果.xlsx";
+    if (!filePath) {
+      return ElMessage.warning("导出文件地址为空");
+    }
+    downLoad(filePath, fileName);
+    ElMessage.success(command === "exportSelected" ? "选中导出成功" : "全部导出成功");
+  });
 };
 
 const handleCalculateAll = () => {
@@ -432,21 +487,6 @@ onUnmounted(() => {
                 </div>
               </span>
               <div class="d-flex gap-2 attendance-calculation__actions">
-                <template v-if="showCalculateActions">
-                  <el-button
-                    type="primary"
-                    :loading="calculateAllLoading"
-                    @click="handleCalculateAll"
-                  >
-                    全部计算
-                  </el-button>
-                  <el-button
-                    :loading="calculateSelectedLoading"
-                    @click="handleCalculateSelected"
-                  >
-                    计算选中行
-                  </el-button>
-                </template>
                 <TopListTool
                   :gridName="currentGridName"
                   :buss-id="currentBussId"
@@ -467,18 +507,66 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="attendance-calculation__tabs">
-            <el-tabs
-              v-model="activeTab"
-              @tab-change="handleTabChange"
+          <div class="attendance-calculation__tabs-bar">
+            <div class="attendance-calculation__tabs">
+              <el-tabs
+                v-model="activeTab"
+                @tab-change="handleTabChange"
+              >
+                <el-tab-pane
+                  v-for="(item, key) in TAB_MAP"
+                  :key="key"
+                  :label="item.label"
+                  :name="key"
+                />
+              </el-tabs>
+            </div>
+            <div
+              v-if="showCalculateActions || showExportAction"
+              class="d-flex gap-2 attendance-calculation__tab-actions"
             >
-              <el-tab-pane
-                v-for="(item, key) in TAB_MAP"
-                :key="key"
-                :label="item.label"
-                :name="key"
-              />
-            </el-tabs>
+              <el-dropdown
+                v-if="showExportAction"
+                @command="handleExport"
+              >
+                <el-button>
+                  导出
+                  <i class="mdi mdi-chevron-down ms-1"></i>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="exportSelected">
+                      选中导出
+                    </el-dropdown-item>
+                    <el-dropdown-item command="exportAll">
+                      全部导出
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+              <el-button
+                v-if="showCalculateActions"
+                type="primary"
+                :loading="calculateAllLoading"
+                @click="handleCalculateAll"
+              >
+                全部计算
+              </el-button>
+              <el-button
+                v-if="showCalculateActions"
+                type="primary"
+                :loading="calculateSelectedLoading"
+                @click="handleCalculateSelected"
+              >
+                计算选中行
+              </el-button>
+              <el-button
+                v-if="showCalculateActions"
+                @click="calcTaskDialogVisible = true"
+              >
+                查看后台事务
+              </el-button>
+            </div>
           </div>
 
           <div style="padding: 0 10px">
@@ -512,6 +600,8 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <CalcTaskDialog v-model="calcTaskDialogVisible" />
   </Layout>
 </template>
 
@@ -529,8 +619,25 @@ onUnmounted(() => {
   justify-content: flex-end;
 }
 
-.attendance-calculation__tabs {
+.attendance-calculation__tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 0 10px 10px;
+  flex-wrap: wrap;
+}
+
+.attendance-calculation__tabs {
+  flex: 0 0 auto;
+}
+
+.attendance-calculation__tab-actions {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+:deep(.attendance-calculation__tabs .el-tabs) {
+  width: auto;
 }
 
 :deep(.attendance-calculation__tabs .el-tabs__nav-wrap::after) {
@@ -543,12 +650,12 @@ onUnmounted(() => {
 
 :deep(.attendance-calculation__tabs .el-tabs__nav-wrap) {
   padding: 4px;
-  border-radius: 12px;
+  border-radius: 4px;
   background: #f3f6fb;
 }
 
 :deep(.attendance-calculation__tabs .el-tabs__nav) {
-  gap: 6px;
+  gap: 4px;
   border: none !important;
 }
 
@@ -557,10 +664,11 @@ onUnmounted(() => {
 }
 
 :deep(.attendance-calculation__tabs .el-tabs__item) {
-  height: 36px;
+  height: 28px;
+  line-height: 28px;
   padding: 0 18px !important;
   border: none !important;
-  border-radius: 10px;
+  border-radius: 4px;
   color: #5f6b7a;
   font-size: 14px;
   font-weight: 500;

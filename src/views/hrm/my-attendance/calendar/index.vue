@@ -204,7 +204,7 @@ const detailRows = computed(() => {
     },
     {
       label: "考勤异常信息",
-      value: buildExceptionText(),
+      value: String(snapshot.dayStatus || "").trim() || "无异常",
     },
   ];
 });
@@ -348,27 +348,6 @@ function buildScheduleText(schedule, snapshot) {
   }
   const shiftText = [schedule.shiftCode, schedule.shiftName].filter(Boolean).join(" - ");
   return shiftText || "--";
-}
-
-function buildExceptionText() {
-  const snapshot = detailData.value?.snapshot || selectedSnapshot.value || {};
-  const tags = [];
-  if (Number(snapshot.lateCount || 0) > 0) {
-    tags.push(`迟到 ${snapshot.lateCount} 次`);
-  }
-  if (Number(snapshot.earlyLeaveCount || 0) > 0) {
-    tags.push(`早退 ${snapshot.earlyLeaveCount} 次`);
-  }
-  if (Number(snapshot.absentCount || 0) > 0) {
-    tags.push(`旷工 ${snapshot.absentCount} 次`);
-  }
-  if (snapshot.supplementSummary) {
-    tags.push(snapshot.supplementSummary);
-  }
-  if (!tags.length) {
-    return "无异常";
-  }
-  return tags.join(" / ");
 }
 
 function extractPunchTime(index) {
