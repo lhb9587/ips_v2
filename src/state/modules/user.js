@@ -2,10 +2,43 @@ import { getToken, setToken, removeToken } from "@/utils/auth";
 import { login, checkUserPassWord, getInfo,logout,getUser } from "@/api/user";
 import { queryUsers} from '@/api/systemList'
 import router from '@/router'
-import { setUserInfo,removeUserInfo } from "@/utils/user";
+import {
+  setUserInfo,
+  removeUserInfo,
+  getCaseTypeList,
+  setCaseTypeList,
+  removeCaseTypeList,
+} from "@/utils/user";
 // import {ElMessageBox} from "element-plus";
 import { queryCaseType } from "@/api/caseList";
-import { setCaseTypeList } from "@/utils/user";
+
+let caseTypeFetchPromise = null;
+
+function loadCaseTypeListIfNeeded() {
+  let cached;
+  try {
+    cached = getCaseTypeList();
+  } catch {
+    cached = null;
+  }
+  if (Array.isArray(cached) && cached.length) {
+    return Promise.resolve(cached);
+  }
+  if (caseTypeFetchPromise) {
+    return caseTypeFetchPromise;
+  }
+  caseTypeFetchPromise = queryCaseType()
+    .then((res) => {
+      if (res?.data) {
+        setCaseTypeList(JSON.stringify(res.data));
+      }
+      return res?.data;
+    })
+    .finally(() => {
+      caseTypeFetchPromise = null;
+    });
+  return caseTypeFetchPromise;
+}
 export const state = {
   token: getToken(),
   userId: "",
@@ -114,7 +147,9 @@ export const actions = {
           commit("attendanceScope/SET_LOADED", false, { root: true });
           commit("attendanceScope/SET_ROLE_TYPE", "", { root: true });
           removeToken();
-          removeUserInfo()
+          removeUserInfo();
+          removeCaseTypeList();
+          caseTypeFetchPromise = null;
           // resetRouter();
           router.push("/login");
           resolve();
@@ -133,6 +168,8 @@ export const actions = {
       commit("attendanceScope/SET_LOADED", false, { root: true });
       commit("attendanceScope/SET_ROLE_TYPE", "", { root: true });
       removeToken();
+      removeCaseTypeList();
+      caseTypeFetchPromise = null;
       resolve();
     });
   },
@@ -182,9 +219,7 @@ export const actions = {
           };
           setUserInfo(JSON.stringify(userInfo))
           await dispatch('user/getUser', '', { root: true })
-          queryCaseType().then(res=>{
-            setCaseTypeList(JSON.stringify(res.data))
-          })
+          loadCaseTypeListIfNeeded()
         })
         .catch((error) => {
           reject(error);
