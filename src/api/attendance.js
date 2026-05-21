@@ -472,6 +472,33 @@ export function queryAttendanceCalcCalculatedPage(data, config = {}) {
   })
 }
 
+export function calculateAllAttendanceCalc(data, config = {}) {
+  return request({
+    url: attendanceApi.calculateAllAttendanceCalc,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function calculateSelectedAttendanceCalc(data, config = {}) {
+  return request({
+    url: attendanceApi.calculateSelectedAttendanceCalc,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryAttendanceCalcResultDetailPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceCalcResultDetailPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryAttendanceResultSummaryPage(data, config = {}) {
   return request({
     url: attendanceApi.queryAttendanceResultSummaryPage,

@@ -3,16 +3,19 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
+import { ElMessage } from "element-plus";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import { saveTableConfig } from "@/utils";
 import {
-  queryAttendanceCalcCalculatedPage,
+  calculateAllAttendanceCalc,
+  calculateSelectedAttendanceCalc,
   queryAttendanceCalcNotCalculatedPage,
   queryAttendanceCalcParams,
   queryAttendanceCalcPendingPage,
+  queryAttendanceCalcResultDetailPage,
   queryAttendanceGroupPage,
 } from "@/api/attendance";
 
@@ -20,6 +23,11 @@ const route = useRoute();
 const store = useStore();
 
 const TAB_MAP = {
+  calculated: {
+    label: "已计算",
+    bussId: 469,
+    query: queryAttendanceCalcResultDetailPage,
+  },
   notCalculated: {
     label: "未计算",
     bussId: 466,
@@ -30,18 +38,14 @@ const TAB_MAP = {
     bussId: 467,
     query: queryAttendanceCalcPendingPage,
   },
-  calculated: {
-    label: "已计算",
-    bussId: 469,
-    query: queryAttendanceCalcCalculatedPage,
-  },
 };
 
-const activeTab = ref("notCalculated");
+const activeTab = ref("calculated");
 const activeClass = ref([]);
 const rowHeight = ref(40);
 const isFull = ref(false);
 const boxRef = ref(null);
+const gridRef = ref(null);
 const gridData = ref([]);
 const total = ref(0);
 const periodOptions = ref([]);
@@ -59,6 +63,8 @@ const listQuery = ref({
 });
 const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
 const columnList = ref([]);
+const calculateAllLoading = ref(false);
+const calculateSelectedLoading = ref(false);
 
 const attendanceOrganizationOptions = computed(() => {
   const scope = store.getters["attendanceScope/scope"] || {};
@@ -72,6 +78,7 @@ const currentBussId = computed(() => TAB_MAP[activeTab.value].bussId);
 const currentGridName = computed(
   () => `attendanceCalculationGrid_${activeTab.value}`,
 );
+const showCalculateActions = computed(() => true);
 
 const setColumn = (list) => {
   columnList.value = Array.isArray(list) ? list : [];
@@ -162,6 +169,15 @@ const buildQueryParams = () => ({
   deptCode: formInline.value.deptCode || undefined,
   groupId: formInline.value.groupId || undefined,
   talentName: keyword.value || undefined,
+});
+
+const buildCalculateParams = () => ({
+  periodCode: formInline.value.periodCode || undefined,
+  deptCode: formInline.value.deptCode || undefined,
+  groupId: formInline.value.groupId || undefined,
+  talentName: keyword.value || undefined,
+  operatorId: store.state.user.userId || undefined,
+  operatorName: store.state.user.name || undefined,
 });
 
 const normalizeRecord = (item = {}, index = 0) => ({
@@ -258,6 +274,62 @@ const fetchPageParams = () => {
 const handlePeriodChange = () => {
   listQuery.value.pageNo = 1;
   fetchAttendanceCalculationList();
+};
+
+const getSelectedTalentCodes = () => {
+  const rows = gridRef.value?.getRowList?.() || [];
+  return rows
+    .map((item) => item?.talentCode)
+    .filter((item, index, list) => item && list.indexOf(item) === index);
+};
+
+const handleCalculateAll = () => {
+  if (!formInline.value.periodCode) {
+    ElMessage.warning("请先选择考勤周期");
+    return;
+  }
+  calculateAllLoading.value = true;
+  calculateAllAttendanceCalc(buildCalculateParams(), {
+    isLoading: false,
+  })
+    .then((res) => {
+      ElMessage.success(res?.data?.message || res?.message || "计算任务已提交");
+      fetchAttendanceCalculationList();
+    })
+    .finally(() => {
+      calculateAllLoading.value = false;
+    });
+};
+
+const handleCalculateSelected = () => {
+  if (!formInline.value.periodCode) {
+    ElMessage.warning("请先选择考勤周期");
+    return;
+  }
+  const talentCodes = getSelectedTalentCodes();
+  if (!talentCodes.length) {
+    ElMessage.warning("请先选择需要计算的员工");
+    return;
+  }
+  calculateSelectedLoading.value = true;
+  calculateSelectedAttendanceCalc(
+    {
+      periodCode: formInline.value.periodCode,
+      talentCodes,
+      operatorId: store.state.user.userId || undefined,
+      operatorName: store.state.user.name || undefined,
+    },
+    {
+      isLoading: false,
+    },
+  )
+    .then((res) => {
+      ElMessage.success(res?.data?.message || res?.message || "计算任务已提交");
+      fetchAttendanceCalculationList();
+    })
+    .finally(() => {
+      calculateSelectedLoading.value = false;
+    });
 };
 
 const cellRenderer = (params) => {
@@ -359,7 +431,22 @@ onUnmounted(() => {
                   </el-select>
                 </div>
               </span>
-              <div class="d-flex gap-2">
+              <div class="d-flex gap-2 attendance-calculation__actions">
+                <template v-if="showCalculateActions">
+                  <el-button
+                    type="primary"
+                    :loading="calculateAllLoading"
+                    @click="handleCalculateAll"
+                  >
+                    全部计算
+                  </el-button>
+                  <el-button
+                    :loading="calculateSelectedLoading"
+                    @click="handleCalculateSelected"
+                  >
+                    计算选中行
+                  </el-button>
+                </template>
                 <TopListTool
                   :gridName="currentGridName"
                   :buss-id="currentBussId"
@@ -396,8 +483,10 @@ onUnmounted(() => {
 
           <div style="padding: 0 10px">
             <GridView
+              ref="gridRef"
               :gridName="currentGridName"
               :bussId="currentBussId"
+              :showSelectionColumn="true"
               :height="gridHeight"
               :rowHeight="rowHeight"
               :columnDefs="columnList"
@@ -433,6 +522,11 @@ onUnmounted(() => {
 
 .attendance-calculation__toolbar {
   flex-wrap: wrap;
+}
+
+.attendance-calculation__actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .attendance-calculation__tabs {
