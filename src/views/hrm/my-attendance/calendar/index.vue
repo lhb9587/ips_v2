@@ -311,10 +311,10 @@ function resolveBusinessTone(summary) {
 function buildExceptionTooltip(snapshot) {
   const tags = [];
   if (Number(snapshot.lateCount || 0) > 0) {
-    tags.push(`迟到 ${snapshot.lateCount} 小时`);
+    tags.push(`迟到 ${snapshot.lateCount} 次`);
   }
   if (Number(snapshot.earlyLeaveCount || 0) > 0) {
-    tags.push(`早退 ${snapshot.earlyLeaveCount} 小时`);
+    tags.push(`早退 ${snapshot.earlyLeaveCount} 次`);
   }
   if (Number(snapshot.absentCount || 0) > 0) {
     tags.push(`旷工 ${snapshot.absentCount} 次`);

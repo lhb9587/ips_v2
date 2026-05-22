@@ -52,7 +52,30 @@ const gridData = ref([]);
 const total = ref(0);
 const periodOptions = ref([]);
 const groupOptions = ref([]);
-const deptCodes = ref([]);
+const calcDeptScopeTree = ref([]);
+
+const resolveDeptCode = (item = {}) => {
+  const code =
+    item.deptCode ?? item.deptId ?? item.organizationCode ?? item.value ?? "";
+  return code === "" || code === null || code === undefined ? "" : String(code);
+};
+
+const mapAttendanceOrganizationTree = (list = []) =>
+  list
+    .map((item) => {
+      const deptCode = resolveDeptCode(item);
+      if (!deptCode) {
+        return null;
+      }
+      return {
+        deptCode,
+        deptName: item.deptName || item.organizationName || item.label || "",
+        children: Array.isArray(item.children)
+          ? mapAttendanceOrganizationTree(item.children)
+          : [],
+      };
+    })
+    .filter(Boolean);
 const formInline = ref({
   periodCode: "",
   deptCode: "",
@@ -70,11 +93,14 @@ const calculateSelectedLoading = ref(false);
 const calcTaskDialogVisible = ref(false);
 
 const attendanceOrganizationOptions = computed(() => {
+  if (calcDeptScopeTree.value.length > 0) {
+    return mapAttendanceOrganizationTree(calcDeptScopeTree.value);
+  }
   const scope = store.getters["attendanceScope/scope"] || {};
   if (Array.isArray(scope?.deptScopeTree) && scope.deptScopeTree.length > 0) {
-    return scope.deptScopeTree;
+    return mapAttendanceOrganizationTree(scope.deptScopeTree);
   }
-  return store.getters["attendanceScope/deptScopes"] || [];
+  return mapAttendanceOrganizationTree(store.getters["attendanceScope/deptScopes"] || []);
 });
 
 const currentBussId = computed(() => TAB_MAP[activeTab.value].bussId);
@@ -166,18 +192,25 @@ const handleFullScreenChange = () => {
   }
 };
 
+const resolveQueryDeptCode = () => {
+  const deptCode = formInline.value.deptCode;
+  return deptCode === "" || deptCode === null || deptCode === undefined
+    ? undefined
+    : String(deptCode);
+};
+
 const buildQueryParams = () => ({
   pageNo: listQuery.value.pageNo,
   pageSize: listQuery.value.pageSize,
   periodCode: formInline.value.periodCode || undefined,
-  deptCode: formInline.value.deptCode || undefined,
+  deptCode: resolveQueryDeptCode(),
   groupId: formInline.value.groupId || undefined,
   talentName: keyword.value || undefined,
 });
 
 const buildCalculateParams = () => ({
   periodCode: formInline.value.periodCode || undefined,
-  deptCode: formInline.value.deptCode || undefined,
+  deptCode: resolveQueryDeptCode(),
   groupId: formInline.value.groupId || undefined,
   talentName: keyword.value || undefined,
   operatorId: store.state.user.userId || undefined,
@@ -230,9 +263,8 @@ const fuzzySearch = () => {
 };
 
 const handleDeptChange = (value) => {
-  const nextCodes = Array.isArray(value) ? value : [];
-  deptCodes.value = nextCodes;
-  formInline.value.deptCode = nextCodes.length ? nextCodes[nextCodes.length - 1] : "";
+  formInline.value.deptCode =
+    value === "" || value === null || value === undefined ? "" : String(value);
   fuzzySearch();
 };
 
@@ -267,10 +299,14 @@ const fetchPageParams = () => {
     },
   ).then((res) => {
     const data = res?.data || {};
+    calcDeptScopeTree.value = Array.isArray(data.deptScopeTree)
+      ? data.deptScopeTree
+      : [];
     periodOptions.value = Array.isArray(data.periodOptions) ? data.periodOptions : [];
     formInline.value.periodCode =
       data.defaultPeriodCode ||
       periodOptions.value[0]?.periodCode ||
+      periodOptions.value[0]?.code ||
       "";
   });
 };
@@ -293,7 +329,7 @@ const buildExportParams = () => {
   const talentKeyword = keyword.value.trim();
   return {
     periodCode: formInline.value.periodCode || undefined,
-    deptCode: formInline.value.deptCode || undefined,
+    deptCode: resolveQueryDeptCode(),
     talentName: talentKeyword || undefined,
   };
 };
@@ -453,19 +489,18 @@ onUnmounted(() => {
                     />
                   </el-select>
                   <el-cascader
-                    v-model="deptCodes"
+                    v-model="formInline.deptCode"
                     class="attendance-calculation__cascader"
                     :options="attendanceOrganizationOptions"
                     :props="{
                       checkStrictly: true,
-                      emitPath: true,
+                      emitPath: false,
                       value: 'deptCode',
                       label: 'deptName',
                     }"
                     clearable
                     filterable
-                    collapse-tags
-                    collapse-tags-tooltip
+                    :show-all-levels="false"
                     placeholder="请选择组织"
                     @change="handleDeptChange"
                   />
