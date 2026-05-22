@@ -56,7 +56,6 @@ const fetchUnarchivedList = () => {
     {
       pageNo: listQuery.value.pageNo,
       pageSize: listQuery.value.pageSize,
-      talentCode: searchKeyword.value || undefined,
       talentName: searchKeyword.value || undefined,
     },
     {
@@ -196,8 +195,9 @@ watch(
           <el-input
             v-model="searchKeyword"
             clearable
-            placeholder="请输入员工编码/姓名"
+            placeholder="请输入员工姓名"
             class="attendance-profile-unarchived-dialog__input"
+            @clear="handleSearch"
             @keyup.enter="handleSearch"
           >
             <template #prepend>

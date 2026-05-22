@@ -202,7 +202,6 @@ const fetchAttendanceGroupList = () => {
     {
       pageNo: listQuery.value.pageNo,
       pageSize: listQuery.value.pageSize,
-      groupCode: diminput.value || undefined,
       groupName: diminput.value || undefined,
       ...formInline.value,
     },
@@ -511,9 +510,10 @@ onUnmounted(() => {
                   <el-input
                     v-model="diminput"
                     style="width: 200px"
-                    placeholder="搜索..."
+                    placeholder="请输入考勤组名称"
                     clearable
                     class="top-search"
+                    @clear="fuzzySearch"
                     @keyup.enter="fuzzySearch"
                   >
                     <template #prepend>

@@ -170,7 +170,6 @@ const fetchAttendanceArchiveList = () => {
     {
       pageNo: listQuery.value.pageNo,
       pageSize: listQuery.value.pageSize,
-      talentCode: diminput.value || undefined,
       talentName: diminput.value || undefined,
       ...formInline.value,
     },
@@ -571,9 +570,10 @@ onUnmounted(() => {
                   <el-input
                     v-model="diminput"
                     style="width: 200px"
-                    placeholder="搜索..."
+                    placeholder="请输入员工姓名"
                     clearable
                     class="top-search"
+                    @clear="fuzzySearch"
                     @keyup.enter="fuzzySearch"
                   >
                     <template #prepend>

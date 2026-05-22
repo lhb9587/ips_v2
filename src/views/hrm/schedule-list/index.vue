@@ -348,7 +348,6 @@ const fetchScheduleList = () => {
       pageSize: Math.min(listQuery.value.pageSize, 100),
       startDate: formInline.value.startDate,
       endDate: formInline.value.endDate,
-      talentCode: diminput.value || undefined,
       talentName: diminput.value || undefined,
     },
     {
@@ -976,9 +975,10 @@ onUnmounted(() => {
                   <el-input
                     v-model="diminput"
                     style="width: 200px"
-                    placeholder="搜索..."
+                    placeholder="请输入员工姓名"
                     clearable
                     class="top-search"
+                    @clear="fuzzySearch"
                     @keyup.enter="fuzzySearch"
                   >
                     <template #prepend>

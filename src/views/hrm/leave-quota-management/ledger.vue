@@ -15,7 +15,7 @@ const store = useStore();
 
 const gridName = "leaveQuotaLedgerGrid";
 const TEXT_BACK = "返回";
-const TEXT_SEARCH_PLACEHOLDER = "搜索...";
+const TEXT_SEARCH_PLACEHOLDER = "请输入员工姓名";
 const LEDGER_COLUMN_LABELS = {
   sid: "序号",
   quotaAccountId: "额度ID",
@@ -131,9 +131,7 @@ const fetchLedgerList = () => {
     {
       pageNo: listQuery.value.pageNo,
       pageSize: Math.min(listQuery.value.pageSize, 100),
-      talentCode: diminput.value || undefined,
       talentName: diminput.value || undefined,
-      bizNo: diminput.value || undefined,
     },
     {
       isLoading: false,
@@ -190,6 +188,7 @@ onMounted(() => {
                   :placeholder="TEXT_SEARCH_PLACEHOLDER"
                   clearable
                   class="top-search"
+                  @clear="fuzzySearch"
                   @keyup.enter="fuzzySearch"
                 >
                   <template #prepend>

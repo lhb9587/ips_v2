@@ -196,7 +196,6 @@ const fetchLeaveQuotaList = () => {
     {
       pageNo: listQuery.value.pageNo,
       pageSize: listQuery.value.pageSize,
-      talentCode: diminput.value || undefined,
       talentName: diminput.value || undefined,
       ...formInline.value,
     },
@@ -538,7 +537,6 @@ const buildBatchExtendPayload = (formData) => {
 
   if (formData.targetType === "all") {
     payload.extendTargetType = "ALL_LIST";
-    payload.talentCode = diminput.value || undefined;
     payload.talentName = diminput.value || undefined;
     return payload;
   }
@@ -671,8 +669,9 @@ onUnmounted(() => {
                     v-model="diminput"
                     class="top-search"
                     style="width: 200px"
-                    placeholder="搜索..."
+                    placeholder="请输入员工姓名"
                     clearable
+                    @clear="fuzzySearch"
                     @keyup.enter="fuzzySearch"
                   >
                     <template #prepend>
