@@ -213,10 +213,12 @@ export default {
         });
       }
     },
-    handleLink(item) {
-      // if (item.name === "case" || item.name === "project" ) {
-        this.toFirstChild(item);
-      // }
+    isBreadcrumbFirstLevel(index) {
+      return index === 0;
+    },
+    handleLink(item, index) {
+      if (this.isBreadcrumbFirstLevel(index)) return;
+      this.toFirstChild(item);
     },
     onAccountFilter(keyword) {
       this.accountKeyword = keyword;
@@ -344,7 +346,7 @@ export default {
               >
               <a
                 v-else
-                @click.prevent="handleLink(item)"
+                @click.prevent="handleLink(item, index)"
                 >{{ item.meta.title }}</a
               >
               <!-- <a v-else>{{ item.meta.title }}</a> -->
