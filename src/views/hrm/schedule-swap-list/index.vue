@@ -143,7 +143,6 @@ const fetchScheduleSwapList = () => {
     {
       pageNo: listQuery.value.pageNo,
       pageSize: Math.min(listQuery.value.pageSize, 100),
-      talentCode: diminput.value || undefined,
       talentName: diminput.value || undefined,
     },
     {
@@ -228,7 +227,7 @@ onMounted(() => {
                 <el-input
                   v-model="diminput"
                   style="width: 200px"
-                  placeholder="搜索员工编码..."
+                  placeholder="请输入员工姓名"
                   clearable
                   class="top-search"
                   @keyup.enter="fuzzySearch"

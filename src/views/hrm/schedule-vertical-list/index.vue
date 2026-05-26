@@ -144,7 +144,6 @@ const fetchVerticalList = () => {
       pageSize: Math.min(listQuery.value.pageSize, 100),
       startDate: formInline.value.startDate,
       endDate: formInline.value.endDate,
-      talentCode: diminput.value || undefined,
       talentName: diminput.value || undefined,
     },
     {
@@ -161,7 +160,7 @@ const fetchVerticalList = () => {
           employeeCode: item.talentCode || "",
           employeeName: item.talentName || "",
           attendanceOrganization: item.attendanceOrgName || "",
-          sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index,
+          sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index + 1,
         };
 
         const dayMap = {};

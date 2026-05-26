@@ -24,6 +24,15 @@ import CalcTaskDialog from "./calc-task-dialog.vue";
 const route = useRoute();
 const store = useStore();
 
+const CALCULATED_EXCEPTION_FILTER_OPTIONS = [
+  { field: "absent", label: "旷工" },
+  { field: "late", label: "迟到" },
+  { field: "earlyLeave", label: "早退" },
+  { field: "leave", label: "请假" },
+  { field: "overtime", label: "加班" },
+  { field: "trip", label: "出差" },
+];
+
 const TAB_MAP = {
   calculated: {
     label: "已计算",
@@ -82,6 +91,7 @@ const formInline = ref({
   groupId: "",
 });
 const keyword = ref("");
+const calculatedExceptionFilters = ref([]);
 const listQuery = ref({
   pageNo: 1,
   pageSize: 50,
@@ -109,6 +119,7 @@ const currentGridName = computed(
 );
 const showCalculateActions = computed(() => true);
 const showExportAction = computed(() => activeTab.value === "calculated");
+const showCalculatedExceptionFilters = computed(() => activeTab.value === "calculated");
 
 const setColumn = (list) => {
   columnList.value = Array.isArray(list) ? list : [];
@@ -199,14 +210,28 @@ const resolveQueryDeptCode = () => {
     : String(deptCode);
 };
 
-const buildQueryParams = () => ({
-  pageNo: listQuery.value.pageNo,
-  pageSize: listQuery.value.pageSize,
-  periodCode: formInline.value.periodCode || undefined,
-  deptCode: resolveQueryDeptCode(),
-  groupId: formInline.value.groupId || undefined,
-  talentName: keyword.value || undefined,
-});
+const buildCalculatedExceptionQueryParams = () => {
+  const params = {};
+  calculatedExceptionFilters.value.forEach((field) => {
+    params[field] = 1;
+  });
+  return params;
+};
+
+const buildQueryParams = () => {
+  const params = {
+    pageNo: listQuery.value.pageNo,
+    pageSize: listQuery.value.pageSize,
+    periodCode: formInline.value.periodCode || undefined,
+    deptCode: resolveQueryDeptCode(),
+    groupId: formInline.value.groupId || undefined,
+    talentName: keyword.value || undefined,
+  };
+  if (activeTab.value === "calculated") {
+    Object.assign(params, buildCalculatedExceptionQueryParams());
+  }
+  return params;
+};
 
 const buildCalculateParams = () => ({
   periodCode: formInline.value.periodCode || undefined,
@@ -268,9 +293,19 @@ const handleDeptChange = (value) => {
   fuzzySearch();
 };
 
-const handleTabChange = () => {
+const handleTabChange = (tabName) => {
+  if (tabName !== "calculated") {
+    calculatedExceptionFilters.value = [];
+  }
   listQuery.value.pageNo = 1;
   fetchAttendanceCalculationList();
+};
+
+const handleCalculatedExceptionFilterChange = () => {
+  if (activeTab.value !== "calculated") {
+    return;
+  }
+  fuzzySearch();
 };
 
 const fetchGroupOptions = () => {
@@ -522,12 +557,26 @@ onUnmounted(() => {
                 </div>
               </span>
               <div class="d-flex gap-2 attendance-calculation__actions">
+                <div class="attendance-calculation__tabs">
+                  <el-tabs
+                    v-model="activeTab"
+                    @tab-change="handleTabChange"
+                  >
+                    <el-tab-pane
+                      v-for="(item, key) in TAB_MAP"
+                      :key="key"
+                      :label="item.label"
+                      :name="key"
+                    />
+                  </el-tabs>
+                </div>
                 <TopListTool
                   :gridName="currentGridName"
                   :buss-id="currentBussId"
                   :queryList="{
                     ...listQuery,
                     ...formInline,
+                    ...buildCalculatedExceptionQueryParams(),
                     searchWord: keyword,
                     activeTab,
                   }"
@@ -543,42 +592,10 @@ onUnmounted(() => {
           </div>
 
           <div class="attendance-calculation__tabs-bar">
-            <div class="attendance-calculation__tabs">
-              <el-tabs
-                v-model="activeTab"
-                @tab-change="handleTabChange"
-              >
-                <el-tab-pane
-                  v-for="(item, key) in TAB_MAP"
-                  :key="key"
-                  :label="item.label"
-                  :name="key"
-                />
-              </el-tabs>
-            </div>
             <div
               v-if="showCalculateActions || showExportAction"
               class="d-flex gap-2 attendance-calculation__tab-actions"
             >
-              <el-dropdown
-                v-if="showExportAction"
-                @command="handleExport"
-              >
-                <el-button>
-                  导出
-                  <i class="mdi mdi-chevron-down ms-1"></i>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="exportSelected">
-                      选中导出
-                    </el-dropdown-item>
-                    <el-dropdown-item command="exportAll">
-                      全部导出
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
               <el-button
                 v-if="showCalculateActions"
                 type="primary"
@@ -601,6 +618,39 @@ onUnmounted(() => {
               >
                 查看后台事务
               </el-button>
+              <el-dropdown
+                v-if="showExportAction"
+                @command="handleExport"
+              >
+                <el-button>
+                  导出
+                  <i class="mdi mdi-chevron-down ms-1"></i>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="exportSelected">
+                      选中导出
+                    </el-dropdown-item>
+                    <el-dropdown-item command="exportAll">
+                      全部导出
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+              <el-checkbox-group
+                v-if="showCalculatedExceptionFilters"
+                v-model="calculatedExceptionFilters"
+                class="attendance-calculation__exception-filters"
+                @change="handleCalculatedExceptionFilterChange"
+              >
+                <el-checkbox
+                  v-for="item in CALCULATED_EXCEPTION_FILTER_OPTIONS"
+                  :key="item.field"
+                  :label="item.field"
+                >
+                  {{ item.label }}
+                </el-checkbox>
+              </el-checkbox-group>
             </div>
           </div>
 
@@ -651,6 +701,7 @@ onUnmounted(() => {
 
 .attendance-calculation__actions {
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
 }
 
@@ -658,7 +709,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 10px 10px;
+  padding: 0 20px 10px;
   flex-wrap: wrap;
 }
 
@@ -669,6 +720,7 @@ onUnmounted(() => {
 .attendance-calculation__tab-actions {
   flex: 0 0 auto;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 :deep(.attendance-calculation__tabs .el-tabs) {
@@ -732,5 +784,24 @@ onUnmounted(() => {
 
 :deep(.attendance-calculation__cascader.el-cascader) {
   width: 260px;
+}
+
+.attendance-calculation__exception-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: #f3f6fb;
+}
+
+:deep(.attendance-calculation__exception-filters .el-checkbox) {
+  margin-right: 0;
+  height: 28px;
+}
+
+:deep(.attendance-calculation__exception-filters label) {
+  margin-bottom: 0;
 }
 </style>

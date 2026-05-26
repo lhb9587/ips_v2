@@ -16,17 +16,9 @@ const store = useStore();
 
 const bussId = 460;
 const gridName = "scheduleUnscheduledListGrid";
-const DEFAULT_COLUMNS = [
-  { title: "序号", value: "sid", width: 70, minWidth: 70, maxWidth: 90 },
-  { title: "员工编码", value: "employeeCode", minWidth: 140 },
-  { title: "姓名", value: "employeeName", minWidth: 120 },
-  { title: "组织", value: "attendanceOrganization", minWidth: 240 },
-  { title: "员工状态", value: "employeeStatus", minWidth: 120 },
-];
-
-const columnList = ref([...DEFAULT_COLUMNS]);
+const columnList = ref([]);
 const setColumn = (list) => {
-  columnList.value = Array.isArray(list) && list.length ? list : [...DEFAULT_COLUMNS];
+  columnList.value = Array.isArray(list) ? list : [];
 };
 
 const activeClass = ref([]);
@@ -80,7 +72,6 @@ const fetchUnscheduledList = () => {
       pageSize: Math.min(listQuery.value.pageSize, 100),
       startDate: formInline.value.startDate,
       endDate: formInline.value.endDate,
-      talentCode: diminput.value || undefined,
       talentName: diminput.value || undefined,
     },
     {
@@ -203,7 +194,7 @@ onMounted(() => {
                   <el-input
                     v-model="diminput"
                     style="width: 200px"
-                    placeholder="搜索..."
+                    placeholder="请输入员工姓名"
                     clearable
                     class="top-search"
                     @keyup.enter="fuzzySearch"

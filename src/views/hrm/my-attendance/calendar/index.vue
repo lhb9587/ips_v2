@@ -15,9 +15,9 @@ const router = useRouter();
 const weekLabels = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 const businessActions = [
   { label: "我要请假", type: "primary", routeName: "my-leave-application" },
-  { label: "我要出差", type: "default", path: "/businesstrip-management" },
-  { label: "我要加班", type: "default", routeName: "my-overtime-application" },
-  { label: "我要调班", type: "default", routeName: "schedule-swap-list" },
+  { label: "我要出差", type: "primary", path: "/businesstrip-management" },
+  { label: "我要加班", type: "primary", routeName: "my-overtime-application" },
+  { label: "我要调班", type: "primary", routeName: "schedule-swap-list" },
 ];
 const statCards = [
   {
