@@ -2,10 +2,12 @@
 <!-- eslint-disable no-undef -->
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
+import { useStore } from "vuex";
 import { ElMessage } from "element-plus";
 import Pagination from "@/components/common/pagination/index.vue";
 import {
   batchCreateAttendanceArchiveByDefault,
+  queryAttendanceCalcParams,
   queryUnarchivedAttendanceArchivePage,
 } from "@/api/attendance";
 
@@ -22,6 +24,8 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue", "created"]);
 
+const store = useStore();
+
 const dialogVisible = computed({
   get: () => props.modelValue,
   set: (value) => emit("update:modelValue", value),
@@ -29,6 +33,10 @@ const dialogVisible = computed({
 
 const loading = ref(false);
 const searchKeyword = ref("");
+const unarchivedDeptScopeTree = ref([]);
+const filterForm = ref({
+  deptCode: "",
+});
 const tableData = ref([]);
 const total = ref(0);
 const tableRef = ref(null);
@@ -46,6 +54,65 @@ const defaultShiftValue = computed(
   () => props.shiftOptions.find((item) => item?.isDefault)?.shiftName || "",
 );
 
+const resolveDeptCode = (item = {}) => {
+  const code =
+    item.deptCode ?? item.deptId ?? item.organizationCode ?? item.value ?? "";
+  return code === "" || code === null || code === undefined ? "" : String(code);
+};
+
+const mapAttendanceOrganizationTree = (list = []) =>
+  list
+    .map((item) => {
+      const deptCode = resolveDeptCode(item);
+      if (!deptCode) {
+        return null;
+      }
+      return {
+        deptCode,
+        deptName: item.deptName || item.organizationName || item.label || "",
+        children: Array.isArray(item.children)
+          ? mapAttendanceOrganizationTree(item.children)
+          : [],
+      };
+    })
+    .filter(Boolean);
+
+const attendanceOrganizationOptions = computed(() => {
+  if (unarchivedDeptScopeTree.value.length > 0) {
+    return mapAttendanceOrganizationTree(unarchivedDeptScopeTree.value);
+  }
+  const scope = store.getters["attendanceScope/scope"] || {};
+  if (Array.isArray(scope?.deptScopeTree) && scope.deptScopeTree.length > 0) {
+    return mapAttendanceOrganizationTree(scope.deptScopeTree);
+  }
+  return mapAttendanceOrganizationTree(store.getters["attendanceScope/deptScopes"] || []);
+});
+
+const resolveQueryDeptCode = () => {
+  const deptCode = filterForm.value.deptCode;
+  return deptCode === "" || deptCode === null || deptCode === undefined
+    ? undefined
+    : String(deptCode);
+};
+
+const fetchDeptScopeOptions = () => {
+  return queryAttendanceCalcParams(
+    {},
+    {
+      isLoading: false,
+    },
+  )
+    .then((res) => {
+      const data = res?.data || {};
+      unarchivedDeptScopeTree.value = Array.isArray(data.deptScopeTree)
+        ? data.deptScopeTree
+        : [];
+    })
+    .catch(() => {
+      unarchivedDeptScopeTree.value = [];
+    });
+};
+
 const resolvePositionName = (record) => {
   return record.positionName || record.posName || record.position || record.posId || "-";
 };
@@ -57,6 +124,7 @@ const fetchUnarchivedList = () => {
       pageNo: listQuery.value.pageNo,
       pageSize: listQuery.value.pageSize,
       talentName: searchKeyword.value || undefined,
+      deptCode: resolveQueryDeptCode(),
     },
     {
       isLoading: false,
@@ -82,6 +150,12 @@ const handleSearch = () => {
   fetchUnarchivedList();
 };
 
+const handleDeptChange = (value) => {
+  filterForm.value.deptCode =
+    value === "" || value === null || value === undefined ? "" : String(value);
+  handleSearch();
+};
+
 const handlePagination = () => {
   fetchUnarchivedList();
 };
@@ -100,6 +174,9 @@ const handleSelectionChange = (rows) => {
 };
 
 const resetDialogState = () => {
+  searchKeyword.value = "";
+  filterForm.value.deptCode = "";
+  unarchivedDeptScopeTree.value = [];
   selectedRows.value = [];
   selectedShift.value = defaultShiftValue.value;
   shiftDialogVisible.value = false;
@@ -155,7 +232,9 @@ watch(
     }
     listQuery.value.pageNo = 1;
     selectedShift.value = defaultShiftValue.value;
-    fetchUnarchivedList();
+    fetchDeptScopeOptions().finally(() => {
+      fetchUnarchivedList();
+    });
   },
 );
 </script>
@@ -179,10 +258,6 @@ watch(
           </div>
         </div>
         <div class="attendance-profile-unarchived__hero-stats">
-          <div class="attendance-profile-unarchived__stat-card">
-            <div class="attendance-profile-unarchived__stat-label">待建档人数</div>
-            <div class="attendance-profile-unarchived__stat-value">{{ total }}</div>
-          </div>
           <div class="attendance-profile-unarchived__stat-card attendance-profile-unarchived__stat-card--accent">
             <div class="attendance-profile-unarchived__stat-label">已选择</div>
             <div class="attendance-profile-unarchived__stat-value">{{ selectedCount }}</div>
@@ -192,20 +267,38 @@ watch(
 
       <div class="attendance-profile-unarchived__panel">
         <div class="attendance-profile-unarchived-dialog__toolbar">
-          <el-input
-            v-model="searchKeyword"
-            clearable
-            placeholder="请输入员工姓名"
-            class="attendance-profile-unarchived-dialog__input"
-            @clear="handleSearch"
-            @keyup.enter="handleSearch"
-          >
-            <template #prepend>
-              <el-button @click="handleSearch">
-                <i class="bx bx-search-alt"></i>
-              </el-button>
-            </template>
-          </el-input>
+          <div class="attendance-profile-unarchived-dialog__toolbar-filters">
+            <el-input
+              v-model="searchKeyword"
+              clearable
+              placeholder="请输入员工姓名"
+              class="attendance-profile-unarchived-dialog__input"
+              @clear="handleSearch"
+              @keyup.enter="handleSearch"
+            >
+              <template #prepend>
+                <el-button @click="handleSearch">
+                  <i class="bx bx-search-alt"></i>
+                </el-button>
+              </template>
+            </el-input>
+            <el-cascader
+              v-model="filterForm.deptCode"
+              class="attendance-profile-unarchived-dialog__cascader"
+              :options="attendanceOrganizationOptions"
+              :props="{
+                checkStrictly: true,
+                emitPath: false,
+                value: 'deptCode',
+                label: 'deptName',
+              }"
+              clearable
+              filterable
+              :show-all-levels="false"
+              placeholder="请选择组织"
+              @change="handleDeptChange"
+            />
+          </div>
           <div class="attendance-profile-unarchived-dialog__toolbar-tip">
             支持按员工编码或姓名快速筛选
           </div>
@@ -438,7 +531,7 @@ watch(
 
 .attendance-profile-unarchived__hero-stats {
   display: grid;
-  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  grid-template-columns: minmax(120px, auto);
   gap: 12px;
   flex: 0 0 auto;
   min-width: 0;
@@ -490,15 +583,35 @@ watch(
   min-width: 0;
 }
 
-.attendance-profile-unarchived-dialog__input,
-.attendance-profile-unarchived-dialog__table-wrap {
-  width: 100%;
+.attendance-profile-unarchived-dialog__toolbar-filters {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  flex: 0 1 auto;
   min-width: 0;
 }
 
 .attendance-profile-unarchived-dialog__input {
-  max-width: 320px;
-  flex: 0 1 320px;
+  width: 200px;
+  min-width: 200px;
+  max-width: 200px;
+  flex: 0 0 200px;
+}
+
+:deep(.attendance-profile-unarchived-dialog__input.el-input) {
+  width: 200px;
+}
+
+:deep(.attendance-profile-unarchived-dialog__cascader.el-cascader) {
+  width: 260px;
+  min-width: 260px;
+  flex: 0 0 260px;
+}
+
+.attendance-profile-unarchived-dialog__table-wrap {
+  width: 100%;
+  min-width: 0;
 }
 
 .attendance-profile-unarchived-dialog__toolbar-tip {
@@ -615,12 +728,25 @@ watch(
   }
 
   .attendance-profile-unarchived__hero-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .attendance-profile-unarchived-dialog__toolbar-filters {
+    flex-wrap: wrap;
   }
 
   .attendance-profile-unarchived-dialog__input,
   .attendance-profile-unarchived-dialog__shift-input {
     max-width: none;
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  :deep(.attendance-profile-unarchived-dialog__cascader.el-cascader) {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
   }
 
   .attendance-profile-unarchived-dialog__footer-actions {

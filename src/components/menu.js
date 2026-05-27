@@ -444,6 +444,13 @@ export const menuItems = [
         icon: "bx bx-time-five",
       },
       {
+        id: 437,
+        label: "menuitems.hrm.list.approval_center",
+        link: "/hrm/my-attendance/approval-center",
+        parentId: 56,
+        icon: "bx bx-check-shield",
+      },
+      {
         id: 436,
         label: "假勤管理",
         link: "/hrm/attendance-management",

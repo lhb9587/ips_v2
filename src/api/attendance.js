@@ -552,3 +552,93 @@ export function exportLeaveReportSummary(data, config = {}) {
     ...config
   })
 }
+
+export function queryLeaveRequestAdminPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryLeaveRequestAdminPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryLeaveRequestAdminDetail(data, config = {}) {
+  return request({
+    url: attendanceApi.queryLeaveRequestAdminDetail,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function directPassLeaveRequestAdmin(data, config = {}) {
+  return request({
+    url: attendanceApi.directPassLeaveRequestAdmin,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function reverseApproveLeaveRequestAdmin(data, config = {}) {
+  return request({
+    url: attendanceApi.reverseApproveLeaveRequestAdmin,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function abandonLeaveRequestAdmin(data, config = {}) {
+  return request({
+    url: attendanceApi.abandonLeaveRequestAdmin,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function exportLeaveRequestAdmin(data, config = {}) {
+  return request({
+    url: attendanceApi.exportLeaveRequestAdmin,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryApprovalCenterPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryApprovalCenterPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryApprovalCenterDetail(data, config = {}) {
+  return request({
+    url: attendanceApi.queryApprovalCenterDetail,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function approveApprovalTask(data, config = {}) {
+  return request({
+    url: attendanceApi.approveApprovalTask,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function rejectApprovalTask(data, config = {}) {
+  return request({
+    url: attendanceApi.rejectApprovalTask,
+    method: 'post',
+    data,
+    ...config
+  })
+}

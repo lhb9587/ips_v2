@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage } from "element-plus";
@@ -10,36 +10,21 @@ import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import LeaveDetailContent from "@/views/hrm/my-attendance/leave-list/components/LeaveDetailContent.vue";
-import { saveTableConfig } from "@/utils";
+import {
+  exportLeaveRequestAdmin,
+  queryLeaveRequestAdminPage,
+} from "@/api/attendance";
+import { downLoad, saveTableConfig } from "@/utils";
 
 const route = useRoute();
 const store = useStore();
 
+const bussId = 473;
 const gridName = "leaveManagementGrid";
-const columnOptions = [
-  { title: "单据编号", value: "billNo" },
-  { title: "员工编码", value: "employeeCode" },
-  { title: "姓名", value: "employeeName" },
-  { title: "组织", value: "organization" },
-  { title: "假期类型", value: "leaveType" },
-  { title: "开始时间", value: "startTime" },
-  { title: "结束时间", value: "endTime" },
-  { title: "请假长度", value: "leaveDuration" },
-  { title: "单位", value: "unit" },
-  { title: "单据状态", value: "billStatus" },
-  { title: "审批人", value: "approver" },
-];
 
-const columnList = ref([...columnOptions]);
+const columnList = ref([]);
 const setColumn = (list) => {
-  if (!Array.isArray(list) || list.length === 0) {
-    columnList.value = [...columnOptions];
-    return;
-  }
-  const validColumns = list.filter((item) =>
-    columnOptions.some((column) => column.value === item.value),
-  );
-  columnList.value = validColumns.length > 0 ? validColumns : [...columnOptions];
+  columnList.value = Array.isArray(list) ? list : [];
 };
 
 const activeClass = ref([]);
@@ -135,22 +120,14 @@ const listQuery = ref({
 
 const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
 const formInline = ref({});
+const total = ref(0);
+const gridData = ref([]);
 
-const statusToDetailMap = {
-  草稿: "未提交",
-  审批中: "审批中",
-  已审批: "已通过",
-  已驳回: "已驳回",
-  已废弃: "已废弃",
-  已生效: "已通过",
-};
-
-const statusToListMap = {
-  未提交: "草稿",
-  审批中: "审批中",
-  已通过: "已审批",
-  已驳回: "已驳回",
-  已废弃: "已废弃",
+const mapRequestStatusToDetail = (status) => {
+  if (status === "已退回") {
+    return "已驳回";
+  }
+  return status || "";
 };
 
 const formatManagementLeaveTime = (timeText) => {
@@ -166,232 +143,97 @@ const formatManagementLeaveTime = (timeText) => {
 };
 
 const buildDetailFromRecord = (record) => ({
-  billNo: record.billNo,
-  applicant: record.employeeName,
-  employeeCode: record.employeeCode,
-  organization: record.organization,
-  applyDate: String(record.startTime || "").split(" ")[0],
-  leaveType: record.leaveType,
+  leaveRequestId: record.leaveRequestId,
+  billNo: record.requestNo,
+  applicant: record.talentName,
+  employeeCode: record.talentCode,
+  organization: record.deptName,
+  applyDate: record.applyTime
+    ? dayjs(record.applyTime).format("YYYY-MM-DD")
+    : String(record.startTime || "").split(" ")[0],
+  leaveType: record.leaveTypeName,
   startTime: formatManagementLeaveTime(record.startTime),
   endTime: formatManagementLeaveTime(record.endTime),
   duration: record.leaveDuration,
-  unit: record.unit,
-  status: statusToDetailMap[record.billStatus] || record.billStatus,
-  approver: record.approver,
-  reason: record.reason || "请假申请已提交，等待审批流程处理。",
+  unit: record.durationUnit,
+  status: mapRequestStatusToDetail(record.requestStatus),
+  approver: record.currentApproverName,
+  reason: record.leaveReason || "",
   attachments: record.attachments || [],
-  comment: record.comment || "审批流程处理中",
+  comment: record.comment || "",
 });
 
 const buildRecordFromDetail = (detail, sourceRecord = {}) => ({
   ...sourceRecord,
-  billNo: detail.billNo,
-  employeeCode: detail.employeeCode,
-  employeeName: detail.applicant,
-  organization: detail.organization,
-  leaveType: detail.leaveType,
+  leaveRequestId: detail.leaveRequestId || sourceRecord.leaveRequestId,
+  requestNo: detail.billNo,
+  talentCode: detail.employeeCode,
+  talentName: detail.applicant,
+  deptName: detail.organization,
+  leaveTypeName: detail.leaveType,
   startTime: detail.startTime,
   endTime: detail.endTime,
   leaveDuration: detail.duration,
-  unit: detail.unit,
-  billStatus: statusToListMap[detail.status] || detail.status,
-  approver: detail.approver,
-  reason: detail.reason,
+  durationUnit: detail.unit,
+  requestStatus:
+    detail.status === "已驳回" ? "已退回" : detail.status || sourceRecord.requestStatus,
+  currentApproverName: detail.approver,
+  leaveReason: detail.reason,
   attachments: detail.attachments || [],
   comment: detail.comment,
 });
 
-const leaveOrderList = ref([
-  {
-    billNo: "QJD20260401001",
-    employeeCode: "HR2023001",
-    employeeName: "张敏",
-    organization: "华东运营中心",
-    leaveType: "年假",
-    startTime: "2026-04-01 09:00",
-    endTime: "2026-04-02 18:00",
-    leaveDuration: 2,
-    unit: "天",
-    billStatus: "已审批",
-    approver: "李经理",
-  },
-  {
-    billNo: "QJD20260403002",
-    employeeCode: "HR2023002",
-    employeeName: "李倩",
-    organization: "人力资源部",
-    leaveType: "病假",
-    startTime: "2026-04-03 13:30",
-    endTime: "2026-04-04 18:00",
-    leaveDuration: 1.5,
-    unit: "天",
-    billStatus: "审批中",
-    approver: "王总监",
-  },
-  {
-    billNo: "QJD20260405003",
-    employeeCode: "HR2023003",
-    employeeName: "王浩",
-    organization: "产品研发部",
-    leaveType: "调休",
-    startTime: "2026-04-05 09:00",
-    endTime: "2026-04-05 13:00",
-    leaveDuration: 4,
-    unit: "小时",
-    billStatus: "草稿",
-    approver: "赵主管",
-  },
-  {
-    billNo: "QJD20260406004",
-    employeeCode: "HR2023004",
-    employeeName: "赵雪",
-    organization: "财务管理部",
-    leaveType: "婚假",
-    startTime: "2026-04-06 09:00",
-    endTime: "2026-04-10 18:00",
-    leaveDuration: 5,
-    unit: "天",
-    billStatus: "已审批",
-    approver: "陈总监",
-  },
-  {
-    billNo: "QJD20260408005",
-    employeeCode: "HR2023005",
-    employeeName: "陈博",
-    organization: "法务中心",
-    leaveType: "陪产假",
-    startTime: "2026-04-08 09:00",
-    endTime: "2026-04-10 18:00",
-    leaveDuration: 3,
-    unit: "天",
-    billStatus: "已审批",
-    approver: "周经理",
-  },
-  {
-    billNo: "QJD20260411006",
-    employeeCode: "HR2023006",
-    employeeName: "周岚",
-    organization: "市场发展部",
-    leaveType: "产假",
-    startTime: "2026-04-11 09:00",
-    endTime: "2026-09-15 18:00",
-    leaveDuration: 158,
-    unit: "天",
-    billStatus: "已审批",
-    approver: "何总监",
-  },
-  {
-    billNo: "QJD20260412007",
-    employeeCode: "HR2023007",
-    employeeName: "孙洋",
-    organization: "客户成功部",
-    leaveType: "年假",
-    startTime: "2026-04-12 09:00",
-    endTime: "2026-04-12 18:00",
-    leaveDuration: 1,
-    unit: "天",
-    billStatus: "审批中",
-    approver: "刘经理",
-  },
-  {
-    billNo: "QJD20260415008",
-    employeeCode: "HR2023008",
-    employeeName: "刘畅",
-    organization: "供应链部",
-    leaveType: "事假",
-    startTime: "2026-04-15 14:00",
-    endTime: "2026-04-15 18:00",
-    leaveDuration: 4,
-    unit: "小时",
-    billStatus: "已驳回",
-    approver: "高主管",
-  },
-  {
-    billNo: "QJD20260418009",
-    employeeCode: "HR2023009",
-    employeeName: "高宁",
-    organization: "数字化平台主管部",
-    leaveType: "调休",
-    startTime: "2026-04-18 09:00",
-    endTime: "2026-04-18 12:00",
-    leaveDuration: 3,
-    unit: "小时",
-    billStatus: "已审批",
-    approver: "彭经理",
-  },
-  {
-    billNo: "QJD20260420010",
-    employeeCode: "HR2023010",
-    employeeName: "郭晨",
-    organization: "品牌管理部",
-    leaveType: "丧假",
-    startTime: "2026-04-20 09:00",
-    endTime: "2026-04-22 18:00",
-    leaveDuration: 3,
-    unit: "天",
-    billStatus: "草稿",
-    approver: "未提交",
-  },
-  {
-    billNo: "QJD20260422011",
-    employeeCode: "HR2023011",
-    employeeName: "何静",
-    organization: "技术支持部",
-    leaveType: "病假",
-    startTime: "2026-04-22 09:00",
-    endTime: "2026-04-23 18:00",
-    leaveDuration: 2,
-    unit: "天",
-    billStatus: "审批中",
-    approver: "孙主管",
-  },
-  {
-    billNo: "QJD20260425012",
-    employeeCode: "HR2023012",
-    employeeName: "彭越",
-    organization: "销售管理部",
-    leaveType: "年假",
-    startTime: "2026-04-25 09:00",
-    endTime: "2026-04-25 18:00",
-    leaveDuration: 1,
-    unit: "天",
-    billStatus: "已审批",
-    approver: "吴经理",
-  },
-]);
-
-const filteredList = computed(() => {
-  const keyword = diminput.value.trim().toLowerCase();
+const buildListQueryParams = () => {
+  const keyword = diminput.value.trim();
+  const params = {
+    pageNo: listQuery.value.pageNo,
+    pageSize: Math.min(listQuery.value.pageSize, 200),
+    ...formInline.value,
+  };
   if (!keyword) {
-    return leaveOrderList.value;
+    return params;
   }
-  return leaveOrderList.value.filter((item) =>
-    [
-      item.billNo,
-      item.employeeCode,
-      item.employeeName,
-      item.organization,
-      item.leaveType,
-      item.billStatus,
-      item.approver,
-    ].some((field) => String(field || "").toLowerCase().includes(keyword)),
-  );
+  if (/[\u4e00-\u9fa5]/.test(keyword)) {
+    params.talentName = keyword;
+  } else {
+    params.requestNo = keyword;
+  }
+  return params;
+};
+
+const buildExportParams = () => {
+  const params = { ...buildListQueryParams() };
+  delete params.pageNo;
+  delete params.pageSize;
+  return params;
+};
+
+const normalizeRecord = (item = {}, index = 0) => ({
+  ...item,
+  id: item.leaveRequestId,
+  sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index + 1,
 });
 
-const total = computed(() => filteredList.value.length);
-
-const gridData = computed(() => {
-  const start = (listQuery.value.pageNo - 1) * listQuery.value.pageSize;
-  const end = start + listQuery.value.pageSize;
-  return filteredList.value.slice(start, end).map((item, index) => ({
-    ...item,
-    sid: start + index,
-  }));
-});
+const fetchLeaveRequestList = () => {
+  queryLeaveRequestAdminPage(buildListQueryParams(), { isLoading: true })
+    .then((res) => {
+      const records = Array.isArray(res?.data) ? res.data : [];
+      gridData.value = records.map((item, index) => normalizeRecord(item, index));
+      total.value = Number(res?.total || 0);
+      if (Number(res?.currPage)) {
+        listQuery.value.pageNo = Number(res.currPage);
+      }
+    })
+    .catch(() => {
+      gridData.value = [];
+      total.value = 0;
+    });
+};
 
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
   formInline.value = {};
+  fetchLeaveRequestList();
 };
 
 const getSelectedRows = () => {
@@ -399,14 +241,17 @@ const getSelectedRows = () => {
 };
 
 const updateBillStatus = (targetRows, status) => {
-  const targetIds = new Set(targetRows.map((item) => item.billNo));
-  leaveOrderList.value = leaveOrderList.value.map((item) => {
-    if (!targetIds.has(item.billNo)) {
+  const targetIds = new Set(
+    targetRows.map((item) => item.leaveRequestId || item.requestNo),
+  );
+  gridData.value = gridData.value.map((item) => {
+    const rowKey = item.leaveRequestId || item.requestNo;
+    if (!targetIds.has(rowKey)) {
       return item;
     }
     return {
       ...item,
-      billStatus: status,
+      requestStatus: status,
     };
   });
 };
@@ -420,18 +265,46 @@ const handleSubmitEffect = () => {
   ElMessage.success(`已提交 ${selectedRows.length} 条请假单生效`);
 };
 
+const handleExport = (command) => {
+  const payload = {
+    ...buildExportParams(),
+    exportMode: command === "exportSelected" ? "SELECTED" : "ALL",
+  };
+
+  if (command === "exportSelected") {
+    const selectedRows = getSelectedRows();
+    if (!selectedRows.length) {
+      return ElMessage.warning("请先选择需要导出的请假单");
+    }
+    const leaveRequestIds = [
+      ...new Set(
+        selectedRows
+          .map((item) => item.leaveRequestId)
+          .filter((item) => item || item === 0),
+      ),
+    ];
+    if (!leaveRequestIds.length) {
+      return ElMessage.warning("选中记录缺少请假单ID，无法导出");
+    }
+    payload.leaveRequestIds = leaveRequestIds.join(",");
+  }
+
+  exportLeaveRequestAdmin(payload, { isLoading: true }).then((res) => {
+    const filePath = res?.data?.filePath;
+    const fileName = res?.data?.fileName || "后台请假单导出.xlsx";
+    if (!filePath) {
+      return ElMessage.warning("导出文件地址为空");
+    }
+    downLoad(filePath, fileName);
+    ElMessage.success(command === "exportSelected" ? "选中导出成功" : "全部导出成功");
+  });
+};
+
 const handleMoreCommand = (command) => {
   const selectedRows = getSelectedRows();
 
-  if (command === "exportSelected") {
-    if (selectedRows.length === 0) {
-      return ElMessage.warning("请先选择需要导出的请假单");
-    }
-    return ElMessage.success(`已导出 ${selectedRows.length} 条选中记录`);
-  }
-
-  if (command === "exportAll") {
-    return ElMessage.success(`已导出 ${filteredList.value.length} 条列表记录`);
+  if (command === "exportSelected" || command === "exportAll") {
+    return handleExport(command);
   }
 
   if (command === "reverseApproval") {
@@ -451,10 +324,20 @@ const handleMoreCommand = (command) => {
   }
 };
 
+const formatDateTimeCell = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+  const target = dayjs(value);
+  return target.isValid() ? target.format("YYYY-MM-DD HH:mm:ss") : "";
+};
+
 const cellRenderer = (params) => {
-  return `<span title="${params.value || params.value === 0 ? params.value : ""}">${
-    params.value || params.value === 0 ? params.value : ""
-  }</span>`;
+  let displayValue = params.value || params.value === 0 ? params.value : "";
+  if (["startTime", "endTime", "applyTime"].includes(params?.colDef?.field)) {
+    displayValue = formatDateTimeCell(params.value);
+  }
+  return `<span title="${displayValue}">${displayValue}</span>`;
 };
 
 const handleRowClick = (params) => {
@@ -477,33 +360,34 @@ const closeDetailSidebar = () => {
 };
 
 const handleUpdateDetailRecord = (updatedRecord) => {
-  const recordIndex = leaveOrderList.value.findIndex(
-    (item) => item.billNo === updatedRecord.billNo,
+  const recordIndex = gridData.value.findIndex(
+    (item) =>
+      (updatedRecord.leaveRequestId &&
+        item.leaveRequestId === updatedRecord.leaveRequestId) ||
+      item.requestNo === updatedRecord.billNo,
   );
   if (recordIndex === -1) {
     return;
   }
   const updatedListRecord = buildRecordFromDetail(
     updatedRecord,
-    leaveOrderList.value[recordIndex],
+    gridData.value[recordIndex],
   );
-  leaveOrderList.value.splice(recordIndex, 1, updatedListRecord);
+  gridData.value.splice(recordIndex, 1, updatedListRecord);
   currentDetail.value = buildDetailFromRecord(updatedListRecord);
 };
 
-const handleDeleteDetailRecord = (record) => {
-  const recordIndex = leaveOrderList.value.findIndex(
-    (item) => item.billNo === record.billNo,
-  );
-  if (recordIndex > -1) {
-    leaveOrderList.value.splice(recordIndex, 1);
-  }
+const handleDeleteDetailRecord = () => {
   closeDetailSidebar();
+  fetchLeaveRequestList();
 };
 
-const handlePagination = () => {};
+const handlePagination = () => {
+  fetchLeaveRequestList();
+};
 
 onMounted(() => {
+  fetchLeaveRequestList();
   document.addEventListener("fullscreenchange", handleFullScreenChange);
 });
 
@@ -581,6 +465,7 @@ onUnmounted(() => {
               <div class="d-flex gap-2">
                 <TopListTool
                   :gridName="gridName"
+                  :buss-id="bussId"
                   @changeBorder="changeBorder"
                   @changeRowStyle="changeRowStyle"
                   @changeRowHeight="changeRowHeight"
@@ -601,6 +486,7 @@ onUnmounted(() => {
             <GridView
               ref="gridRef"
               :gridName="gridName"
+              :bussId="bussId"
               :height="gridHeight"
               :rowHeight="rowHeight"
               :columnDefs="columnList"

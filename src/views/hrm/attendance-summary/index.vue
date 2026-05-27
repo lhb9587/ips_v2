@@ -9,7 +9,10 @@ import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import { saveTableConfig } from "@/utils";
-import { queryAttendanceRecordPage } from "@/api/attendance";
+import {
+  queryAttendanceCalcParams,
+  queryAttendanceRecordPage,
+} from "@/api/attendance";
 
 const route = useRoute();
 const store = useStore();
@@ -37,18 +40,66 @@ const formInline = ref({
   queryType: "all",
 });
 const dateRange = ref([formInline.value.startDate, formInline.value.endDate]);
-const deptCodes = ref([]);
+const summaryDeptScopeTree = ref([]);
+
+const resolveDeptCode = (item = {}) => {
+  const code =
+    item.deptCode ?? item.deptId ?? item.organizationCode ?? item.value ?? "";
+  return code === "" || code === null || code === undefined ? "" : String(code);
+};
+
+const mapAttendanceOrganizationTree = (list = []) =>
+  list
+    .map((item) => {
+      const deptCode = resolveDeptCode(item);
+      if (!deptCode) {
+        return null;
+      }
+      return {
+        deptCode,
+        deptName: item.deptName || item.organizationName || item.label || "",
+        children: Array.isArray(item.children)
+          ? mapAttendanceOrganizationTree(item.children)
+          : [],
+      };
+    })
+    .filter(Boolean);
 
 const attendanceOrganizationOptions = computed(() => {
-  const currentScope = store.getters["attendanceScope/scope"] || {};
-  if (
-    Array.isArray(currentScope?.deptScopeTree) &&
-    currentScope.deptScopeTree.length > 0
-  ) {
-    return currentScope.deptScopeTree;
+  if (summaryDeptScopeTree.value.length > 0) {
+    return mapAttendanceOrganizationTree(summaryDeptScopeTree.value);
   }
-  return store.getters["attendanceScope/deptScopes"] || [];
+  const scope = store.getters["attendanceScope/scope"] || {};
+  if (Array.isArray(scope?.deptScopeTree) && scope.deptScopeTree.length > 0) {
+    return mapAttendanceOrganizationTree(scope.deptScopeTree);
+  }
+  return mapAttendanceOrganizationTree(store.getters["attendanceScope/deptScopes"] || []);
 });
+
+const resolveQueryDeptCode = () => {
+  const deptCode = formInline.value.deptCode;
+  return deptCode === "" || deptCode === null || deptCode === undefined
+    ? undefined
+    : String(deptCode);
+};
+
+const fetchDeptScopeOptions = () => {
+  return queryAttendanceCalcParams(
+    {},
+    {
+      isLoading: false,
+    },
+  )
+    .then((res) => {
+      const data = res?.data || {};
+      summaryDeptScopeTree.value = Array.isArray(data.deptScopeTree)
+        ? data.deptScopeTree
+        : [];
+    })
+    .catch(() => {
+      summaryDeptScopeTree.value = [];
+    });
+};
 
 const calculateGridHeight = () => {
   const layout = store.state.layout.layoutType;
@@ -138,7 +189,7 @@ const fetchAttendanceSummaryList = () => {
     {
       pageNo: listQuery.value.pageNo,
       pageSize: Math.min(listQuery.value.pageSize, 200),
-      deptCode: formInline.value.deptCode || undefined,
+      deptCode: resolveQueryDeptCode(),
       talentName: diminput.value || undefined,
       startDate: formInline.value.startDate || undefined,
       endDate: formInline.value.endDate || undefined,
@@ -181,9 +232,8 @@ const handleDateRangeChange = (value) => {
 };
 
 const handleDeptChange = (value) => {
-  const nextCodes = Array.isArray(value) ? value : [];
-  deptCodes.value = nextCodes;
-  formInline.value.deptCode = nextCodes.length ? nextCodes[nextCodes.length - 1] : "";
+  formInline.value.deptCode =
+    value === "" || value === null || value === undefined ? "" : String(value);
   fuzzySearch();
 };
 
@@ -194,7 +244,9 @@ const cellRenderer = (params) => {
 
 onMounted(() => {
   document.addEventListener("fullscreenchange", handleFullScreenChange);
-  fetchAttendanceSummaryList();
+  fetchDeptScopeOptions().finally(() => {
+    fetchAttendanceSummaryList();
+  });
 });
 
 onUnmounted(() => {
@@ -236,19 +288,18 @@ onUnmounted(() => {
                     </template>
                   </el-input>
                   <el-cascader
-                    v-model="deptCodes"
+                    v-model="formInline.deptCode"
                     class="attendance-summary__cascader"
                     :options="attendanceOrganizationOptions"
                     :props="{
                       checkStrictly: true,
-                      emitPath: true,
+                      emitPath: false,
                       value: 'deptCode',
                       label: 'deptName',
                     }"
                     clearable
                     filterable
-                    collapse-tags
-                    collapse-tags-tooltip
+                    :show-all-levels="false"
                     placeholder="请选择组织"
                     @change="handleDeptChange"
                   />

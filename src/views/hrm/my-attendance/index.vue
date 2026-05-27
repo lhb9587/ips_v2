@@ -69,6 +69,13 @@ const handleQuickEntry = (item) => {
 const goAttendanceCalendar = () => {
   router.push({ name: "my-attendance-calendar" });
 };
+
+const goApprovalCenter = () => {
+  router.push({
+    name: "approval-center",
+    query: { tab: "pending" },
+  });
+};
 </script>
 
 <template>
@@ -163,7 +170,13 @@ const goAttendanceCalendar = () => {
                   <span class="pending-card__number">7</span>
                   <span class="pending-card__trend">↑</span>
                 </div>
-                <button type="button" class="ghost-button">查看</button>
+                <button
+                  type="button"
+                  class="ghost-button"
+                  @click="goApprovalCenter"
+                >
+                  查看
+                </button>
               </div>
             </article>
 

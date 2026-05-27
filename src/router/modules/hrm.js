@@ -234,6 +234,12 @@
             component: () =>
               import("@/views/hrm/my-attendance/supplement-detail/index"),
           },
+          {
+            path: "approval-center",
+            name: "approval-center",
+            meta: { title: "审批中心", authRequired: true },
+            component: () => import("@/views/hrm/approval-center/index"),
+          },
         ],
       },
       {

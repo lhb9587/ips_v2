@@ -63,6 +63,16 @@ const attendanceApi = {
   exportAttendanceResultSummary: `${ATTENDANCE_URL}/api/attendance/result/summary/export`,
   queryLeaveReportSummaryPage: `${ATTENDANCE_URL}/api/leave/report/summary/page`,
   exportLeaveReportSummary: `${ATTENDANCE_URL}/api/leave/report/summary/export`,
+  queryLeaveRequestAdminPage: `${ATTENDANCE_URL}/api/leave/request/admin/page`,
+  queryLeaveRequestAdminDetail: `${ATTENDANCE_URL}/api/leave/request/admin/detail`,
+  directPassLeaveRequestAdmin: `${ATTENDANCE_URL}/api/leave/request/admin/direct-pass`,
+  reverseApproveLeaveRequestAdmin: `${ATTENDANCE_URL}/api/leave/request/admin/reverse-approve`,
+  abandonLeaveRequestAdmin: `${ATTENDANCE_URL}/api/leave/request/admin/abandon`,
+  exportLeaveRequestAdmin: `${ATTENDANCE_URL}/api/leave/request/admin/export`,
+  queryApprovalCenterPage: `${ATTENDANCE_URL}/api/approval/center/page`,
+  queryApprovalCenterDetail: `${ATTENDANCE_URL}/api/approval/center/detail`,
+  approveApprovalTask: `${ATTENDANCE_URL}/api/approval/task/approve`,
+  rejectApprovalTask: `${ATTENDANCE_URL}/api/approval/task/reject`,
 }
 
 export default attendanceApi
