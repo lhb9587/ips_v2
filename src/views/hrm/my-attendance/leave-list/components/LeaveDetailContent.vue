@@ -2,6 +2,20 @@
 <script setup>
 import { computed, defineEmits, defineProps, ref, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
+import dayjs from "dayjs";
+import { downLoadAll } from "@/utils";
+import {
+  queryLeaveRequestAdminDetail,
+  queryLeaveRequestSelfInit,
+  saveLeaveRequestSelf,
+} from "@/api/attendance";
+import {
+  beforeLeaveAttachmentUpload,
+  buildLeaveAttachmentAccessUrl,
+  handleLeaveAttachmentUploadSuccess,
+  uploadLeaveAttachment,
+} from "@/views/hrm/my-attendance/utils/leaveAttachmentUpload";
+import { normalizeLeaveDetail } from "@/views/hrm/my-attendance/utils/leaveDetail";
 
 const props = defineProps({
   detailInfo: {
@@ -18,70 +32,135 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["back", "close", "update-detail", "delete-detail"]);
+const emit = defineEmits(["back", "close", "update-detail"]);
 
 const detailEditMode = ref(false);
 const detailEditForm = ref({});
 const currentDetail = ref({});
+const defaultLeaveTypeNames = ["法定年假", "司龄假", "事假", "病假"];
 
-const leaveTypeOptions = [
-  {
-    label: "法定年假",
-    remaining: 6,
-    transit: 1,
-    description: "适用于年度休假安排，提交后同步占用可用年假余额。",
-    tone: "blue",
-  },
-  {
-    label: "司龄假",
-    remaining: 3,
-    transit: 0,
-    description: "结合员工司龄发放，可按半天为单位申请。",
-    tone: "teal",
-  },
-  {
-    label: "调休假",
-    remaining: 2.5,
-    transit: 0,
-    description: "使用已审批通过的调休加班时长。",
-    tone: "sky",
-  },
-  {
-    label: "事假",
-    remaining: 5,
-    transit: 0,
-    description: "用于个人事务处理，额度不足时不允许提交。",
-    tone: "orange",
-  },
-  {
-    label: "病假",
-    remaining: 8,
-    transit: 0,
-    description: "病假申请需填写请假说明并可补充诊疗附件。",
-    tone: "red",
-  },
-  {
-    label: "其他假期",
-    remaining: 2,
-    transit: 0,
-    description: "承接特殊假期场景，原则阶段统一按固定额度展示。",
-    tone: "purple",
-  },
-];
+const leaveTypeOptions = ref([]);
+const otherLeaveTypesExpanded = ref(false);
+const tonePool = ["blue", "teal", "sky", "orange", "red", "purple"];
+
+const isOtherLeaveType = (label) =>
+  !!label && label !== "其他假期" && !defaultLeaveTypeNames.includes(label);
+
+const syncOtherLeaveTypesExpanded = (leaveTypeName) => {
+  otherLeaveTypesExpanded.value = isOtherLeaveType(leaveTypeName);
+};
+
+const selectedLeaveTypeName = computed(() =>
+  detailEditMode.value ? detailEditForm.value.leaveType : currentDetail.value.leaveTypeName,
+);
+
+const leaveTypeSectionTitle = computed(() =>
+  selectedLeaveTypeName.value ? `假期类型-${selectedLeaveTypeName.value}` : "假期类型",
+);
+
+const primaryLeaveTypeOptions = computed(() =>
+  leaveTypeOptions.value.filter((item) => defaultLeaveTypeNames.includes(item.label)),
+);
+
+const otherLeaveTypeOptions = computed(() =>
+  leaveTypeOptions.value.filter((item) => !defaultLeaveTypeNames.includes(item.label)),
+);
+
+const otherLeaveTypeCard = {
+  key: "other",
+  label: "其他假期",
+  isNoQuota: true,
+  showQuotaLine: false,
+  showLastYear: false,
+  tone: "purple",
+};
+
+const displayLeaveTypeOptions = computed(() => {
+  if (otherLeaveTypesExpanded.value) {
+    return [...primaryLeaveTypeOptions.value, ...otherLeaveTypeOptions.value];
+  }
+  if (otherLeaveTypeOptions.value.length > 0) {
+    return [...primaryLeaveTypeOptions.value, otherLeaveTypeCard];
+  }
+  return [...primaryLeaveTypeOptions.value];
+});
+
+const resolveTalentCode = (detail = {}) => detail.talentCode || detail.employeeCode || "";
+
+const fetchLeaveTypes = async (talentCode) => {
+  try {
+    const params = talentCode ? { talentCode } : {};
+    const res = await queryLeaveRequestSelfInit(params, { isLoading: false });
+    const list = Array.isArray(res?.data?.leaveTypes) ? res.data.leaveTypes : [];
+    if (!list.length) {
+      return;
+    }
+
+    const mappedAll = list.map((item, index) => {
+      const isNoQuota = item?.isNoQuota ?? item?.noQuota ?? false;
+      const label = item?.leaveTypeName || "";
+      return {
+        key: item?.leaveTypeCode,
+        label,
+        remaining: Number(item?.remainQuota ?? item?.remaining ?? 0),
+        frozenQuota: Number(item?.frozenQuota ?? 0),
+        lastYear: Number(item?.lastYearCarryForwardQuota ?? item?.lastYear ?? 0),
+        isNoQuota,
+        showQuotaLine: !isNoQuota,
+        showLastYear: !isNoQuota && ["法定年假", "司龄假"].includes(label),
+        tone: tonePool[index % tonePool.length],
+      };
+    });
+
+    const primaryLeaveTypes = mappedAll.filter((item) => defaultLeaveTypeNames.includes(item.label));
+    leaveTypeOptions.value = [
+      ...primaryLeaveTypes,
+      ...mappedAll.filter((item) => !defaultLeaveTypeNames.includes(item.label)),
+    ];
+  } catch (error) {
+    // keep existing fallback UI without blocking detail rendering
+  }
+};
 
 watch(
   () => props.detailInfo,
   (detail) => {
-    currentDetail.value = detail ? { ...detail } : {};
+    currentDetail.value = detail ? normalizeLeaveDetail(detail) : {};
     detailEditMode.value = false;
     detailEditForm.value = {};
+    syncOtherLeaveTypesExpanded(detail?.leaveTypeName);
   },
   { immediate: true, deep: true },
 );
 
+watch(
+  () => resolveTalentCode(props.detailInfo),
+  (talentCode) => {
+    fetchLeaveTypes(talentCode);
+  },
+  { immediate: true },
+);
+
 const parseLeaveTime = (timeText) => {
-  const [date = "", period = "上午"] = String(timeText || "").split(" ");
-  return { date, period };
+  const text = String(timeText || "").trim();
+  if (!text) {
+    return { date: "", period: "上午" };
+  }
+
+  if (text.includes("上午") || text.includes("下午")) {
+    const [date = "", period = "上午"] = text.split(" ");
+    return { date, period };
+  }
+
+  const normalized = text.includes("T") ? text : text.replace(" ", "T");
+  const parsed = dayjs(normalized);
+  if (!parsed.isValid()) {
+    return { date: "", period: "上午" };
+  }
+  return {
+    date: parsed.format("YYYY-MM-DD"),
+    period: parsed.hour() >= 12 ? "下午" : "上午",
+  };
 };
 
 const formatLeaveTime = (date, period) => {
@@ -99,6 +178,9 @@ const calculateDuration = (startDate, startPeriod, endDate, endPeriod) => {
   }
   const start = new Date(`${startDate}T00:00:00`);
   const end = new Date(`${endDate}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return 0;
+  }
   const dayDiff = Math.floor((end - start) / 86400000);
   if (dayDiff < 0) {
     return 0;
@@ -109,18 +191,66 @@ const calculateDuration = (startDate, startPeriod, endDate, endPeriod) => {
 };
 
 const buildDetailEditForm = (detail) => ({
-  leaveType: detail.leaveType,
-  unit: detail.unit,
+  leaveType: detail.leaveTypeName,
+  unit: detail.durationUnit,
   startDate: parseLeaveTime(detail.startTime).date,
   startPeriod: parseLeaveTime(detail.startTime).period,
   endDate: parseLeaveTime(detail.endTime).date,
   endPeriod: parseLeaveTime(detail.endTime).period,
-  reason: detail.reason,
-  attachmentFiles: (detail.attachments || []).map((name, index) => ({
-    name,
+  reason: detail.leaveReason,
+  attachmentFiles: (detail.attachments || []).map((item, index) => ({
+    name: item?.fileName || String(item?.attachmentId || ""),
+    attachmentId: item?.attachmentId || undefined,
+    url: item?.filePath || item?.fileUrl,
+    filePath: item?.filePath || item?.fileUrl,
     uid: `detail-attachment-${index}`,
   })),
 });
+
+const resolveAttachmentUrl = (data = {}) => {
+  const responseData = data?.response?.data;
+  const payload = Array.isArray(responseData) ? responseData[0] : responseData;
+  return (
+    data?.filePath ||
+    data?.fileUrl ||
+    data?.url ||
+    payload?.filePath ||
+    payload?.fileUrl ||
+    payload?.address
+  );
+};
+
+const downloadAttachment = (item) => {
+  const url = resolveAttachmentUrl(item);
+  if (!url) {
+    return;
+  }
+  const fileName = item?.fileName || item?.name || url.split("/").pop();
+  downLoadAll({
+    url: buildLeaveAttachmentAccessUrl(url),
+    downLoad: String(fileName).replace(/\.[^.]+$/, ""),
+    success() {},
+  });
+};
+
+const openPreviewUrl = (url) => {
+  window.open(buildLeaveAttachmentAccessUrl(url).replace(/[+]/g, "%2B"));
+};
+
+const PREVIEWABLE_EXTENSIONS = ["pdf", "jpg", "jpeg", "png"];
+
+const onPreview = (data) => {
+  const url = resolveAttachmentUrl(data);
+  if (!url) {
+    return false;
+  }
+  const ext = url.replace(/.+\./, "").toLowerCase();
+  if (PREVIEWABLE_EXTENSIONS.includes(ext)) {
+    openPreviewUrl(url);
+    return;
+  }
+  downloadAttachment(data);
+};
 
 const detailDuration = computed(() =>
   calculateDuration(
@@ -137,6 +267,88 @@ const normalizeAttachmentFiles = (files) => {
     .filter(Boolean);
 };
 
+const resolveLeaveTypeCode = (leaveTypeName) => {
+  const matched = leaveTypeOptions.value.find((item) => item.label === leaveTypeName);
+  return matched?.key || currentDetail.value.leaveTypeCode || "";
+};
+
+const buildDateTimeByPeriod = (date, period, isEnd = false) => {
+  if (!date) {
+    return "";
+  }
+  if (period === "下午") {
+    return `${date} ${isEnd ? "18:00:00" : "14:00:00"}`;
+  }
+  return `${date} ${isEnd ? "14:00:00" : "09:00:00"}`;
+};
+
+const normalizeDateTimeText = (timeText, isEnd = false) => {
+  const parsed = parseLeaveTime(timeText);
+  if (parsed.date) {
+    return buildDateTimeByPeriod(parsed.date, parsed.period, isEnd);
+  }
+  const raw = String(timeText || "").trim();
+  if (!raw) {
+    return "";
+  }
+  const dt = dayjs(raw);
+  return dt.isValid() ? dt.format("YYYY-MM-DD HH:mm:ss") : raw;
+};
+
+const buildAttachmentIds = (files = []) =>
+  files
+    .map((item) => item?.attachmentId || item?.response?.data?.attachmentId || item?.id)
+    .filter((id) => id !== undefined && id !== null && id !== "")
+    .join(",");
+
+const hasUploadingFiles = computed(() =>
+  (detailEditForm.value?.attachmentFiles || []).some(
+    (item) => item?.status === "uploading",
+  ),
+);
+
+const handleUploadSuccess = handleLeaveAttachmentUploadSuccess;
+
+const buildSavePayload = (actionType, source, useEditForm = false) => {
+  const leaveTypeCode = resolveLeaveTypeCode(
+    useEditForm ? source.leaveType : source.leaveTypeName,
+  );
+  const startTime = useEditForm
+    ? buildDateTimeByPeriod(source.startDate, source.startPeriod, false)
+    : normalizeDateTimeText(source.startTime, false);
+  const endTime = useEditForm
+    ? buildDateTimeByPeriod(source.endDate, source.endPeriod, true)
+    : normalizeDateTimeText(source.endTime, true);
+  const reason = useEditForm ? source.reason : source.leaveReason;
+  const attachmentIds = buildAttachmentIds(useEditForm ? source.attachmentFiles : source.attachments);
+
+  return {
+    requestId: currentDetail.value.leaveRequestId,
+    leaveTypeCode,
+    startTime,
+    endTime,
+    reason,
+    actionType,
+    attachmentIds: attachmentIds || undefined,
+  };
+};
+
+const refreshCurrentDetail = async () => {
+  if (!currentDetail.value?.leaveRequestId) {
+    return;
+  }
+  const res = await queryLeaveRequestAdminDetail(
+    { leaveRequestId: currentDetail.value.leaveRequestId },
+    { isLoading: false },
+  );
+  const latestDetail = res?.data || {};
+  currentDetail.value = normalizeLeaveDetail(latestDetail, currentDetail.value);
+  if (!detailEditMode.value) {
+    syncOtherLeaveTypesExpanded(currentDetail.value.leaveTypeName);
+  }
+  emit("update-detail", currentDetail.value);
+};
+
 const statusTextClass = (status) => {
   const statusMap = {
     未提交: "status-text--draft",
@@ -149,19 +361,64 @@ const statusTextClass = (status) => {
 };
 
 const handleEditDetail = () => {
-  if (!currentDetail.value?.billNo) {
+  if (!currentDetail.value?.leaveRequestId) {
     return;
   }
   detailEditForm.value = buildDetailEditForm(currentDetail.value);
+  syncOtherLeaveTypesExpanded(currentDetail.value.leaveTypeName);
   detailEditMode.value = true;
+};
+
+const handleSubmitDetail = () => {
+  if (!currentDetail.value?.leaveRequestId) {
+    ElMessage.warning("缺少请假单ID，无法提交");
+    return;
+  }
+  if (hasUploadingFiles.value) {
+    ElMessage.warning("附件上传中，请稍后再提交");
+    return;
+  }
+  ElMessageBox.confirm("确认提交当前请假申请并进入审批流程？", "提交确认", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+    type: "warning",
+  })
+    .then(async () => {
+      try {
+        const payload = buildSavePayload("submit", currentDetail.value, false);
+        const res = await saveLeaveRequestSelf(payload);
+        const updatedRecord = {
+          ...currentDetail.value,
+          requestStatus: res?.data?.status || "审批中",
+        };
+        currentDetail.value = { ...updatedRecord };
+        await refreshCurrentDetail();
+        ElMessage.success("请假申请已提交审批");
+      } catch (error) {
+        console.log(error);
+      }
+    })
+    .catch(() => {});
 };
 
 const handleCancelEditDetail = () => {
   detailEditMode.value = false;
   detailEditForm.value = {};
+  syncOtherLeaveTypesExpanded(currentDetail.value.leaveTypeName);
+};
+
+const handleExpandOtherLeaveTypes = () => {
+  otherLeaveTypesExpanded.value = true;
+  if (detailEditMode.value) {
+    detailEditForm.value.leaveType = "";
+  }
 };
 
 const handleSelectDetailLeaveType = (item) => {
+  if (item.key === "other") {
+    handleExpandOtherLeaveTypes();
+    return;
+  }
   if (!detailEditMode.value) {
     return;
   }
@@ -169,7 +426,11 @@ const handleSelectDetailLeaveType = (item) => {
 };
 
 const handleSaveDetail = () => {
-  if (!currentDetail.value?.billNo) {
+  if (!currentDetail.value?.leaveRequestId) {
+    return;
+  }
+  if (hasUploadingFiles.value) {
+    ElMessage.warning("附件上传中，请稍后再保存");
     return;
   }
   if (!detailEditForm.value.leaveType) {
@@ -191,7 +452,7 @@ const handleSaveDetail = () => {
 
   const updatedRecord = {
     ...currentDetail.value,
-    leaveType: detailEditForm.value.leaveType,
+    leaveTypeName: detailEditForm.value.leaveType,
     startTime: formatLeaveTime(
       detailEditForm.value.startDate,
       detailEditForm.value.startPeriod,
@@ -200,97 +461,65 @@ const handleSaveDetail = () => {
       detailEditForm.value.endDate,
       detailEditForm.value.endPeriod,
     ),
-    duration: detailDuration.value,
-    unit: "天",
-    reason: detailEditForm.value.reason,
+    leaveDuration: detailDuration.value,
+    durationUnit: "天",
+    leaveReason: detailEditForm.value.reason,
     attachments: normalizeAttachmentFiles(detailEditForm.value.attachmentFiles),
   };
-  currentDetail.value = { ...updatedRecord };
-  detailEditMode.value = false;
-  detailEditForm.value = {};
-  emit("update-detail", updatedRecord);
-  ElMessage.success("请假单信息已保存");
-};
-
-const handleDiscardDetail = () => {
-  if (!currentDetail.value?.billNo) {
-    return;
-  }
-  ElMessageBox.confirm(
-    "确定要废弃当前请假单吗？废弃后该单据将不再进入审批流程。",
-    "废弃确认",
-    {
-      confirmButtonText: "确定",
-      cancelButtonText: "取消",
-      type: "warning",
-    },
-  )
-    .then(() => {
-      const updatedRecord = {
-        ...currentDetail.value,
-        status: "已废弃",
-        approver: "无需审批",
-        comment: "申请人已废弃该请假单",
+  const payload = buildSavePayload("save", detailEditForm.value, true);
+  saveLeaveRequestSelf(payload)
+    .then(async (res) => {
+      const nextRecord = {
+        ...updatedRecord,
+        requestStatus: res?.data?.status || updatedRecord.requestStatus,
       };
-      currentDetail.value = { ...updatedRecord };
+      currentDetail.value = { ...nextRecord };
       detailEditMode.value = false;
-      emit("update-detail", updatedRecord);
-      ElMessage.success("请假单已废弃");
+      detailEditForm.value = {};
+      syncOtherLeaveTypesExpanded(nextRecord.leaveTypeName);
+      await refreshCurrentDetail();
+      ElMessage.success("请假单信息已保存");
     })
-    .catch(() => {});
-};
-
-const handleDeleteDetail = () => {
-  if (!currentDetail.value?.billNo) {
-    return;
-  }
-  ElMessageBox.confirm("确定要删除当前请假单吗？删除后不可恢复。", "删除确认", {
-    confirmButtonText: "确定",
-    cancelButtonText: "取消",
-    type: "warning",
-  })
-    .then(() => {
-      emit("delete-detail", currentDetail.value);
-      ElMessage.success("请假单已删除");
-    })
-    .catch(() => {});
+    .catch(() => {
+      ElMessage.error("请假单保存失败");
+    });
 };
 
 const approvalFlow = computed(() => {
-  if (!currentDetail.value?.billNo) {
+  if (!currentDetail.value?.leaveRequestId) {
     return [];
   }
 
   const detail = currentDetail.value;
   const baseFlow = [
     {
-      time: `${detail.applyDate} 10:18`,
+      time: `${detail.applyTime || ""}`,
       title: "发起申请 · 提交申请",
-      actor: detail.applicant,
-      description: `提交${detail.leaveType}申请，等待直属上级审批。`,
+      actor: detail.talentName,
+      description: `提交${detail.leaveTypeName}申请，等待直属上级审批。`,
       active: true,
     },
   ];
 
-  if (detail.status === "未提交") {
+  if (detail.requestStatus === "未提交") {
     return [
       {
-        time: `${detail.applyDate} 10:18`,
+        time: `${detail.applyTime || ""}`,
         title: "保存草稿",
-        actor: detail.applicant,
+        actor: detail.talentName,
         description: "请假单暂未提交审批。",
         active: true,
       },
     ];
   }
 
-  if (detail.status === "已废弃") {
+  if (detail.requestStatus === "已废弃") {
     return [
       {
-        time: `${detail.applyDate} 10:18`,
+        time: `${detail.applyTime || ""}`,
         title: "废弃申请",
-        actor: detail.applicant,
-        description: detail.comment,
+        actor: detail.talentName,
+        description: detail.approvalStatus || "",
         active: true,
       },
     ];
@@ -299,22 +528,23 @@ const approvalFlow = computed(() => {
   return [
     ...baseFlow,
     {
-      time: `${detail.applyDate} 10:19`,
+      time: `${detail.applyTime || ""}`,
       title:
-        detail.status === "已通过"
+        detail.requestStatus === "已通过"
           ? "直属上级审批 · 审批通过"
           : "直属上级审批 · 提交申请",
-      actor: detail.approver,
-      description: detail.comment,
-      active: detail.status === "审批中",
+      actor: detail.currentApproverNames,
+      description: detail.approvalStatus || "",
+      active: detail.requestStatus === "审批中",
     },
   ];
 });
+
 </script>
 
 <template>
   <div
-    v-if="currentDetail?.billNo"
+    v-if="currentDetail?.leaveRequestId"
     class="leave-detail-content-wrap"
   >
     <div class="leave-detail-sidebar__header">
@@ -322,7 +552,7 @@ const approvalFlow = computed(() => {
         <div class="leave-detail-sidebar__title-line">
           <h2>请假详情</h2>
         </div>
-        <p>{{ currentDetail.billNo }}</p>
+        <p>{{ currentDetail.requestNo }}</p>
       </div>
       <div class="leave-detail-sidebar__actions">
         <template v-if="detailEditMode">
@@ -343,19 +573,11 @@ const approvalFlow = computed(() => {
             修改
           </el-button>
           <el-button
-            type="warning"
+            type="success"
             plain
-            :disabled="currentDetail.status === '已废弃'"
-            @click="handleDiscardDetail"
+            @click="handleSubmitDetail"
           >
-            废弃
-          </el-button>
-          <el-button
-            type="danger"
-            plain
-            @click="handleDeleteDetail"
-          >
-            删除
+            提交
           </el-button>
           <el-button
             v-if="showBack"
@@ -379,49 +601,57 @@ const approvalFlow = computed(() => {
         <div class="leave-detail-content">
           <div class="leave-info-table">
             <div class="leave-info-table__label">单据编号</div>
-            <div>{{ currentDetail.billNo }}</div>
+            <div>{{ currentDetail.requestNo }}</div>
             <div class="leave-info-table__label">单据状态</div>
-            <div :class="['status-text', statusTextClass(currentDetail.status)]">
-              {{ currentDetail.status }}
+            <div :class="['status-text', statusTextClass(currentDetail.requestStatus)]">
+              {{ currentDetail.requestStatus }}
             </div>
 
             <div class="leave-info-table__label">姓名</div>
-            <div>{{ currentDetail.applicant }}</div>
+            <div>{{ currentDetail.talentName }}</div>
             <div class="leave-info-table__label">员工编码</div>
-            <div>{{ currentDetail.employeeCode }}</div>
+            <div>{{ currentDetail.talentCode }}</div>
 
             <div class="leave-info-table__label">所属组织</div>
-            <div>{{ currentDetail.organization }}</div>
+            <div>{{ currentDetail.deptName }}</div>
             <div class="leave-info-table__label">申请日期</div>
-            <div>{{ currentDetail.applyDate }}</div>
+            <div>{{ currentDetail.applyTime }}</div>
           </div>
 
           <div class="detail-section">
-            <div class="detail-section__title">假期类型</div>
+            <div class="detail-section__title">{{ leaveTypeSectionTitle }}</div>
             <div class="detail-leave-type-grid">
               <button
-                v-for="item in leaveTypeOptions"
-                :key="item.label"
+                v-for="item in displayLeaveTypeOptions"
+                :key="item.key || item.label"
                 type="button"
                 class="detail-leave-type-card"
                 :class="[
                   `detail-leave-type-card--${item.tone}`,
                   {
                     'detail-leave-type-card--selected':
-                      (detailEditMode
-                        ? detailEditForm.leaveType
-                        : currentDetail.leaveType) === item.label,
+                      item.key !== 'other' && selectedLeaveTypeName === item.label,
                     'detail-leave-type-card--readonly': !detailEditMode,
+                    'detail-leave-type-card--expand': item.key === 'other',
                   },
                 ]"
                 @click="handleSelectDetailLeaveType(item)"
               >
-                <div class="detail-leave-type-card__title">{{ item.label }}</div>
-                <div class="detail-leave-type-card__quota">
-                  剩余 {{ item.remaining.toFixed(1) }} / 在途
-                  {{ item.transit.toFixed(1) }}
+                <div class="detail-leave-type-card__title">
+                  <template v-if="item.key === 'other'">
+                    其他假期<span class="detail-leave-type-card__arrow">>></span>
+                  </template>
+                  <template v-else>{{ item.label }}</template>
                 </div>
-                <p>{{ item.description }}</p>
+                <div
+                  v-if="item.showQuotaLine"
+                  class="detail-leave-type-card__quota"
+                >
+                  <template v-if="item.showLastYear">
+                    去年结余{{ Number(item.lastYear || 0).toFixed(1) }}/
+                  </template>
+                  今年剩余{{ Number(item.remaining || 0).toFixed(1) }}/在途{{ Number(item.frozenQuota || 0).toFixed(1) }}
+                </div>
               </button>
             </div>
           </div>
@@ -492,7 +722,7 @@ const approvalFlow = computed(() => {
                 <span>请假时长</span>
                 <strong v-if="detailEditMode">{{ detailDuration }} 天</strong>
                 <strong v-else>
-                  {{ currentDetail.duration }} {{ currentDetail.unit }}
+                  {{ currentDetail.leaveDuration }} {{ currentDetail.durationUnit }}
                 </strong>
               </div>
             </div>
@@ -512,7 +742,7 @@ const approvalFlow = computed(() => {
               v-else
               class="detail-text-block"
             >
-              {{ currentDetail.reason }}
+              {{ currentDetail.leaveReason }}
             </div>
           </div>
 
@@ -523,7 +753,12 @@ const approvalFlow = computed(() => {
               v-model:file-list="detailEditForm.attachmentFiles"
               class="detail-upload"
               action="#"
-              :auto-upload="false"
+              accept="*/*"
+              :http-request="uploadLeaveAttachment"
+              :before-upload="beforeLeaveAttachmentUpload"
+              :on-success="handleUploadSuccess"
+              :on-preview="onPreview"
+              :auto-upload="true"
               multiple
             >
               <el-button type="primary">上传附件</el-button>
@@ -535,10 +770,11 @@ const approvalFlow = computed(() => {
               <template v-if="currentDetail.attachments?.length">
                 <span
                   v-for="item in currentDetail.attachments"
-                  :key="item"
+                  :key="item.fileName || item.attachmentId || item"
                   class="attachment-tag"
+                  @click="onPreview(item)"
                 >
-                  {{ item }}
+                  {{ item.fileName || item.attachmentId || item }}
                 </span>
               </template>
               <span
@@ -646,7 +882,7 @@ const approvalFlow = computed(() => {
 
 .leave-info-table {
   display: grid;
-  grid-template-columns: 180px minmax(0, 1fr) 180px minmax(0, 1fr);
+  grid-template-columns: 120px minmax(0, 1fr) 120px minmax(0, 1fr);
   margin-bottom: 18px;
 }
 
@@ -721,28 +957,80 @@ const approvalFlow = computed(() => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .detail-leave-type-card {
+  position: relative;
   width: 100%;
-  min-height: 92px;
-  padding: 11px 13px;
+  min-height: 66px;
+  padding: 8px 12px;
   border: 1px solid #d8e2f1;
   border-left-width: 4px;
   border-radius: 6px;
   background: #fff;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .detail-leave-type-card--readonly {
   cursor: default;
 }
 
+.detail-leave-type-card--expand {
+  cursor: pointer;
+
+  .detail-leave-type-card__arrow {
+    margin-left: 2px;
+    color: #77849a;
+    font-weight: 400;
+    letter-spacing: -1px;
+  }
+}
+
+.detail-leave-type-card--readonly.detail-leave-type-card--expand:hover {
+  border-color: #91b0f5;
+  background: #f8faff;
+}
+
+.detail-leave-type-card:not(.detail-leave-type-card--readonly):hover {
+  border-color: #91b0f5;
+  background: #f8faff;
+}
+
 .detail-leave-type-card--selected {
   border-color: #4778ef;
-  box-shadow: 0 8px 18px rgba(61, 105, 210, 0.12);
+  border-width: 2px;
+  padding: 7px 11px;
+  background: linear-gradient(135deg, #f0f5ff 0%, #e8efff 100%);
+  box-shadow:
+    0 0 0 1px rgba(71, 120, 239, 0.28),
+    0 6px 16px rgba(71, 120, 239, 0.18);
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #4778ef
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E")
+      center / 11px no-repeat;
+  }
+
+  .detail-leave-type-card__title {
+    color: #356fff;
+    font-weight: 700;
+    padding-right: 22px;
+  }
 }
 
 .detail-leave-type-card--teal {
@@ -771,21 +1059,14 @@ const approvalFlow = computed(() => {
 
 .detail-leave-type-card__title {
   color: #122448;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .detail-leave-type-card__quota {
-  margin-top: 5px;
+  margin-top: 4px;
   color: #356fff;
-  font-size: 12px;
-}
-
-.detail-leave-type-card p {
-  margin: 7px 0 0;
-  color: #77849a;
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: 11px;
 }
 
 .detail-time-panel {
@@ -869,6 +1150,12 @@ const approvalFlow = computed(() => {
   background: #f8fbff;
   color: #3f5f91;
   line-height: 22px;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #9cb8e8;
+    background: #eef4ff;
+  }
 }
 
 .approval-card {

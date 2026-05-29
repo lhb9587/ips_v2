@@ -377,11 +377,6 @@ const handleUpdateDetailRecord = (updatedRecord) => {
   currentDetail.value = buildDetailFromRecord(updatedListRecord);
 };
 
-const handleDeleteDetailRecord = () => {
-  closeDetailSidebar();
-  fetchLeaveRequestList();
-};
-
 const handlePagination = () => {
   fetchLeaveRequestList();
 };
@@ -532,7 +527,6 @@ onUnmounted(() => {
           :detailInfo="currentDetail"
           @close="closeDetailSidebar"
           @update-detail="handleUpdateDetailRecord"
-          @delete-detail="handleDeleteDetailRecord"
         />
       </div>
     </DragSidebar>

@@ -1,5 +1,6 @@
 import request from '@/utils/request'
 import attendanceApi from '@/api/attendanceApi.config'
+import { getToken } from '@/utils/auth'
 
 export function getAttendanceScope(config = {}) {
   return request({
@@ -553,6 +554,15 @@ export function exportLeaveReportSummary(data, config = {}) {
   })
 }
 
+export function queryCompOffDetailPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryCompOffDetailPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryLeaveRequestAdminPage(data, config = {}) {
   return request({
     url: attendanceApi.queryLeaveRequestAdminPage,
@@ -567,6 +577,84 @@ export function queryLeaveRequestAdminDetail(data, config = {}) {
     url: attendanceApi.queryLeaveRequestAdminDetail,
     method: 'post',
     data,
+    ...config
+  })
+}
+
+export function queryLeaveRequestSelfInit(data = {}, config = {}) {
+  return request({
+    url: attendanceApi.queryLeaveRequestSelfInit,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryLeaveRequestSelfCalcDuration(data, config = {}) {
+  return request({
+    url: attendanceApi.queryLeaveRequestSelfCalcDuration,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function saveLeaveRequestSelf(data, config = {}) {
+  return request({
+    url: attendanceApi.saveLeaveRequestSelf,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryLeaveRequestSelfPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryLeaveRequestSelfPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryLeaveRequestSelfDetail(data, config = {}) {
+  return request({
+    url: attendanceApi.queryLeaveRequestSelfDetail,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function deleteLeaveRequestSelf(data, config = {}) {
+  return request({
+    url: attendanceApi.deleteLeaveRequestSelf,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function abandonLeaveRequestSelf(data, config = {}) {
+  return request({
+    url: attendanceApi.abandonLeaveRequestSelf,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function uploadCommonAttachment(data, config = {}) {
+  return request({
+    url: attendanceApi.uploadCommonAttachment,
+    method: 'post',
+    data,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    },
+    params: {
+      tokenID: getToken()
+    },
     ...config
   })
 }

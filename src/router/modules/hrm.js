@@ -148,6 +148,12 @@
             component: () => import("@/views/hrm/leave-report-summary/index"),
           },
           {
+            path: "/hrm/comp-off-detail",
+            name: "comp-off-detail",
+            meta: { title: "调休明细表", authRequired: true },
+            component: () => import("@/views/hrm/comp-off-detail/index"),
+          },
+          {
             path: "/hrm/attendance-group",
             name: "attendance-group",
             meta: { title: "考勤组", authRequired: true },

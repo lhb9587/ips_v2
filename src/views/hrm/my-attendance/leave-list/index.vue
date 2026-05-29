@@ -11,35 +11,26 @@ import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import LeaveDetailContent from "./components/LeaveDetailContent.vue";
 import { saveTableConfig } from "@/utils";
+import {
+  abandonLeaveRequestSelf,
+  deleteLeaveRequestSelf,
+  queryLeaveRequestAdminDetail,
+  queryLeaveRequestSelfPage,
+} from "@/api/attendance";
+import {
+  getLeaveRequestId,
+  normalizeLeaveDetail,
+} from "@/views/hrm/my-attendance/utils/leaveDetail";
 
 const route = useRoute();
 const router = useRouter();
 const store = useStore();
 
+const bussId = 474;
 const gridName = "myLeaveListGrid";
-const columnOptions = [
-  { title: "单据编号", value: "billNo" },
-  { title: "姓名", value: "applicant" },
-  { title: "申请日期", value: "applyDate" },
-  { title: "假期类型", value: "leaveType" },
-  { title: "开始时间", value: "startTime" },
-  { title: "结束时间", value: "endTime" },
-  { title: "请假长度", value: "duration" },
-  { title: "单位", value: "unit" },
-  { title: "单据状态", value: "status" },
-  { title: "审批人", value: "approver" },
-];
-
-const columnList = ref([...columnOptions]);
+const columnList = ref([]);
 const setColumn = (list) => {
-  if (!Array.isArray(list) || list.length === 0) {
-    columnList.value = [...columnOptions];
-    return;
-  }
-  const validColumns = list.filter((item) =>
-    columnOptions.some((column) => column.value === item.value),
-  );
-  columnList.value = validColumns.length > 0 ? validColumns : [...columnOptions];
+  columnList.value = Array.isArray(list) ? list : [];
 };
 
 const activeClass = ref([]);
@@ -184,115 +175,160 @@ const leaveTypeOptions = [
   },
 ];
 
-const leaveRecords = ref([
-  {
-    billNo: "QJ202604295347",
-    applicant: "张员工",
-    employeeCode: "EMP2026136",
-    organization: "产品研发中心",
-    applyDate: "2026-04-29",
-    leaveType: "法定年假",
-    startTime: "2026-05-06 上午",
-    endTime: "2026-05-06 下午",
-    duration: 1,
-    unit: "天",
-    status: "未提交",
-    approver: "未提交",
-    reason: "家庭事务安排。",
-    attachments: [],
-    comment: "草稿暂未进入审批",
-  },
-  {
-    billNo: "QJ202604025347",
-    applicant: "张员工",
-    employeeCode: "EMP2026136",
-    organization: "产品研发中心",
-    applyDate: "2026-04-02",
-    leaveType: "法定年假",
-    startTime: "2026-04-02 上午",
-    endTime: "2026-04-02 下午",
-    duration: 1,
-    unit: "天",
-    status: "审批中",
-    approver: "李经理",
-    reason: "家庭事务安排。",
-    attachments: ["工作交接说明.docx"],
-    comment: "部门负责人审批中",
-  },
-  {
-    billNo: "QJ202603181126",
-    applicant: "张员工",
-    employeeCode: "EMP2026136",
-    organization: "产品研发中心",
-    applyDate: "2026-03-18",
-    leaveType: "病假",
-    startTime: "2026-03-18 上午",
-    endTime: "2026-03-19 下午",
-    duration: 2,
-    unit: "天",
-    status: "已通过",
-    approver: "王主管",
-    reason: "身体不适就医。",
-    attachments: ["门诊病历.pdf", "诊断证明.jpg"],
-    comment: "审批通过",
-  },
-  {
-    billNo: "QJ202602240853",
-    applicant: "张员工",
-    employeeCode: "EMP2026136",
-    organization: "产品研发中心",
-    applyDate: "2026-02-24",
-    leaveType: "调休假",
-    startTime: "2026-02-25 下午",
-    endTime: "2026-02-25 下午",
-    duration: 0.5,
-    unit: "天",
-    status: "已驳回",
-    approver: "李经理",
-    reason: "临时调休。",
-    attachments: [],
-    comment: "请补充交接说明后重新提交",
-  },
-]);
+const leaveRecords = ref([]);
 
-const filteredList = computed(() => {
-  const keyword = diminput.value.trim().toLowerCase();
-  return leaveRecords.value.filter((item) => {
-    const matchKeyword =
-      !keyword ||
-      [
-        item.billNo,
-        item.applicant,
-        item.applyDate,
-        item.leaveType,
-        item.startTime,
-        item.endTime,
-        item.status,
-        item.approver,
-      ].some((field) => String(field || "").toLowerCase().includes(keyword));
-    const matchStatus = !statusFilter.value || item.status === statusFilter.value;
-    return matchKeyword && matchStatus;
-  });
-});
+const total = ref(0);
 
-const total = computed(() => filteredList.value.length);
-
-const gridData = computed(() => {
-  const start = (listQuery.value.pageNo - 1) * listQuery.value.pageSize;
-  const end = start + listQuery.value.pageSize;
-  return filteredList.value.slice(start, end).map((item, index) => ({
+const gridData = computed(() =>
+  leaveRecords.value.map((item, index) => ({
     ...item,
-    sid: start + index,
-  }));
-});
+    sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index,
+  })),
+);
+
+const fetchLeaveList = async () => {
+  const payload = {
+    pageNo: listQuery.value.pageNo,
+    pageSize: listQuery.value.pageSize,
+    requestNo: diminput.value?.trim() || undefined,
+    requestStatus: statusFilter.value || undefined,
+  };
+  const res = await queryLeaveRequestSelfPage(payload, { isLoading: false });
+  const list = Array.isArray(res?.data) ? res.data : [];
+  leaveRecords.value = list
+  total.value = Number(res?.total || 0);
+};
+
+const mapLeaveDetail = (detail, fallback = {}) => normalizeLeaveDetail(detail, fallback);
+
+const fetchLeaveDetail = async (rowData) => {
+  const rowRequestId = getLeaveRequestId(rowData);
+  if (rowRequestId === null) {
+    return mapLeaveDetail(rowData);
+  }
+  const res = await queryLeaveRequestAdminDetail(
+    { leaveRequestId: rowRequestId },
+    { isLoading: false },
+  );
+  return mapLeaveDetail(res?.data || {}, rowData);
+};
 
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
   formInline.value = {};
+  fetchLeaveList();
 };
 
 const handleCreate = () => {
   router.push({ name: "my-leave-application" });
+};
+
+const getSelectedRows = () => gridRef.value?.getRowList?.() || [];
+
+const getRowRequestId = (row) => getLeaveRequestId(row);
+
+const buildLeaveRequestIdsPayload = (rows) => {
+  const ids = [
+    ...new Set(
+      rows.map((item) => getRowRequestId(item)).filter((id) => id || id === 0),
+    ),
+  ];
+  if (!ids.length) {
+    return null;
+  }
+  if (ids.length === 1) {
+    return { leaveRequestId: ids[0] };
+  }
+  return { leaveRequestIds: ids.join(",") };
+};
+
+const validateOperableRows = (rows, flagKey, actionLabel) => {
+  if (!rows.length) {
+    ElMessage.warning(`请先选择需要${actionLabel}的请假单`);
+    return null;
+  }
+  const operableRows = rows.filter((item) => item?.[flagKey]);
+  if (!operableRows.length) {
+    ElMessage.warning(`所选记录中没有可${actionLabel}的请假单`);
+    return null;
+  }
+  if (operableRows.length !== rows.length) {
+    ElMessage.warning(`所选记录中包含不可${actionLabel}的请假单，请重新选择`);
+    return null;
+  }
+  return operableRows;
+};
+
+const refreshListAfterBatchAction = (processedIds = []) => {
+  const processedIdSet = new Set(processedIds.map((id) => String(id)));
+  if (
+    currentDetail.value &&
+    processedIdSet.has(String(getRowRequestId(currentDetail.value) || ""))
+  ) {
+    closeDetailSidebar();
+  }
+  gridRef.value?.getRowNode?.()?.forEach?.((node) => node.setSelected(false));
+  fetchLeaveList();
+};
+
+const handleBatchDelete = () => {
+  const operableRows = validateOperableRows(getSelectedRows(), "canDelete", "删除");
+  if (!operableRows) {
+    return;
+  }
+  const payload = buildLeaveRequestIdsPayload(operableRows);
+  if (!payload) {
+    return ElMessage.warning("选中记录缺少请假单ID，无法删除");
+  }
+  ElMessageBox.confirm(
+    `确定要删除选中的 ${operableRows.length} 条请假草稿吗？删除后不可恢复。`,
+    "删除确认",
+    {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    },
+  )
+    .then(() =>
+      deleteLeaveRequestSelf(payload, { isLoading: true }).then((res) => {
+        const successCount = Number(res?.data?.successCount || operableRows.length);
+        ElMessage.success(`已删除 ${successCount} 条请假草稿`);
+        refreshListAfterBatchAction(
+          res?.data?.leaveRequestIds || operableRows.map((item) => getRowRequestId(item)),
+        );
+      }),
+    )
+    .catch(() => {});
+};
+
+const handleBatchAbandon = () => {
+  const operableRows = validateOperableRows(getSelectedRows(), "canAbandon", "废弃");
+  if (!operableRows) {
+    return;
+  }
+  const payload = buildLeaveRequestIdsPayload(operableRows);
+  if (!payload) {
+    return ElMessage.warning("选中记录缺少请假单ID，无法废弃");
+  }
+  ElMessageBox.confirm(
+    `确定要废弃选中的 ${operableRows.length} 条请假单吗？废弃后该单据将不再进入审批流程。`,
+    "废弃确认",
+    {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    },
+  )
+    .then(() =>
+      abandonLeaveRequestSelf(payload, { isLoading: true }).then((res) => {
+        const successCount = Number(res?.data?.successCount || operableRows.length);
+        ElMessage.success(`已废弃 ${successCount} 条请假单`);
+        refreshListAfterBatchAction(
+          res?.data?.leaveRequestIds || operableRows.map((item) => getRowRequestId(item)),
+        );
+      }),
+    )
+    .catch(() => {});
 };
 
 const handleRowClick = (params) => {
@@ -302,16 +338,21 @@ const handleRowClick = (params) => {
   if (rowClickTimer) {
     clearTimeout(rowClickTimer);
   }
-  rowClickTimer = setTimeout(() => {
-    currentDetail.value = params.data;
-    detailEditMode.value = false;
-    detailEditForm.value = {};
-    detailDrawerVisible.value = true;
-    rowClickTimer = null;
+  rowClickTimer = setTimeout(async () => {
+    try {
+      currentDetail.value = await fetchLeaveDetail(params.data);
+      detailEditMode.value = false;
+      detailEditForm.value = {};
+      detailDrawerVisible.value = true;
+    } catch (error) {
+      console.log(error);
+    } finally {
+      rowClickTimer = null;
+    }
   }, 220);
 };
 
-const handleRowDoubleClick = (params) => {
+const handleRowDoubleClick = async (params) => {
   if (!params?.data) {
     return;
   }
@@ -319,11 +360,22 @@ const handleRowDoubleClick = (params) => {
     clearTimeout(rowClickTimer);
     rowClickTimer = null;
   }
-  sessionStorage.setItem("myLeaveCurrentDetail", JSON.stringify(params.data));
+  let detailData = params.data;
+  try {
+    detailData = await fetchLeaveDetail(params.data);
+  } catch (error) {
+    console.log(error);
+  }
+  sessionStorage.setItem("myLeaveCurrentDetail", JSON.stringify(detailData));
   detailDrawerVisible.value = false;
+  const leaveRequestId = getLeaveRequestId(detailData);
   router.push({
     name: "my-leave-detail",
-    params: { billNo: params.data.billNo },
+    params: { billNo: detailData.requestNo || detailData.billNo || "" },
+    query:
+      leaveRequestId !== null
+        ? { leaveRequestId: String(leaveRequestId) }
+        : {},
   });
 };
 
@@ -380,11 +432,11 @@ const detailDuration = computed(() =>
 );
 
 const getCurrentRecordIndex = () => {
-  if (!currentDetail.value?.billNo) {
+  if (!currentDetail.value?.leaveRequestId) {
     return -1;
   }
   return leaveRecords.value.findIndex(
-    (item) => item.billNo === currentDetail.value.billNo,
+    (item) => item.requestId === currentDetail.value.leaveRequestId,
   );
 };
 
@@ -590,31 +642,28 @@ const closeDetailSidebar = () => {
   detailEditForm.value = {};
 };
 
-const handlePagination = () => {};
+const handlePagination = () => {
+  fetchLeaveList();
+};
 
 const handleUpdateDetailRecord = (updatedRecord) => {
+  const record = normalizeLeaveDetail(updatedRecord);
+  if (!record.leaveRequestId) {
+    return;
+  }
   const recordIndex = leaveRecords.value.findIndex(
-    (item) => item.billNo === updatedRecord.billNo,
+    (item) => getRowRequestId(item) === record.leaveRequestId,
   );
   if (recordIndex === -1) {
     return;
   }
-  leaveRecords.value.splice(recordIndex, 1, updatedRecord);
-  currentDetail.value = { ...updatedRecord };
-};
-
-const handleDeleteDetailRecord = (record) => {
-  const recordIndex = leaveRecords.value.findIndex(
-    (item) => item.billNo === record.billNo,
-  );
-  if (recordIndex > -1) {
-    leaveRecords.value.splice(recordIndex, 1);
-  }
-  closeDetailSidebar();
+  leaveRecords.value.splice(recordIndex, 1, record);
+  currentDetail.value = { ...record };
 };
 
 onMounted(() => {
   document.addEventListener("fullscreenchange", handleFullScreenChange);
+  fetchLeaveList();
 });
 
 onUnmounted(() => {
@@ -644,7 +693,7 @@ onUnmounted(() => {
                   <el-input
                     v-model="diminput"
                     style="width: 220px"
-                    placeholder="搜索单据编号、假期类型..."
+                    placeholder="请输入单据编号"
                     clearable
                     class="top-search"
                     @keyup.enter="fuzzySearch"
@@ -675,11 +724,26 @@ onUnmounted(() => {
                   >
                     新建请假申请
                   </el-button>
+                  <el-button
+                    type="primary"
+                    plain
+                    @click="handleBatchAbandon"
+                  >
+                    废弃
+                  </el-button>
+                  <el-button
+                    type="primary"
+                    plain
+                    @click="handleBatchDelete"
+                  >
+                    删除
+                  </el-button>
                 </div>
               </span>
               <div class="d-flex gap-2">
                 <TopListTool
                   :gridName="gridName"
+                  :buss-id="bussId"
                   @changeBorder="changeBorder"
                   @changeRowStyle="changeRowStyle"
                   @changeRowHeight="changeRowHeight"
@@ -690,6 +754,7 @@ onUnmounted(() => {
                     ...formInline,
                     searchWord: diminput,
                     status: statusFilter,
+                    bussId,
                   }"
                   :isFull="isFull"
                 >
@@ -701,6 +766,7 @@ onUnmounted(() => {
             <GridView
               ref="gridRef"
               :gridName="gridName"
+              :bussId="bussId"
               :height="gridHeight"
               :rowHeight="rowHeight"
               :columnDefs="columnList"
@@ -708,6 +774,7 @@ onUnmounted(() => {
               :activeClass="activeClass"
               :cellRenderer="cellRenderer"
               :gridOptions="gridOptions"
+              showSelectionColumn
               :rowClick="handleRowClick"
               :rowDoubleClicked="handleRowDoubleClick"
             />
@@ -747,7 +814,6 @@ onUnmounted(() => {
           :detailInfo="currentDetail"
           @close="closeDetailSidebar"
           @update-detail="handleUpdateDetailRecord"
-          @delete-detail="handleDeleteDetailRecord"
         />
       </div>
       <div
@@ -1208,6 +1274,7 @@ onUnmounted(() => {
 }
 
 .detail-leave-type-card {
+  position: relative;
   width: 100%;
   min-height: 92px;
   padding: 11px 13px;
@@ -1217,16 +1284,48 @@ onUnmounted(() => {
   background: #fff;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .detail-leave-type-card--readonly {
   cursor: default;
 }
 
+.detail-leave-type-card:not(.detail-leave-type-card--readonly):hover {
+  border-color: #91b0f5;
+  background: #f8faff;
+}
+
 .detail-leave-type-card--selected {
   border-color: #4778ef;
-  box-shadow: 0 8px 18px rgba(61, 105, 210, 0.12);
+  border-width: 2px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #f0f5ff 0%, #e8efff 100%);
+  box-shadow:
+    0 0 0 1px rgba(71, 120, 239, 0.28),
+    0 6px 16px rgba(71, 120, 239, 0.18);
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #4778ef
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E")
+      center / 11px no-repeat;
+  }
+
+  .detail-leave-type-card__title {
+    color: #356fff;
+    font-weight: 700;
+    padding-right: 22px;
+  }
 }
 
 .detail-leave-type-card--teal {

@@ -1,62 +1,70 @@
 <!-- 请假详情页，用于承接请假列表跳转后的独立详情展示。 -->
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Layout from "@/layouts/main";
 import LeaveDetailContent from "../leave-list/components/LeaveDetailContent.vue";
+import { queryLeaveRequestAdminDetail } from "@/api/attendance";
+import {
+  getLeaveRequestId,
+  normalizeLeaveDetail,
+} from "@/views/hrm/my-attendance/utils/leaveDetail";
 
 const route = useRoute();
 const router = useRouter();
 
-const buildFallbackDetail = () => ({
-  billNo: route.params.billNo || "QJ2026032501",
-  applicant: "张员工",
-  employeeCode: "EMP2026136",
-  organization: "产品研发中心",
-  applyDate: "2026-03-25",
-  leaveType: "法定年假",
-  startTime: "2026-04-02 上午",
-  endTime: "2026-04-02 下午",
-  duration: 1,
-  unit: "天",
-  status: "审批中",
-  approver: "陈经理",
-  reason: "清明节前后返乡，提前完成本周迭代交接。",
-  attachments: ["工作交接说明.docx"],
-  comment: "审批中",
-});
-
 const readDetail = () => {
   const storedDetail = sessionStorage.getItem("myLeaveCurrentDetail");
+  const billNo = route.params.billNo;
   if (!storedDetail) {
-    return buildFallbackDetail();
+    return billNo ? { requestNo: billNo, billNo } : {};
   }
   try {
-    const detail = JSON.parse(storedDetail);
-    if (!route.params.billNo || detail.billNo === route.params.billNo) {
+    const detail = normalizeLeaveDetail(JSON.parse(storedDetail));
+    const requestNo = detail.requestNo || detail.billNo;
+    if (!route.params.billNo || requestNo === route.params.billNo) {
       return detail;
     }
-    return buildFallbackDetail();
+    return billNo ? { requestNo: billNo, billNo } : {};
   } catch (error) {
-    return buildFallbackDetail();
+    return billNo ? { requestNo: billNo, billNo } : {};
   }
 };
 
 const currentDetail = ref(readDetail());
+
+const fetchDetailById = async () => {
+  const leaveRequestId =
+    getLeaveRequestId(currentDetail.value) ?? route.query.leaveRequestId ?? null;
+  if (leaveRequestId === null) {
+    return;
+  }
+  try {
+    const res = await queryLeaveRequestAdminDetail(
+      { leaveRequestId },
+      { isLoading: false },
+    );
+    const detail = normalizeLeaveDetail(res?.data || {}, currentDetail.value);
+    currentDetail.value = detail;
+    sessionStorage.setItem("myLeaveCurrentDetail", JSON.stringify(detail));
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 const goLeaveList = () => {
   router.push({ name: "my-leave-list" });
 };
 
 const handleUpdateDetail = (record) => {
-  currentDetail.value = { ...record };
-  sessionStorage.setItem("myLeaveCurrentDetail", JSON.stringify(record));
+  const detail = normalizeLeaveDetail(record);
+  currentDetail.value = detail;
+  sessionStorage.setItem("myLeaveCurrentDetail", JSON.stringify(detail));
 };
 
-const handleDeleteDetail = () => {
-  sessionStorage.removeItem("myLeaveCurrentDetail");
-  goLeaveList();
-};
+onMounted(() => {
+  fetchDetailById();
+});
 </script>
 
 <template>
@@ -68,7 +76,6 @@ const handleDeleteDetail = () => {
         :showBack="true"
         @back="goLeaveList"
         @update-detail="handleUpdateDetail"
-        @delete-detail="handleDeleteDetail"
       />
     </div>
   </Layout>

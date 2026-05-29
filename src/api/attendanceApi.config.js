@@ -63,8 +63,16 @@ const attendanceApi = {
   exportAttendanceResultSummary: `${ATTENDANCE_URL}/api/attendance/result/summary/export`,
   queryLeaveReportSummaryPage: `${ATTENDANCE_URL}/api/leave/report/summary/page`,
   exportLeaveReportSummary: `${ATTENDANCE_URL}/api/leave/report/summary/export`,
+  queryCompOffDetailPage: `${ATTENDANCE_URL}/api/leave/comp-off/detail/page`,
   queryLeaveRequestAdminPage: `${ATTENDANCE_URL}/api/leave/request/admin/page`,
   queryLeaveRequestAdminDetail: `${ATTENDANCE_URL}/api/leave/request/admin/detail`,
+  queryLeaveRequestSelfInit: `${ATTENDANCE_URL}/api/leave/request/self/init`,
+  queryLeaveRequestSelfCalcDuration: `${ATTENDANCE_URL}/api/leave/request/self/calc-duration`,
+  saveLeaveRequestSelf: `${ATTENDANCE_URL}/api/leave/request/self/save`,
+  queryLeaveRequestSelfPage: `${ATTENDANCE_URL}/api/leave/request/self/page`,
+  queryLeaveRequestSelfDetail: `${ATTENDANCE_URL}/api/leave/request/self/detail`,
+  deleteLeaveRequestSelf: `${ATTENDANCE_URL}/api/leave/request/self/delete`,
+  abandonLeaveRequestSelf: `${ATTENDANCE_URL}/api/leave/request/self/abandon`,
   directPassLeaveRequestAdmin: `${ATTENDANCE_URL}/api/leave/request/admin/direct-pass`,
   reverseApproveLeaveRequestAdmin: `${ATTENDANCE_URL}/api/leave/request/admin/reverse-approve`,
   abandonLeaveRequestAdmin: `${ATTENDANCE_URL}/api/leave/request/admin/abandon`,
@@ -73,6 +81,7 @@ const attendanceApi = {
   queryApprovalCenterDetail: `${ATTENDANCE_URL}/api/approval/center/detail`,
   approveApprovalTask: `${ATTENDANCE_URL}/api/approval/task/approve`,
   rejectApprovalTask: `${ATTENDANCE_URL}/api/approval/task/reject`,
+  uploadCommonAttachment: `${ATTENDANCE_URL}/api/common/attachment/upload`,
 }
 
 export default attendanceApi

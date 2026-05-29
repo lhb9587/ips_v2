@@ -2,14 +2,17 @@
 <script setup>
 import dayjs from "dayjs";
 import { onMounted, onUnmounted, ref, watch } from "vue";
+import { ElMessage } from "element-plus";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
+import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import { saveTableConfig } from "@/utils";
-import { queryApprovalCenterPage } from "@/api/attendance";
+import { queryApprovalCenterPage, queryLeaveRequestAdminDetail } from "@/api/attendance";
+import LeaveDetailContent from "@/views/hrm/my-attendance/leave-list/components/LeaveDetailContent.vue";
 
 const route = useRoute();
 const store = useStore();
@@ -52,6 +55,28 @@ const gridData = ref([]);
 const total = ref(0);
 const columnList = ref([]);
 const keyword = ref("");
+const detailDrawerVisible = ref(false);
+const currentDetail = ref(null);
+
+const mapLeaveDetail = (detail, fallback = {}) => ({
+  ...fallback,
+  ...detail,
+  details: Array.isArray(detail?.details) ? detail.details : [],
+  attachments: Array.isArray(detail?.attachments) ? detail.attachments : [],
+  approvalLogs: Array.isArray(detail?.approvalLogs) ? detail.approvalLogs : [],
+});
+
+const fetchLeaveDetailById = async (leaveRequestId, fallback = {}) => {
+  const res = await queryLeaveRequestAdminDetail(
+    { leaveRequestId },
+    { isLoading: false },
+  );
+  return mapLeaveDetail(res?.data || {}, fallback);
+};
+
+const closeDetailSidebar = () => {
+  detailDrawerVisible.value = false;
+};
 const gridOptions = {
   rowMultiSelectWithClick: true,
 };
@@ -216,6 +241,32 @@ const handlePagination = () => {
   fetchApprovalCenterList();
 };
 
+let rowClickTimer;
+const handleRowClick = (params) => {
+  const rowData = params?.data || {};
+  if (rowData.bizType !== "leave") {
+    return;
+  }
+  const leaveRequestId = rowData.bizId;
+  if (!leaveRequestId && leaveRequestId !== 0) {
+    ElMessage.warning("当前记录缺少请假单ID，无法打开详情");
+    return;
+  }
+  if (rowClickTimer) {
+    clearTimeout(rowClickTimer);
+  }
+  rowClickTimer = setTimeout(async () => {
+    try {
+      currentDetail.value = await fetchLeaveDetailById(leaveRequestId, rowData);
+      detailDrawerVisible.value = true;
+    } catch (error) {
+      console.log(error);
+    } finally {
+      rowClickTimer = null;
+    }
+  }, 200);
+};
+
 const cellRenderer = (params) => {
   const value = params.value || params.value === 0 ? params.value : "";
   return `<span title="${value}">${value}</span>`;
@@ -342,6 +393,7 @@ onUnmounted(() => {
               :activeClass="activeClass"
               :cellRenderer="cellRenderer"
               :gridOptions="gridOptions"
+              :rowClick="handleRowClick"
               showSelectionColumn
             />
           </div>
@@ -362,6 +414,27 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <DragSidebar
+      v-if="detailDrawerVisible"
+      v-model="detailDrawerVisible"
+      sidebarName="approval-center-leave-detail-sidebar"
+      :minWidth="900"
+      :width="1180"
+      :noCloseOnEsc="true"
+      :backdrop="false"
+      @close="closeDetailSidebar"
+    >
+      <div
+        v-if="currentDetail"
+        class="leave-detail-sidebar"
+      >
+        <LeaveDetailContent
+          :detailInfo="currentDetail"
+          @close="closeDetailSidebar"
+        />
+      </div>
+    </DragSidebar>
   </Layout>
 </template>
 

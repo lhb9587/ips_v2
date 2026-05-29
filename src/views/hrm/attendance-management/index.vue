@@ -110,6 +110,11 @@ const moduleGroups = [
         description: "员工假期汇总查询",
         route: "/hrm/leave-report-summary",
       },
+      {
+        title: "调休明细表",
+        description: "员工调休额度生成、使用、失效和剩余情况查询",
+        route: "/hrm/comp-off-detail",
+      },
     ],
   },
 ];
