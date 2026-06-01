@@ -695,18 +695,117 @@ export function exportLeaveRequestAdmin(data, config = {}) {
   })
 }
 
-export function queryApprovalCenterPage(data, config = {}) {
+export function queryOvertimeRequestAdminPage(data, config = {}) {
   return request({
-    url: attendanceApi.queryApprovalCenterPage,
+    url: attendanceApi.queryOvertimeRequestAdminPage,
     method: 'post',
     data,
     ...config
   })
 }
 
-export function queryApprovalCenterDetail(data, config = {}) {
+export function queryOvertimeRequestAdminDetail(data, config = {}) {
   return request({
-    url: attendanceApi.queryApprovalCenterDetail,
+    url: attendanceApi.queryOvertimeRequestAdminDetail,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function directPassOvertimeRequestAdmin(data, config = {}) {
+  return request({
+    url: attendanceApi.directPassOvertimeRequestAdmin,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function reverseApproveOvertimeRequestAdmin(data, config = {}) {
+  return request({
+    url: attendanceApi.reverseApproveOvertimeRequestAdmin,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function abandonOvertimeRequestAdmin(data, config = {}) {
+  return request({
+    url: attendanceApi.abandonOvertimeRequestAdmin,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function exportOvertimeRequestAdmin(data, config = {}) {
+  return request({
+    url: attendanceApi.exportOvertimeRequestAdmin,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryOvertimeRequestSelfInit(data, config = {}) {
+  return request({
+    url: attendanceApi.queryOvertimeRequestSelfInit,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryOvertimeRequestSelfCalcDuration(data, config = {}) {
+  return request({
+    url: attendanceApi.queryOvertimeRequestSelfCalcDuration,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function saveOvertimeRequestSelf(data, config = {}) {
+  return request({
+    url: attendanceApi.saveOvertimeRequestSelf,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryOvertimeRequestSelfPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryOvertimeRequestSelfPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function deleteOvertimeRequestSelf(data, config = {}) {
+  return request({
+    url: attendanceApi.deleteOvertimeRequestSelf,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function abandonOvertimeRequestSelf(data, config = {}) {
+  return request({
+    url: attendanceApi.abandonOvertimeRequestSelf,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function queryApprovalCenterPage(data, config = {}) {
+  return request({
+    url: attendanceApi.queryApprovalCenterPage,
     method: 'post',
     data,
     ...config

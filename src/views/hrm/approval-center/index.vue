@@ -11,8 +11,16 @@ import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import { saveTableConfig } from "@/utils";
-import { queryApprovalCenterPage, queryLeaveRequestAdminDetail } from "@/api/attendance";
+import {
+  queryApprovalCenterPage,
+  queryLeaveRequestAdminDetail,
+} from "@/api/attendance";
 import LeaveDetailContent from "@/views/hrm/my-attendance/leave-list/components/LeaveDetailContent.vue";
+import OvertimeDetailContent from "@/views/hrm/my-attendance/overtime-list/components/OvertimeDetailContent.vue";
+import {
+  buildApprovalCenterOvertimeFallback,
+  fetchOvertimeRequestDetail,
+} from "@/views/hrm/my-attendance/utils/overtimeDetail";
 
 const route = useRoute();
 const store = useStore();
@@ -57,6 +65,7 @@ const columnList = ref([]);
 const keyword = ref("");
 const detailDrawerVisible = ref(false);
 const currentDetail = ref(null);
+const currentDetailBizType = ref("");
 
 const mapLeaveDetail = (detail, fallback = {}) => ({
   ...fallback,
@@ -74,8 +83,20 @@ const fetchLeaveDetailById = async (leaveRequestId, fallback = {}) => {
   return mapLeaveDetail(res?.data || {}, fallback);
 };
 
+const fetchOvertimeDetailById = async (overtimeRequestId, fallback = {}) =>
+  fetchOvertimeRequestDetail(
+    overtimeRequestId,
+    buildApprovalCenterOvertimeFallback(fallback),
+  );
+
 const closeDetailSidebar = () => {
   detailDrawerVisible.value = false;
+  currentDetailBizType.value = "";
+};
+
+const handleApprovalDone = () => {
+  closeDetailSidebar();
+  fetchApprovalCenterList();
 };
 const gridOptions = {
   rowMultiSelectWithClick: true,
@@ -242,14 +263,26 @@ const handlePagination = () => {
 };
 
 let rowClickTimer;
+const BIZ_TYPE_DETAIL_CONFIG = {
+  leave: {
+    missingIdMessage: "当前记录缺少请假单ID，无法打开详情",
+    fetchDetail: fetchLeaveDetailById,
+  },
+  overtime: {
+    missingIdMessage: "当前记录缺少加班单ID，无法打开详情",
+    fetchDetail: fetchOvertimeDetailById,
+  },
+};
+
 const handleRowClick = (params) => {
   const rowData = params?.data || {};
-  if (rowData.bizType !== "leave") {
+  const detailConfig = BIZ_TYPE_DETAIL_CONFIG[rowData.bizType];
+  if (!detailConfig) {
     return;
   }
-  const leaveRequestId = rowData.bizId;
-  if (!leaveRequestId && leaveRequestId !== 0) {
-    ElMessage.warning("当前记录缺少请假单ID，无法打开详情");
+  const bizId = rowData.bizId;
+  if (!bizId && bizId !== 0) {
+    ElMessage.warning(detailConfig.missingIdMessage);
     return;
   }
   if (rowClickTimer) {
@@ -257,7 +290,8 @@ const handleRowClick = (params) => {
   }
   rowClickTimer = setTimeout(async () => {
     try {
-      currentDetail.value = await fetchLeaveDetailById(leaveRequestId, rowData);
+      currentDetailBizType.value = rowData.bizType;
+      currentDetail.value = await detailConfig.fetchDetail(bizId, rowData);
       detailDrawerVisible.value = true;
     } catch (error) {
       console.log(error);
@@ -418,7 +452,11 @@ onUnmounted(() => {
     <DragSidebar
       v-if="detailDrawerVisible"
       v-model="detailDrawerVisible"
-      sidebarName="approval-center-leave-detail-sidebar"
+      :sidebarName="
+        currentDetailBizType === 'overtime'
+          ? 'approval-center-overtime-detail-sidebar'
+          : 'approval-center-leave-detail-sidebar'
+      "
       :minWidth="900"
       :width="1180"
       :noCloseOnEsc="true"
@@ -426,12 +464,23 @@ onUnmounted(() => {
       @close="closeDetailSidebar"
     >
       <div
-        v-if="currentDetail"
+        v-if="currentDetail && currentDetailBizType === 'leave'"
         class="leave-detail-sidebar"
       >
         <LeaveDetailContent
           :detailInfo="currentDetail"
           @close="closeDetailSidebar"
+          @approval-done="handleApprovalDone"
+        />
+      </div>
+      <div
+        v-else-if="currentDetail && currentDetailBizType === 'overtime'"
+        class="overtime-detail-sidebar"
+      >
+        <OvertimeDetailContent
+          :detailInfo="currentDetail"
+          @close="closeDetailSidebar"
+          @approval-done="handleApprovalDone"
         />
       </div>
     </DragSidebar>
@@ -456,5 +505,11 @@ onUnmounted(() => {
   .nav-link {
     padding: 6px 14px;
   }
+}
+
+.overtime-detail-sidebar {
+  min-height: 100vh;
+  padding: 16px;
+  background: #fff;
 }
 </style>

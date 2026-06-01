@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import dayjs from "dayjs";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
@@ -11,10 +11,18 @@ import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import LeaveDetailContent from "@/views/hrm/my-attendance/leave-list/components/LeaveDetailContent.vue";
 import {
+  abandonLeaveRequestAdmin,
+  directPassLeaveRequestAdmin,
   exportLeaveRequestAdmin,
+  queryLeaveRequestAdminDetail,
   queryLeaveRequestAdminPage,
+  reverseApproveLeaveRequestAdmin,
 } from "@/api/attendance";
 import { downLoad, saveTableConfig } from "@/utils";
+import {
+  getLeaveRequestId,
+  normalizeLeaveDetail,
+} from "@/views/hrm/my-attendance/utils/leaveDetail";
 
 const route = useRoute();
 const store = useStore();
@@ -123,65 +131,18 @@ const formInline = ref({});
 const total = ref(0);
 const gridData = ref([]);
 
-const mapRequestStatusToDetail = (status) => {
-  if (status === "已退回") {
-    return "已驳回";
+const fetchLeaveDetail = async (rowData) => {
+  const rowRequestId = getLeaveRequestId(rowData);
+  if (rowRequestId === null) {
+    ElMessage.warning("当前记录缺少请假单ID，无法打开详情");
+    throw new Error("missing leaveRequestId");
   }
-  return status || "";
+  const res = await queryLeaveRequestAdminDetail(
+    { leaveRequestId: rowRequestId },
+    { isLoading: false },
+  );
+  return normalizeLeaveDetail(res?.data || {}, rowData);
 };
-
-const formatManagementLeaveTime = (timeText) => {
-  const [date = "", time = ""] = String(timeText || "").split(" ");
-  if (!date) {
-    return "";
-  }
-  if (["上午", "下午"].includes(time)) {
-    return `${date} ${time}`;
-  }
-  const parsedTime = dayjs(`${date} ${time || "00:00"}`);
-  return `${date} ${parsedTime.isValid() && parsedTime.hour() >= 12 ? "下午" : "上午"}`;
-};
-
-const buildDetailFromRecord = (record) => ({
-  leaveRequestId: record.leaveRequestId,
-  billNo: record.requestNo,
-  applicant: record.talentName,
-  employeeCode: record.talentCode,
-  organization: record.deptName,
-  applyDate: record.applyTime
-    ? dayjs(record.applyTime).format("YYYY-MM-DD")
-    : String(record.startTime || "").split(" ")[0],
-  leaveType: record.leaveTypeName,
-  startTime: formatManagementLeaveTime(record.startTime),
-  endTime: formatManagementLeaveTime(record.endTime),
-  duration: record.leaveDuration,
-  unit: record.durationUnit,
-  status: mapRequestStatusToDetail(record.requestStatus),
-  approver: record.currentApproverName,
-  reason: record.leaveReason || "",
-  attachments: record.attachments || [],
-  comment: record.comment || "",
-});
-
-const buildRecordFromDetail = (detail, sourceRecord = {}) => ({
-  ...sourceRecord,
-  leaveRequestId: detail.leaveRequestId || sourceRecord.leaveRequestId,
-  requestNo: detail.billNo,
-  talentCode: detail.employeeCode,
-  talentName: detail.applicant,
-  deptName: detail.organization,
-  leaveTypeName: detail.leaveType,
-  startTime: detail.startTime,
-  endTime: detail.endTime,
-  leaveDuration: detail.duration,
-  durationUnit: detail.unit,
-  requestStatus:
-    detail.status === "已驳回" ? "已退回" : detail.status || sourceRecord.requestStatus,
-  currentApproverName: detail.approver,
-  leaveReason: detail.reason,
-  attachments: detail.attachments || [],
-  comment: detail.comment,
-});
 
 const buildListQueryParams = () => {
   const keyword = diminput.value.trim();
@@ -236,33 +197,83 @@ const fuzzySearch = () => {
   fetchLeaveRequestList();
 };
 
-const getSelectedRows = () => {
-  return gridRef.value?.getRowList?.() || [];
+const getSelectedRows = () => gridRef.value?.getRowList?.() || [];
+
+const getRowRequestId = (row) => getLeaveRequestId(row);
+
+const validateOperableRows = (rows, flagKey, actionLabel) => {
+  if (!rows.length) {
+    ElMessage.warning(`请先选择需要${actionLabel}的请假单`);
+    return null;
+  }
+  const operableRows = rows.filter((item) => item?.[flagKey]);
+  if (!operableRows.length) {
+    ElMessage.warning(`所选记录中没有可${actionLabel}的请假单`);
+    return null;
+  }
+  if (operableRows.length !== rows.length) {
+    ElMessage.warning(`所选记录中包含不可${actionLabel}的请假单，请重新选择`);
+    return null;
+  }
+  return operableRows;
 };
 
-const updateBillStatus = (targetRows, status) => {
-  const targetIds = new Set(
-    targetRows.map((item) => item.leaveRequestId || item.requestNo),
-  );
-  gridData.value = gridData.value.map((item) => {
-    const rowKey = item.leaveRequestId || item.requestNo;
-    if (!targetIds.has(rowKey)) {
-      return item;
-    }
-    return {
-      ...item,
-      requestStatus: status,
-    };
-  });
+const refreshListAfterBatchAction = (processedIds = []) => {
+  const processedIdSet = new Set(processedIds.map((id) => String(id)));
+  if (
+    currentDetail.value &&
+    processedIdSet.has(String(getRowRequestId(currentDetail.value) || ""))
+  ) {
+    closeDetailSidebar();
+  }
+  gridRef.value?.getRowNode?.()?.forEach?.((node) => node.setSelected(false));
+  fetchLeaveRequestList();
+};
+
+const runBatchAdminAction = async ({
+  rows,
+  flagKey,
+  actionLabel,
+  confirmMessage,
+  requestFn,
+  successLabel,
+}) => {
+  const operableRows = validateOperableRows(rows, flagKey, actionLabel);
+  if (!operableRows) {
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(confirmMessage, `${actionLabel}确认`, {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+  } catch {
+    return;
+  }
+  try {
+    await Promise.all(
+      operableRows.map((row) => {
+        const leaveRequestId = getRowRequestId(row);
+        return requestFn({ leaveRequestId }, { isLoading: false });
+      }),
+    );
+    ElMessage.success(`已${successLabel} ${operableRows.length} 条请假单`);
+    refreshListAfterBatchAction(operableRows.map((item) => getRowRequestId(item)));
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 const handleSubmitEffect = () => {
-  const selectedRows = getSelectedRows();
-  if (selectedRows.length === 0) {
-    return ElMessage.warning("请先选择需要提交生效的请假单");
-  }
-  updateBillStatus(selectedRows, "已生效");
-  ElMessage.success(`已提交 ${selectedRows.length} 条请假单生效`);
+  runBatchAdminAction({
+    rows: getSelectedRows(),
+    flagKey: "canDirectPass",
+    actionLabel: "提交生效",
+    confirmMessage: "确定将选中的请假单提交生效吗？提交后将直接置为已通过。",
+    requestFn: directPassLeaveRequestAdmin,
+    successLabel: "提交生效",
+  });
 };
 
 const handleExport = (command) => {
@@ -279,8 +290,8 @@ const handleExport = (command) => {
     const leaveRequestIds = [
       ...new Set(
         selectedRows
-          .map((item) => item.leaveRequestId)
-          .filter((item) => item || item === 0),
+          .map((item) => getRowRequestId(item))
+          .filter((id) => id || id === 0),
       ),
     ];
     if (!leaveRequestIds.length) {
@@ -301,26 +312,30 @@ const handleExport = (command) => {
 };
 
 const handleMoreCommand = (command) => {
-  const selectedRows = getSelectedRows();
-
   if (command === "exportSelected" || command === "exportAll") {
     return handleExport(command);
   }
 
   if (command === "reverseApproval") {
-    if (selectedRows.length === 0) {
-      return ElMessage.warning("请先选择需要反审批的请假单");
-    }
-    updateBillStatus(selectedRows, "草稿");
-    return ElMessage.success(`已完成 ${selectedRows.length} 条请假单反审批`);
+    return runBatchAdminAction({
+      rows: getSelectedRows(),
+      flagKey: "canReverseApprove",
+      actionLabel: "反审批",
+      confirmMessage: "确定将选中的已通过请假单反审批为未提交吗？",
+      requestFn: reverseApproveLeaveRequestAdmin,
+      successLabel: "反审批",
+    });
   }
 
   if (command === "discard") {
-    if (selectedRows.length === 0) {
-      return ElMessage.warning("请先选择需要废弃的请假单");
-    }
-    updateBillStatus(selectedRows, "已废弃");
-    return ElMessage.success(`已废弃 ${selectedRows.length} 条请假单`);
+    return runBatchAdminAction({
+      rows: getSelectedRows(),
+      flagKey: "canAbandon",
+      actionLabel: "废弃",
+      confirmMessage: "确定要废弃选中的请假单吗？废弃后该单据将不再进入审批流程。",
+      requestFn: abandonLeaveRequestAdmin,
+      successLabel: "废弃",
+    });
   }
 };
 
@@ -347,10 +362,15 @@ const handleRowClick = (params) => {
   if (rowClickTimer) {
     clearTimeout(rowClickTimer);
   }
-  rowClickTimer = setTimeout(() => {
-    currentDetail.value = buildDetailFromRecord(params.data);
-    detailDrawerVisible.value = true;
-    rowClickTimer = null;
+  rowClickTimer = setTimeout(async () => {
+    try {
+      currentDetail.value = await fetchLeaveDetail(params.data);
+      detailDrawerVisible.value = true;
+    } catch (error) {
+      console.log(error);
+    } finally {
+      rowClickTimer = null;
+    }
   }, 220);
 };
 
@@ -360,21 +380,23 @@ const closeDetailSidebar = () => {
 };
 
 const handleUpdateDetailRecord = (updatedRecord) => {
+  const record = normalizeLeaveDetail(updatedRecord);
+  if (!record.leaveRequestId) {
+    return;
+  }
   const recordIndex = gridData.value.findIndex(
     (item) =>
-      (updatedRecord.leaveRequestId &&
-        item.leaveRequestId === updatedRecord.leaveRequestId) ||
-      item.requestNo === updatedRecord.billNo,
+      (item.leaveRequestId && item.leaveRequestId === record.leaveRequestId) ||
+      item.requestNo === record.requestNo,
   );
   if (recordIndex === -1) {
     return;
   }
-  const updatedListRecord = buildRecordFromDetail(
-    updatedRecord,
-    gridData.value[recordIndex],
-  );
-  gridData.value.splice(recordIndex, 1, updatedListRecord);
-  currentDetail.value = buildDetailFromRecord(updatedListRecord);
+  gridData.value.splice(recordIndex, 1, {
+    ...gridData.value[recordIndex],
+    ...record,
+  });
+  currentDetail.value = { ...record };
 };
 
 const handlePagination = () => {
@@ -489,6 +511,7 @@ onUnmounted(() => {
               :activeClass="activeClass"
               :cellRenderer="cellRenderer"
               :gridOptions="gridOptions"
+              showSelectionColumn
               :rowClick="handleRowClick"
             />
           </div>

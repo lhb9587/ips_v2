@@ -3,6 +3,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
+import { ElMessage, ElMessageBox } from "element-plus";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
@@ -10,36 +11,26 @@ import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import OvertimeDetailContent from "./components/OvertimeDetailContent.vue";
 import { saveTableConfig } from "@/utils";
+import {
+  abandonOvertimeRequestSelf,
+  deleteOvertimeRequestSelf,
+  queryOvertimeRequestSelfPage,
+} from "@/api/attendance";
+import {
+  fetchOvertimeRequestDetail,
+  getOvertimeRequestId,
+  normalizeOvertimeDetail,
+} from "@/views/hrm/my-attendance/utils/overtimeDetail";
 
 const route = useRoute();
 const router = useRouter();
 const store = useStore();
 
+const bussId = 476;
 const gridName = "myOvertimeListGrid";
-const columnOptions = [
-  { title: "单据编号", value: "billNo" },
-  { title: "姓名", value: "applicant" },
-  { title: "加班日期", value: "overtimeDate" },
-  { title: "加班开始时间", value: "startTime" },
-  { title: "加班结束时间", value: "endTime" },
-  { title: "休息时长（分）", value: "breakMinutes" },
-  { title: "申请加班小时数", value: "overtimeHours" },
-  { title: "加班原因", value: "overtimeReason" },
-  { title: "单据状态", value: "status" },
-  { title: "审批人", value: "approver" },
-  { title: "来源", value: "source" },
-];
-
-const columnList = ref([...columnOptions]);
+const columnList = ref([]);
 const setColumn = (list) => {
-  if (!Array.isArray(list) || list.length === 0) {
-    columnList.value = [...columnOptions];
-    return;
-  }
-  const validColumns = list.filter((item) =>
-    columnOptions.some((column) => column.value === item.value),
-  );
-  columnList.value = validColumns.length > 0 ? validColumns : [...columnOptions];
+  columnList.value = Array.isArray(list) ? list : [];
 };
 
 const activeClass = ref([]);
@@ -137,134 +128,156 @@ const listQuery = ref({
 
 const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
 const formInline = ref({});
+const overtimeRecords = ref([]);
+const total = ref(0);
 
-const overtimeRecords = ref([
-  {
-    billNo: "JB20260506001",
-    applicant: "张员工",
-    employeeCode: "EMP2026136",
-    organization: "产品研发中心",
-    position: "Java后端开发工程师",
-    applyDate: "2026-05-06",
-    overtimeDate: "2026-05-05",
-    startTimeOnly: "19:00",
-    endTimeOnly: "22:00",
-    startTime: "2026-05-05 19:00",
-    endTime: "2026-05-05 22:00",
-    breakMinutes: 30,
-    overtimeHours: 2.5,
-    overtimeReason: "项目上线",
-    compensationType: "调休",
-    status: "审批中",
-    approver: "李经理",
-    source: "员工自助",
-    remark: "处理版本发布窗口及上线巡检。",
-    comment: "已提交，等待直属上级审批",
-  },
-  {
-    billNo: "JB20260428002",
-    applicant: "张员工",
-    employeeCode: "EMP2026136",
-    organization: "产品研发中心",
-    position: "Java后端开发工程师",
-    applyDate: "2026-04-28",
-    overtimeDate: "2026-04-27",
-    startTimeOnly: "18:30",
-    endTimeOnly: "21:30",
-    startTime: "2026-04-27 18:30",
-    endTime: "2026-04-27 21:30",
-    breakMinutes: 0,
-    overtimeHours: 3,
-    overtimeReason: "客户支持",
-    compensationType: "加班费",
-    status: "已通过",
-    approver: "王主管",
-    source: "员工自助",
-    remark: "配合客户完成夜间联调支持。",
-    comment: "审批通过",
-  },
-  {
-    billNo: "JB20260416003",
-    applicant: "张员工",
-    employeeCode: "EMP2026136",
-    organization: "产品研发中心",
-    position: "Java后端开发工程师",
-    applyDate: "2026-04-16",
-    overtimeDate: "2026-04-16",
-    startTimeOnly: "18:00",
-    endTimeOnly: "20:00",
-    startTime: "2026-04-16 18:00",
-    endTime: "2026-04-16 20:00",
-    breakMinutes: 0,
-    overtimeHours: 2,
-    overtimeReason: "其他原因",
-    compensationType: "调休",
-    status: "未提交",
-    approver: "未提交",
-    source: "员工自助",
-    remark: "整理阶段性方案并补充交付材料。",
-    comment: "草稿暂未进入审批",
-  },
-  {
-    billNo: "JB20260321004",
-    applicant: "张员工",
-    employeeCode: "EMP2026136",
-    organization: "产品研发中心",
-    position: "Java后端开发工程师",
-    applyDate: "2026-03-21",
-    overtimeDate: "2026-03-20",
-    startTimeOnly: "09:00",
-    endTimeOnly: "13:00",
-    startTime: "2026-03-20 09:00",
-    endTime: "2026-03-20 13:00",
-    breakMinutes: 30,
-    overtimeHours: 3.5,
-    overtimeReason: "紧急交付",
-    compensationType: "调休",
-    status: "已驳回",
-    approver: "陈经理",
-    source: "员工自助",
-    remark: "节前紧急处理客户交付事项。",
-    comment: "请补充交付背景后重新提交",
-  },
-]);
-
-const filteredList = computed(() => {
-  const keyword = diminput.value.trim().toLowerCase();
-  return overtimeRecords.value.filter((item) => {
-    const matchKeyword =
-      !keyword ||
-      [
-        item.billNo,
-        item.applicant,
-        item.overtimeDate,
-        item.overtimeReason,
-        item.status,
-        item.approver,
-      ].some((field) => String(field || "").toLowerCase().includes(keyword));
-    const matchStatus = !statusFilter.value || item.status === statusFilter.value;
-    return matchKeyword && matchStatus;
-  });
-});
-
-const total = computed(() => filteredList.value.length);
-
-const gridData = computed(() => {
-  const start = (listQuery.value.pageNo - 1) * listQuery.value.pageSize;
-  const end = start + listQuery.value.pageSize;
-  return filteredList.value.slice(start, end).map((item, index) => ({
+const gridData = computed(() =>
+  overtimeRecords.value.map((item, index) => ({
     ...item,
-    sid: start + index,
-  }));
-});
+    sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index,
+  })),
+);
+
+const fetchOvertimeList = async () => {
+  const payload = {
+    pageNo: listQuery.value.pageNo,
+    pageSize: listQuery.value.pageSize,
+    keyword: diminput.value?.trim() || undefined,
+    status: statusFilter.value || undefined,
+  };
+  const res = await queryOvertimeRequestSelfPage(payload, { isLoading: false });
+  const list = Array.isArray(res?.data) ? res.data : [];
+  overtimeRecords.value = list;
+  total.value = Number(res?.total || 0);
+};
+
+const fetchOvertimeDetail = async (rowData) => {
+  const rowRequestId = getOvertimeRequestId(rowData);
+  if (rowRequestId === null) {
+    ElMessage.warning("当前记录缺少加班单ID，无法打开详情");
+    throw new Error("missing overtimeRequestId");
+  }
+  return fetchOvertimeRequestDetail(rowRequestId, rowData);
+};
 
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
   formInline.value = {};
+  fetchOvertimeList();
 };
 
 const handleCreate = () => {
   router.push({ name: "my-overtime-application" });
+};
+
+const getSelectedRows = () => gridRef.value?.getRowList?.() || [];
+
+const getRowRequestId = (row) => getOvertimeRequestId(row);
+
+const buildOvertimeRequestIdsPayload = (rows) => {
+  const ids = [
+    ...new Set(
+      rows.map((item) => getRowRequestId(item)).filter((id) => id || id === 0),
+    ),
+  ];
+  if (!ids.length) {
+    return null;
+  }
+  if (ids.length === 1) {
+    return { overtimeRequestId: ids[0] };
+  }
+  return { overtimeRequestIds: ids.join(",") };
+};
+
+const validateOperableRows = (rows, flagKey, actionLabel) => {
+  if (!rows.length) {
+    ElMessage.warning(`请先选择需要${actionLabel}的加班单`);
+    return null;
+  }
+  const operableRows = rows.filter((item) => item?.[flagKey]);
+  if (!operableRows.length) {
+    ElMessage.warning(`所选记录中没有可${actionLabel}的加班单`);
+    return null;
+  }
+  if (operableRows.length !== rows.length) {
+    ElMessage.warning(`所选记录中包含不可${actionLabel}的加班单，请重新选择`);
+    return null;
+  }
+  return operableRows;
+};
+
+const refreshListAfterBatchAction = (processedIds = []) => {
+  const processedIdSet = new Set(processedIds.map((id) => String(id)));
+  if (
+    currentDetail.value &&
+    processedIdSet.has(String(getRowRequestId(currentDetail.value) || ""))
+  ) {
+    closeDetailSidebar();
+  }
+  gridRef.value?.getRowNode?.()?.forEach?.((node) => node.setSelected(false));
+  fetchOvertimeList();
+};
+
+const handleBatchDelete = () => {
+  const operableRows = validateOperableRows(getSelectedRows(), "canDelete", "删除");
+  if (!operableRows) {
+    return;
+  }
+  const payload = buildOvertimeRequestIdsPayload(operableRows);
+  if (!payload) {
+    return ElMessage.warning("选中记录缺少加班单ID，无法删除");
+  }
+  ElMessageBox.confirm(
+    `确定要删除选中的 ${operableRows.length} 条加班草稿吗？删除后不可恢复。`,
+    "删除确认",
+    {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    },
+  )
+    .then(() =>
+      deleteOvertimeRequestSelf(payload, { isLoading: true }).then((res) => {
+        const successCount = Number(res?.data?.successCount || operableRows.length);
+        ElMessage.success(`已删除 ${successCount} 条加班草稿`);
+        refreshListAfterBatchAction(
+          res?.data?.overtimeRequestIds ||
+            operableRows.map((item) => getRowRequestId(item)),
+        );
+      }),
+    )
+    .catch(() => {});
+};
+
+const handleBatchAbandon = () => {
+  const operableRows = validateOperableRows(getSelectedRows(), "canAbandon", "废弃");
+  if (!operableRows) {
+    return;
+  }
+  const payload = buildOvertimeRequestIdsPayload(operableRows);
+  if (!payload) {
+    return ElMessage.warning("选中记录缺少加班单ID，无法废弃");
+  }
+  ElMessageBox.confirm(
+    `确定要废弃选中的 ${operableRows.length} 条加班单吗？废弃后该单据将不再进入审批流程。`,
+    "废弃确认",
+    {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    },
+  )
+    .then(() =>
+      abandonOvertimeRequestSelf(payload, { isLoading: true }).then((res) => {
+        const successCount = Number(res?.data?.successCount || operableRows.length);
+        ElMessage.success(`已废弃 ${successCount} 条加班单`);
+        refreshListAfterBatchAction(
+          res?.data?.overtimeRequestIds ||
+            operableRows.map((item) => getRowRequestId(item)),
+        );
+      }),
+    )
+    .catch(() => {});
 };
 
 const handleRowClick = (params) => {
@@ -274,14 +287,19 @@ const handleRowClick = (params) => {
   if (rowClickTimer) {
     clearTimeout(rowClickTimer);
   }
-  rowClickTimer = setTimeout(() => {
-    currentDetail.value = params.data;
-    detailDrawerVisible.value = true;
-    rowClickTimer = null;
+  rowClickTimer = setTimeout(async () => {
+    try {
+      currentDetail.value = await fetchOvertimeDetail(params.data);
+      detailDrawerVisible.value = true;
+    } catch (error) {
+      console.log(error);
+    } finally {
+      rowClickTimer = null;
+    }
   }, 220);
 };
 
-const handleRowDoubleClick = (params) => {
+const handleRowDoubleClick = async (params) => {
   if (!params?.data) {
     return;
   }
@@ -289,11 +307,22 @@ const handleRowDoubleClick = (params) => {
     clearTimeout(rowClickTimer);
     rowClickTimer = null;
   }
-  sessionStorage.setItem("myOvertimeCurrentDetail", JSON.stringify(params.data));
+  let detailData = params.data;
+  try {
+    detailData = await fetchOvertimeDetail(params.data);
+  } catch (error) {
+    console.log(error);
+    return;
+  }
   detailDrawerVisible.value = false;
+  const overtimeRequestId = getOvertimeRequestId(detailData);
+  if (overtimeRequestId === null) {
+    return;
+  }
   router.push({
     name: "my-overtime-detail",
-    params: { billNo: params.data.billNo },
+    params: { billNo: detailData.requestNo || detailData.billNo || "" },
+    query: { overtimeRequestId: String(overtimeRequestId) },
   });
 };
 
@@ -308,31 +337,32 @@ const closeDetailSidebar = () => {
   currentDetail.value = null;
 };
 
-const handlePagination = () => {};
+const handlePagination = () => {
+  fetchOvertimeList();
+};
 
 const handleUpdateDetailRecord = (updatedRecord) => {
+  const record = normalizeOvertimeDetail(updatedRecord);
+  const recordId = getOvertimeRequestId(record);
+  if (recordId === null) {
+    return;
+  }
   const recordIndex = overtimeRecords.value.findIndex(
-    (item) => item.billNo === updatedRecord.billNo,
+    (item) => getRowRequestId(item) === recordId,
   );
   if (recordIndex === -1) {
     return;
   }
-  overtimeRecords.value.splice(recordIndex, 1, updatedRecord);
-  currentDetail.value = { ...updatedRecord };
-};
-
-const handleDeleteDetailRecord = (record) => {
-  const recordIndex = overtimeRecords.value.findIndex(
-    (item) => item.billNo === record.billNo,
-  );
-  if (recordIndex > -1) {
-    overtimeRecords.value.splice(recordIndex, 1);
-  }
-  closeDetailSidebar();
+  overtimeRecords.value.splice(recordIndex, 1, {
+    ...overtimeRecords.value[recordIndex],
+    ...record,
+  });
+  currentDetail.value = { ...record };
 };
 
 onMounted(() => {
   document.addEventListener("fullscreenchange", handleFullScreenChange);
+  fetchOvertimeList();
 });
 
 onUnmounted(() => {
@@ -361,8 +391,8 @@ onUnmounted(() => {
                 >
                   <el-input
                     v-model="diminput"
-                    style="width: 240px"
-                    placeholder="搜索单据编号、加班原因、状态..."
+                    style="width: 220px"
+                    placeholder="请输入加班单号"
                     clearable
                     class="top-search"
                     @keyup.enter="fuzzySearch"
@@ -381,7 +411,7 @@ onUnmounted(() => {
                     @change="fuzzySearch"
                   >
                     <el-option
-                      v-for="item in ['未提交', '审批中', '已通过', '已驳回', '已废弃']"
+                      v-for="item in ['未提交', '审批中', '已通过', '已退回', '已废弃']"
                       :key="item"
                       :label="item"
                       :value="item"
@@ -393,20 +423,37 @@ onUnmounted(() => {
                   >
                     新增加班申请
                   </el-button>
+                  <el-button
+                    type="primary"
+                    plain
+                    @click="handleBatchAbandon"
+                  >
+                    废弃
+                  </el-button>
+                  <el-button
+                    type="primary"
+                    plain
+                    @click="handleBatchDelete"
+                  >
+                    删除
+                  </el-button>
                 </div>
               </span>
-              <div class="d-flex align-items-center">
+              <div class="d-flex gap-2">
                 <TopListTool
-                  :gridRef="gridRef"
-                  :setColumn="setColumn"
-                  :columnList="columnList"
-                  :changeBorder="changeBorder"
-                  :changeRowStyle="changeRowStyle"
-                  :changeScreenSize="changeScreenSize"
-                  :changeRowHeight="changeRowHeight"
-                  :inputData="{
-                    diminput,
+                  :gridName="gridName"
+                  :buss-id="bussId"
+                  @changeBorder="changeBorder"
+                  @changeRowStyle="changeRowStyle"
+                  @changeRowHeight="changeRowHeight"
+                  @changeScreenSize="changeScreenSize"
+                  @setColumn="setColumn"
+                  :queryList="{
+                    ...listQuery,
+                    ...formInline,
+                    keyword: diminput,
                     status: statusFilter,
+                    bussId,
                   }"
                   :isFull="isFull"
                 >
@@ -418,6 +465,7 @@ onUnmounted(() => {
             <GridView
               ref="gridRef"
               :gridName="gridName"
+              :bussId="bussId"
               :height="gridHeight"
               :rowHeight="rowHeight"
               :columnDefs="columnList"
@@ -425,6 +473,7 @@ onUnmounted(() => {
               :activeClass="activeClass"
               :cellRenderer="cellRenderer"
               :gridOptions="gridOptions"
+              showSelectionColumn
               :rowClick="handleRowClick"
               :rowDoubleClicked="handleRowDoubleClick"
             />
@@ -464,7 +513,6 @@ onUnmounted(() => {
           :detailInfo="currentDetail"
           @close="closeDetailSidebar"
           @update-detail="handleUpdateDetailRecord"
-          @delete-detail="handleDeleteDetailRecord"
         />
       </div>
     </DragSidebar>

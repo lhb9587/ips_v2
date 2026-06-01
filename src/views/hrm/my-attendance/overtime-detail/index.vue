@@ -1,96 +1,83 @@
 <!-- 加班详情页，用于承接加班列表跳转后的独立详情展示。 -->
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
 import Layout from "@/layouts/main";
 import OvertimeDetailContent from "../overtime-list/components/OvertimeDetailContent.vue";
+import {
+  fetchOvertimeRequestDetail,
+  normalizeOvertimeDetail,
+} from "@/views/hrm/my-attendance/utils/overtimeDetail";
 
 const route = useRoute();
 const router = useRouter();
 
-const buildFallbackDetail = () => ({
-  billNo: route.params.billNo || "JB20260506001",
-  applicant: "张员工",
-  employeeCode: "EMP2026136",
-  organization: "产品研发中心",
-  position: "Java后端开发工程师",
-  applyDate: "2026-05-06",
-  overtimeDate: "2026-05-05",
-  startTimeOnly: "19:00",
-  endTimeOnly: "22:00",
-  startTime: "2026-05-05 19:00",
-  endTime: "2026-05-05 22:00",
-  breakMinutes: 30,
-  overtimeHours: 2.5,
-  overtimeReason: "项目上线",
-  overtimeType: "工作日加班",
-  compensationType: "调休",
-  status: "审批中",
-  approver: "李经理",
-  source: "员工自助",
-  remark: "处理版本发布窗口及上线巡检。",
-  comment: "已提交，等待直属上级审批",
-});
+const currentDetail = ref({});
+const detailLoading = ref(false);
 
-const readDetail = () => {
-  const storedDetail = sessionStorage.getItem("myOvertimeCurrentDetail");
-  if (!storedDetail) {
-    return buildFallbackDetail();
+const resolveOvertimeRequestId = () => {
+  const queryId = route.query.overtimeRequestId;
+  if (queryId === undefined || queryId === null || queryId === "") {
+    return null;
   }
-  try {
-    const detail = JSON.parse(storedDetail);
-    if (!route.params.billNo || detail.billNo === route.params.billNo) {
-      return detail;
-    }
-    return buildFallbackDetail();
-  } catch (error) {
-    return buildFallbackDetail();
-  }
+  return queryId;
 };
 
-const currentDetail = ref(readDetail());
+const fetchDetail = async () => {
+  const overtimeRequestId = resolveOvertimeRequestId();
+  if (overtimeRequestId === null) {
+    ElMessage.warning("缺少加班单ID，无法打开详情");
+    goOvertimeList();
+    return;
+  }
+  detailLoading.value = true;
+  try {
+    currentDetail.value = await fetchOvertimeRequestDetail(overtimeRequestId, {
+      requestNo: route.params.billNo,
+      billNo: route.params.billNo,
+    });
+  } catch (error) {
+    console.log(error);
+  } finally {
+    detailLoading.value = false;
+  }
+};
 
 const goOvertimeList = () => {
   router.push({ name: "my-overtime-list" });
 };
 
 const handleUpdateDetail = (record) => {
-  currentDetail.value = { ...record };
-  sessionStorage.setItem("myOvertimeCurrentDetail", JSON.stringify(record));
+  currentDetail.value = normalizeOvertimeDetail(record, currentDetail.value);
 };
 
-const handleDeleteDetail = () => {
-  sessionStorage.removeItem("myOvertimeCurrentDetail");
-  goOvertimeList();
-};
+onMounted(() => {
+  fetchDetail();
+});
 </script>
 
 <template>
   <Layout>
-    <div class="overtime-detail-page">
+    <div
+      v-loading="detailLoading"
+      class="overtime-detail-page"
+    >
       <OvertimeDetailContent
+        v-if="currentDetail?.overtimeRequestId || currentDetail?.billNo"
         :detailInfo="currentDetail"
         :showClose="false"
         :showBack="true"
         @back="goOvertimeList"
         @update-detail="handleUpdateDetail"
-        @delete-detail="handleDeleteDetail"
       />
     </div>
   </Layout>
 </template>
 
 <style scoped lang="scss">
-:deep(.page-content) {
-  padding-top: calc(50px + 16px) !important;
-  padding-right: 16px !important;
-  padding-bottom: 16px !important;
-  padding-left: 16px !important;
-  background: #f4f6fb;
-}
-
 .overtime-detail-page {
-  min-height: calc(100vh - 120px);
-  color: #122448;
+  padding: 16px;
+  min-height: 240px;
 }
 </style>

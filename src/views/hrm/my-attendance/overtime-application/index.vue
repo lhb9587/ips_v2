@@ -1,120 +1,81 @@
 <!-- 加班申请页，负责创建、保存和提交员工加班单。 -->
 <script setup>
-import { computed, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import dayjs from "dayjs";
+import { throttle } from "lodash";
 import Layout from "@/layouts/main";
+import {
+  queryOvertimeRequestSelfCalcDuration,
+  queryOvertimeRequestSelfInit,
+  saveOvertimeRequestSelf,
+} from "@/api/attendance";
+import { getUserInfo } from "@/utils/user";
 
 const router = useRouter();
 
-const employeeInfo = {
-  name: "张员工",
-  code: "EMP2026136",
-  organization: "产品研发中心",
-  position: "Java后端开发工程师",
-};
+const employeeInfo = reactive({
+  name: "",
+  code: "",
+  organization: "",
+  position: "",
+});
 
-const records = ref([
-  {
-    billNo: "JB20260506001",
-    applicant: employeeInfo.name,
-    employeeCode: employeeInfo.code,
-    organization: employeeInfo.organization,
-    position: employeeInfo.position,
-    applyDate: "2026-05-06",
-    overtimeDate: "2026-05-05",
-    startTimeOnly: "19:00",
-    endTimeOnly: "22:00",
-    startTime: "2026-05-05 19:00",
-    endTime: "2026-05-05 22:00",
-    breakMinutes: 30,
-    overtimeHours: 2.5,
-    overtimeReason: "项目上线",
-    status: "审批中",
-    approver: "李经理",
-    source: "员工自助",
-    remark: "处理版本发布窗口及上线巡检。",
-    comment: "已提交，等待直属上级审批",
-  },
-  {
-    billNo: "JB20260428002",
-    applicant: employeeInfo.name,
-    employeeCode: employeeInfo.code,
-    organization: employeeInfo.organization,
-    position: employeeInfo.position,
-    applyDate: "2026-04-28",
-    overtimeDate: "2026-04-27",
-    startTimeOnly: "18:30",
-    endTimeOnly: "21:30",
-    startTime: "2026-04-27 18:30",
-    endTime: "2026-04-27 21:30",
-    breakMinutes: 0,
-    overtimeHours: 3,
-    overtimeReason: "客户支持",
-    status: "已通过",
-    approver: "王主管",
-    source: "员工自助",
-    remark: "配合客户完成夜间联调支持。",
-    comment: "审批通过",
-  },
-  {
-    billNo: "JB20260416003",
-    applicant: employeeInfo.name,
-    employeeCode: employeeInfo.code,
-    organization: employeeInfo.organization,
-    position: employeeInfo.position,
-    applyDate: "2026-04-16",
-    overtimeDate: "2026-04-16",
-    startTimeOnly: "18:00",
-    endTimeOnly: "20:00",
-    startTime: "2026-04-16 18:00",
-    endTime: "2026-04-16 20:00",
-    breakMinutes: 0,
-    overtimeHours: 2,
-    overtimeReason: "其他原因",
-    status: "未提交",
-    approver: "未提交",
-    source: "员工自助",
-    remark: "整理阶段性方案并补充交付材料。",
-    comment: "草稿暂未进入审批",
-  },
-]);
+const saving = ref(false);
 
 const form = reactive({
-  billNo: `JB${dayjs().format("YYYYMMDD")}0001`,
-  applyDate: dayjs().format("YYYY-MM-DD"),
-  applicant: employeeInfo.name,
   overtimeDate: "",
   startTime: "",
   endTime: "",
   breakMinutes: 0,
+  overtimeTypeCode: "",
+  overtimeTypeName: "",
+  compensationType: "",
   overtimeReason: "",
   remark: "",
 });
 
-const computedOvertimeHours = computed(() => {
-  if (!form.startTime || !form.endTime) {
-    return 0;
+const editingOvertimeRequestId = ref(null);
+const applyOvertimeHours = ref(0);
+const durationMessage = ref("");
+
+const buildOvertimeStartTime = () => {
+  if (!form.overtimeDate || !form.startTime) {
+    return "";
   }
-  const start = dayjs(`2000-01-01 ${form.startTime}`);
-  let end = dayjs(`2000-01-01 ${form.endTime}`);
+  return `${form.overtimeDate} ${form.startTime}`;
+};
+
+const buildOvertimeEndTime = () => {
+  if (!form.overtimeDate || !form.startTime || !form.endTime) {
+    return "";
+  }
+  const start = dayjs(`${form.overtimeDate} ${form.startTime}`);
+  let end = dayjs(`${form.overtimeDate} ${form.endTime}`);
   if (!start.isValid() || !end.isValid()) {
-    return 0;
+    return "";
   }
   if (end.isBefore(start)) {
     end = end.add(1, "day");
   }
-  const durationMinutes = end.diff(start, "minute") - Number(form.breakMinutes || 0);
-  if (durationMinutes <= 0) {
-    return 0;
-  }
-  return Number((durationMinutes / 60).toFixed(1));
-});
+  return end.format("YYYY-MM-DD HH:mm");
+};
+
+const isSameStartEndTime = () =>
+  !!(form.startTime && form.endTime && form.startTime === form.endTime);
+
+const computedOvertimeHours = computed(() => applyOvertimeHours.value);
 
 const durationHint = computed(() => {
+  if (durationMessage.value) {
+    return durationMessage.value;
+  }
   if (!form.startTime || !form.endTime) {
     return "请选择加班开始和结束时间，系统将自动计算申请加班小时数。";
+  }
+  if (isSameStartEndTime()) {
+    return "开始时间与结束时间不能相同，请调整后再提交。";
   }
   if (computedOvertimeHours.value <= 0) {
     return "休息时长不能大于等于加班时段总时长，请调整后再提交。";
@@ -122,37 +83,115 @@ const durationHint = computed(() => {
   return "审批通过后按 1:1 生成调休假，未使用额度 3 个月后失效。";
 });
 
-const buildRecord = (status) => ({
-  billNo: form.billNo,
-  applicant: form.applicant,
-  employeeCode: employeeInfo.code,
-  organization: employeeInfo.organization,
-  position: employeeInfo.position,
-  applyDate: form.applyDate,
-  overtimeDate: form.overtimeDate,
-  startTimeOnly: form.startTime,
-  endTimeOnly: form.endTime,
-  startTime: `${form.overtimeDate} ${form.startTime}`,
-  endTime: `${form.overtimeDate} ${form.endTime}`,
-  breakMinutes: Number(form.breakMinutes || 0),
-  overtimeHours: computedOvertimeHours.value,
-  overtimeReason: form.overtimeReason,
-  status,
-  approver: status === "未提交" ? "未提交" : "李经理",
-  source: "员工自助",
-  remark: form.remark,
-  comment: status === "未提交" ? "草稿暂未进入审批" : "已提交，等待直属上级审批",
+const fetchOvertimeApplicationInit = async () => {
+  try {
+    const userInfo = getUserInfo?.() || {};
+    employeeInfo.name = userInfo?.userName || userInfo?.name || employeeInfo.name;
+    employeeInfo.code =
+      userInfo?.talentCode || userInfo?.empCode || userInfo?.code || employeeInfo.code;
+    employeeInfo.organization =
+      userInfo?.deptName ||
+      userInfo?.organizationName ||
+      userInfo?.organization ||
+      employeeInfo.organization;
+    employeeInfo.position = userInfo?.positionName || userInfo?.position || employeeInfo.position;
+
+    const res = await queryOvertimeRequestSelfInit({}, { isLoading: false });
+    const data = res?.data || {};
+    const employee = data?.employee || {};
+
+    employeeInfo.name = employee?.talentName || employeeInfo.name;
+    employeeInfo.code = employee?.talentCode || employeeInfo.code;
+    employeeInfo.organization = employee?.deptName || employeeInfo.organization;
+    employeeInfo.position = employee?.positionName || employeeInfo.position;
+
+    form.overtimeDate = data?.defaultOvertimeDate || form.overtimeDate;
+    form.breakMinutes = Number(data?.defaultRestMinutes ?? form.breakMinutes ?? 0);
+    form.compensationType = data?.defaultCompensationType || form.compensationType;
+
+    const defaultOvertimeType = (data?.overtimeTypes || [])[0];
+    if (defaultOvertimeType) {
+      form.overtimeTypeCode = defaultOvertimeType.optionCode || "";
+      form.overtimeTypeName = defaultOvertimeType.optionName || "";
+    }
+  } catch (error) {
+    ElMessage.warning("初始化数据获取失败");
+  }
+};
+
+const calcOvertimeDuration = async () => {
+  const overtimeStartTime = buildOvertimeStartTime();
+  const overtimeEndTime = buildOvertimeEndTime();
+  if (!overtimeStartTime || !overtimeEndTime || isSameStartEndTime()) {
+    applyOvertimeHours.value = 0;
+    durationMessage.value = "";
+    return;
+  }
+
+  try {
+    const res = await queryOvertimeRequestSelfCalcDuration(
+      {
+        overtimeStartTime,
+        overtimeEndTime,
+        restMinutes: Number(form.breakMinutes || 0),
+        overtimeTypeCode: form.overtimeTypeCode || undefined,
+        compensationType: form.compensationType || undefined,
+      },
+      { isLoading: false },
+    );
+    applyOvertimeHours.value = Number(res?.data?.applyOvertimeHours || 0);
+    durationMessage.value = res?.data?.message || "";
+  } catch (error) {
+    applyOvertimeHours.value = 0;
+    durationMessage.value = "";
+  }
+};
+
+const throttledCalcOvertimeDuration = throttle(calcOvertimeDuration, 1000);
+
+const resetOvertimeDuration = () => {
+  throttledCalcOvertimeDuration.cancel();
+  applyOvertimeHours.value = 0;
+  durationMessage.value = "";
+};
+
+watch(
+  () => [
+    form.overtimeDate,
+    form.startTime,
+    form.endTime,
+    form.breakMinutes,
+    form.overtimeTypeCode,
+    form.compensationType,
+  ],
+  () => {
+    if (!buildOvertimeStartTime() || !buildOvertimeEndTime() || isSameStartEndTime()) {
+      resetOvertimeDuration();
+      return;
+    }
+    throttledCalcOvertimeDuration();
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(() => {
+  throttledCalcOvertimeDuration.cancel();
+});
+
+onMounted(() => {
+  fetchOvertimeApplicationInit();
 });
 
 const resetForm = () => {
-  form.billNo = `JB${dayjs().format("YYYYMMDD")}${String(Date.now()).slice(-4)}`;
-  form.applyDate = dayjs().format("YYYY-MM-DD");
+  editingOvertimeRequestId.value = null;
   form.overtimeDate = "";
   form.startTime = "";
   form.endTime = "";
   form.breakMinutes = 0;
   form.overtimeReason = "";
   form.remark = "";
+  applyOvertimeHours.value = 0;
+  durationMessage.value = "";
 };
 
 const validateForm = () => {
@@ -168,39 +207,70 @@ const validateForm = () => {
     ElMessage.warning("申请加班小时数需大于 0");
     return false;
   }
-  if (!form.overtimeReason.trim()) {
-    ElMessage.warning("请填写加班原因");
-    return false;
-  }
-  if (!form.remark.trim()) {
-    ElMessage.warning("请填写备注说明");
-    return false;
-  }
   return true;
 };
 
-const handleSave = () => {
-  if (!validateForm()) {
+const buildSavePayload = (submitFlag) => ({
+  overtimeRequestId: editingOvertimeRequestId.value || undefined,
+  overtimeDate: form.overtimeDate,
+  overtimeStartTime: buildOvertimeStartTime(),
+  overtimeEndTime: buildOvertimeEndTime(),
+  restMinutes: Number(form.breakMinutes || 0),
+  overtimeTypeCode: form.overtimeTypeCode || undefined,
+  overtimeTypeName: form.overtimeTypeName || undefined,
+  compensationType: form.compensationType || undefined,
+  reason: form.overtimeReason?.trim() || undefined,
+  remark: form.remark?.trim() || undefined,
+  submitFlag,
+});
+
+const submitOvertimeRequest = async (submitFlag) => {
+  const res = await saveOvertimeRequestSelf(buildSavePayload(submitFlag), {
+    isLoading: true,
+  });
+  return res?.data || {};
+};
+
+const handleSave = async () => {
+  if (!validateForm() || saving.value) {
     return;
   }
-  records.value.unshift(buildRecord("未提交"));
-  ElMessage.success("加班草稿已保存");
-  resetForm();
+  saving.value = true;
+  try {
+    await submitOvertimeRequest("0");
+    ElMessage.success("加班草稿已保存");
+    resetForm();
+    handleOpenList();
+  } catch (error) {
+    console.log(error);
+  } finally {
+    saving.value = false;
+  }
 };
 
 const handleSubmit = () => {
-  if (!validateForm()) {
+  if (!validateForm() || saving.value) {
     return;
   }
   ElMessageBox.confirm("确认提交当前加班申请并进入审批流程？", "提交确认", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     type: "warning",
-  }).then(() => {
-    records.value.unshift(buildRecord("审批中"));
-    ElMessage.success("加班申请已提交审批");
-    resetForm();
-  });
+  })
+    .then(async () => {
+      saving.value = true;
+      try {
+        await submitOvertimeRequest("1");
+        ElMessage.success("加班申请已提交审批");
+        resetForm();
+        handleOpenList();
+      } catch (error) {
+        console.log(error);
+      } finally {
+        saving.value = false;
+      }
+    })
+    .catch(() => {});
 };
 
 const handleOpenList = () => {
@@ -215,12 +285,21 @@ const handleOpenList = () => {
       <div class="page-toolbar">
         <div>
           <h2>我要加班</h2>
-          <p>按需求原型展示加班申请创建、保存、提交、列表查看与套打输出链路。</p>
+          <div class="page-toolbar__tips">
+            <div>1. 审批通过后按加班时长与调休时长 1:1 生成调休假。</div>
+            <div>2. 未使用的调休假自生成之日起 3 个月后失效。</div>
+          </div>
         </div>
         <div class="page-toolbar__actions">
-          <el-button @click="handleSave">保存</el-button>
+          <el-button
+            :loading="saving"
+            @click="handleSave"
+          >
+            保存
+          </el-button>
           <el-button
             type="primary"
+            :loading="saving"
             @click="handleSubmit"
           >
             提交
@@ -314,10 +393,7 @@ const handleOpenList = () => {
                 </div>
               </el-form-item>
 
-              <el-form-item
-                label="加班原因"
-                required
-              >
+              <el-form-item label="加班原因">
                 <el-input
                   v-model="form.overtimeReason"
                   type="textarea"
@@ -326,10 +402,7 @@ const handleOpenList = () => {
                 />
               </el-form-item>
 
-              <el-form-item
-                label="备注"
-                required
-              >
+              <el-form-item label="备注">
                 <el-input
                   v-model="form.remark"
                   type="textarea"
@@ -340,27 +413,6 @@ const handleOpenList = () => {
             </el-form>
           </section>
         </main>
-
-        <aside class="application-side">
-          <section class="info-section">
-            <div class="section-heading">单据信息</div>
-            <div class="bill-table">
-              <div>单据编号</div>
-              <div>{{ form.billNo }}</div>
-              <div>申请人</div>
-              <div>{{ form.applicant }}</div>
-              <div>申请日期</div>
-              <div>{{ form.applyDate }}</div>
-            </div>
-          </section>
-          <section class="info-section tip-section">
-            <div class="section-heading">规则提示</div>
-            <div class="tip-list">
-              <div>1. 审批通过后按加班时长与调休时长 1:1 生成调休假。</div>
-              <div>2. 未使用的调休假自生成之日起 3 个月后失效。</div>
-            </div>
-          </section>
-        </aside>
       </div>
     </div>
   </Layout>
@@ -402,10 +454,17 @@ const handleOpenList = () => {
   font-weight: 600;
 }
 
-.page-toolbar p {
+.page-toolbar p,
+.page-toolbar__tips {
   margin: 6px 0 0;
   color: #63718a;
   font-size: 12px;
+}
+
+.page-toolbar__tips {
+  display: grid;
+  gap: 4px;
+  line-height: 1.7;
 }
 
 .page-toolbar__actions {
@@ -415,15 +474,10 @@ const handleOpenList = () => {
 }
 
 .application-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
-  gap: 16px;
   margin-top: 14px;
-  align-items: start;
 }
 
-.application-main,
-.application-side {
+.application-main {
   display: grid;
   gap: 14px;
 }
@@ -517,49 +571,7 @@ const handleOpenList = () => {
   line-height: 1.7;
 }
 
-.bill-table {
-  display: grid;
-  grid-template-columns: 160px minmax(0, 1fr);
-  padding: 18px;
-}
-
-.bill-table div {
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  padding: 0 14px;
-  border: 1px solid #e2e8f2;
-  border-top: 0;
-  color: #122448;
-  font-size: 13px;
-}
-
-.bill-table div:nth-child(-n + 2) {
-  border-top: 1px solid #e2e8f2;
-}
-
-.bill-table div:nth-child(odd) {
-  background: #f2f5fa;
-  font-weight: 600;
-}
-
-.tip-list {
-  display: grid;
-  gap: 10px;
-  padding: 18px;
-  color: #586881;
-  font-size: 13px;
-  line-height: 1.7;
-}
-
-@media (max-width: 1400px) {
-  .application-layout {
-    grid-template-columns: minmax(0, 1fr) 360px;
-  }
-}
-
 @media (max-width: 1200px) {
-  .application-layout,
   .time-row {
     grid-template-columns: 1fr;
   }
@@ -587,10 +599,6 @@ const handleOpenList = () => {
   .page-toolbar__actions {
     width: 100%;
     flex-wrap: wrap;
-  }
-
-  .bill-table {
-    grid-template-columns: 110px minmax(0, 1fr);
   }
 }
 </style>

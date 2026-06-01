@@ -177,6 +177,9 @@ const submittedCount = computed(
 const lastLeaveTime = computed(() => records.value[0]?.startTime || "--");
 
 const leaveDuration = ref(0);
+const quotaEnough = ref(true);
+const calcDurationMessage = ref("");
+const lastCalcWarningMessage = ref("");
 
 const resolveSelectedLeaveTypeCode = () =>
   form.leaveTypeKey === "other" ? form.otherType : form.leaveTypeKey;
@@ -192,17 +195,24 @@ const buildDateTime = (date, period, fallback) => {
   return `${date} ${time}`;
 };
 
+const resetCalcDurationState = () => {
+  leaveDuration.value = 0;
+  quotaEnough.value = true;
+  calcDurationMessage.value = "";
+  lastCalcWarningMessage.value = "";
+};
+
 const calcLeaveDuration = async () => {
   const leaveTypeCode = resolveSelectedLeaveTypeCode();
   if (!leaveTypeCode || !form.startDate || !form.endDate) {
-    leaveDuration.value = 0;
+    resetCalcDurationState();
     return;
   }
 
   const startTime = buildDateTime(form.startDate, form.startPeriod, "09:00:00");
   const endTime = buildDateTime(form.endDate, form.endPeriod, "18:00:00");
   if (dayjs(endTime).isBefore(dayjs(startTime))) {
-    leaveDuration.value = 0;
+    resetCalcDurationState();
     return;
   }
 
@@ -215,9 +225,20 @@ const calcLeaveDuration = async () => {
       },
       { isLoading: false },
     );
-    leaveDuration.value = Number(res?.data?.duration || 0);
+    const data = res?.data || {};
+    leaveDuration.value = Number(data.duration || 0);
+    quotaEnough.value = data.quotaEnough !== false;
+    calcDurationMessage.value = data.message || "";
+    if (!quotaEnough.value && calcDurationMessage.value) {
+      if (calcDurationMessage.value !== lastCalcWarningMessage.value) {
+        ElMessage.warning(calcDurationMessage.value);
+        lastCalcWarningMessage.value = calcDurationMessage.value;
+      }
+    } else {
+      lastCalcWarningMessage.value = "";
+    }
   } catch (error) {
-    leaveDuration.value = 0;
+    resetCalcDurationState();
   }
 };
 
@@ -237,6 +258,10 @@ watch(
 );
 
 const durationWarning = computed(() => {
+  if (!quotaEnough.value && calcDurationMessage.value) {
+    return calcDurationMessage.value;
+  }
+
   if (!activeLeaveType.value || !leaveDuration.value) {
     return "请选择假期类型并填写起止时间，系统将自动计算请假长度。";
   }
@@ -278,6 +303,10 @@ const validateForm = (submit = false) => {
   }
   if (!form.reason.trim()) {
     ElMessage.warning("请填写请假说明");
+    return false;
+  }
+  if (!quotaEnough.value) {
+    ElMessage.warning(calcDurationMessage.value || "当前请假无法申请，请调整假期类型或起止时间");
     return false;
   }
   if (
@@ -361,7 +390,7 @@ const handleSave = async () => {
     ElMessage.success("请假草稿已保存");
     goLeaveList();
   } catch (error) {
-    ElMessage.error("请假草稿保存失败");
+    console.log(error);
   }
 };
 
@@ -540,7 +569,10 @@ const openTimelineDialog = () => {
               </div>
 
               <el-form-item label="请假时长">
-                <div class="duration-box">
+                <div
+                  class="duration-box"
+                  :class="{ 'duration-box--error': !quotaEnough }"
+                >
                   <strong>{{ leaveDuration.toFixed(1) }} 天</strong>
                   <span>{{ durationWarning }}</span>
                 </div>
@@ -783,6 +815,19 @@ const openTimelineDialog = () => {
   margin-top: 10px;
   color: #9b5e1e;
   font-size: 12px;
+}
+
+.duration-box--error {
+  border-color: #f5b5b5;
+  background: #fff5f5;
+}
+
+.duration-box--error strong {
+  color: #c45656;
+}
+
+.duration-box--error span {
+  color: #c45656;
 }
 
 .upload-tip {

@@ -5,8 +5,10 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import dayjs from "dayjs";
 import { downLoadAll } from "@/utils";
 import {
+  approveApprovalTask,
   queryLeaveRequestAdminDetail,
   queryLeaveRequestSelfInit,
+  rejectApprovalTask,
   saveLeaveRequestSelf,
 } from "@/api/attendance";
 import {
@@ -32,9 +34,14 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["back", "close", "update-detail"]);
+const emit = defineEmits(["back", "close", "update-detail", "approval-done"]);
 
 const detailEditMode = ref(false);
+const approvalDialogVisible = ref(false);
+const approvalDialogType = ref("approve");
+const approvalOpinion = ref("");
+const approveLoading = ref(false);
+const rejectLoading = ref(false);
 const detailEditForm = ref({});
 const currentDetail = ref({});
 const defaultLeaveTypeNames = ["法定年假", "司龄假", "事假", "病假"];
@@ -122,6 +129,8 @@ const fetchLeaveTypes = async (talentCode) => {
   }
 };
 
+const resolveApprovalTaskId = (detail = {}) => detail.taskId ?? detail.task?.taskId ?? null;
+
 watch(
   () => props.detailInfo,
   (detail) => {
@@ -132,6 +141,67 @@ watch(
   },
   { immediate: true, deep: true },
 );
+
+const approvalTaskId = computed(() => resolveApprovalTaskId(currentDetail.value));
+
+const showApproveButton = computed(
+  () => !!currentDetail.value?.canApprove && !!approvalTaskId.value,
+);
+
+const showRejectButton = computed(
+  () => !!currentDetail.value?.canReject && !!approvalTaskId.value,
+);
+
+const showEditButton = computed(() => currentDetail.value?.canEdit === true);
+
+const showSubmitButton = computed(() => currentDetail.value?.canSubmit === true);
+
+const approvalDialogTitle = computed(() =>
+  approvalDialogType.value === "approve" ? "审批通过" : "审批退回",
+);
+
+const openApprovalDialog = (type) => {
+  if (!approvalTaskId.value) {
+    ElMessage.warning("缺少审批任务ID，无法操作");
+    return;
+  }
+  approvalDialogType.value = type;
+  approvalOpinion.value = "";
+  approvalDialogVisible.value = true;
+};
+
+const submitApproval = async () => {
+  const taskId = approvalTaskId.value;
+  if (!taskId) {
+    ElMessage.warning("缺少审批任务ID，无法操作");
+    return;
+  }
+
+  const isApprove = approvalDialogType.value === "approve";
+  const payload = {
+    taskId,
+    opinion: approvalOpinion.value?.trim() || undefined,
+  };
+  const requestApi = isApprove ? approveApprovalTask : rejectApprovalTask;
+  const loadingRef = isApprove ? approveLoading : rejectLoading;
+
+  if (loadingRef.value) {
+    return;
+  }
+  loadingRef.value = true;
+  try {
+    await requestApi(payload);
+    approvalDialogVisible.value = false;
+    approvalOpinion.value = "";
+    ElMessage.success(isApprove ? "审批已通过" : "审批已退回");
+    emit("approval-done", currentDetail.value);
+    emit("close");
+  } catch (error) {
+    console.log(error);
+  } finally {
+    loadingRef.value = false;
+  }
+};
 
 watch(
   () => resolveTalentCode(props.detailInfo),
@@ -361,7 +431,7 @@ const statusTextClass = (status) => {
 };
 
 const handleEditDetail = () => {
-  if (!currentDetail.value?.leaveRequestId) {
+  if (!currentDetail.value?.canEdit || !currentDetail.value?.leaveRequestId) {
     return;
   }
   detailEditForm.value = buildDetailEditForm(currentDetail.value);
@@ -370,6 +440,9 @@ const handleEditDetail = () => {
 };
 
 const handleSubmitDetail = () => {
+  if (!currentDetail.value?.canSubmit) {
+    return;
+  }
   if (!currentDetail.value?.leaveRequestId) {
     ElMessage.warning("缺少请假单ID，无法提交");
     return;
@@ -480,8 +553,8 @@ const handleSaveDetail = () => {
       await refreshCurrentDetail();
       ElMessage.success("请假单信息已保存");
     })
-    .catch(() => {
-      ElMessage.error("请假单保存失败");
+    .catch((error) => {
+      console.log(error);
     });
 };
 
@@ -565,16 +638,33 @@ const approvalFlow = computed(() => {
           <el-button @click="handleCancelEditDetail">取消</el-button>
         </template>
         <template v-else>
+
           <el-button
+            v-if="showApproveButton"
             type="primary"
-            plain
+            :loading="approveLoading"
+            @click="openApprovalDialog('approve')"
+          >
+            通过
+          </el-button>
+          <el-button
+            v-if="showRejectButton"
+            type="danger"
+            :loading="rejectLoading"
+            @click="openApprovalDialog('reject')"
+          >
+            退回
+          </el-button>
+          <el-button
+            v-if="showEditButton"
+            type="primary"
             @click="handleEditDetail"
           >
             修改
           </el-button>
           <el-button
-            type="success"
-            plain
+            v-if="showSubmitButton"
+            type="primary"
             @click="handleSubmitDetail"
           >
             提交
@@ -594,6 +684,39 @@ const approvalFlow = computed(() => {
         </el-button>
       </div>
     </div>
+
+    <el-dialog
+      v-model="approvalDialogVisible"
+      :title="approvalDialogTitle"
+      width="500px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <el-form label-width="80px">
+        <el-form-item label="审批意见">
+          <el-input
+            v-model="approvalOpinion"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入审批意见（非必填）"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="approvalDialogVisible = false">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="approveLoading || rejectLoading"
+            @click="submitApproval"
+          >
+            提交
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
 
     <div class="detail-layout">
       <section class="detail-card detail-card--main">

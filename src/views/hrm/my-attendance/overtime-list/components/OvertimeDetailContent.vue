@@ -1,9 +1,24 @@
 <!-- 加班详情内容组件，用于展示和处理加班单详情信息。 -->
 <script setup>
-import { computed, ref, watch,defineProps, defineEmits } from "vue";
+import { computed, ref, watch, defineProps, defineEmits } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import dayjs from "dayjs";
-import OvertimeTemplateDialog from "../../overtime-application/components/OvertimeTemplateDialog.vue";
+import {
+  abandonOvertimeRequestAdmin,
+  abandonOvertimeRequestSelf,
+  approveApprovalTask,
+  directPassOvertimeRequestAdmin,
+  rejectApprovalTask,
+  reverseApproveOvertimeRequestAdmin,
+  saveOvertimeRequestSelf,
+} from "@/api/attendance";
+import {
+  buildOvertimeApprovalFlow,
+  buildOvertimeSaveDateTime,
+  fetchOvertimeRequestDetail,
+  getOvertimeRequestId,
+  normalizeOvertimeDetail,
+} from "@/views/hrm/my-attendance/utils/overtimeDetail";
 
 const props = defineProps({
   detailInfo: {
@@ -18,37 +33,105 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  adminMode: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-const emit = defineEmits(["back", "close", "update-detail", "delete-detail"]);
+const emit = defineEmits(["back", "close", "update-detail", "approval-done"]);
 
 const detailEditMode = ref(false);
+const approvalDialogVisible = ref(false);
+const approvalDialogType = ref("approve");
+const approvalOpinion = ref("");
+const approveLoading = ref(false);
+const rejectLoading = ref(false);
 const detailEditForm = ref({});
 const currentDetail = ref({});
-const templateDialogVisible = ref(false);
 
-const templateOptions = [
-  {
-    label: "标准加班申请单",
-    value: "default",
-    description: "包含基础信息、加班时段、调休说明和审批意见。",
-  },
-  {
-    label: "调休留存模板",
-    value: "time-off",
-    description: "突出调休生成信息，便于后续核对调休余额。",
-  },
-];
+const resolveApprovalTaskId = (detail = {}) => detail.taskId ?? detail.task?.taskId ?? null;
 
 watch(
   () => props.detailInfo,
   (detail) => {
-    currentDetail.value = detail ? { ...detail } : {};
+    currentDetail.value = detail ? normalizeOvertimeDetail(detail) : {};
     detailEditMode.value = false;
     detailEditForm.value = {};
   },
   { immediate: true, deep: true },
 );
+
+const approvalTaskId = computed(() => resolveApprovalTaskId(currentDetail.value));
+
+const showApproveButton = computed(
+  () => !!currentDetail.value?.canApprove && !!approvalTaskId.value,
+);
+
+const showRejectButton = computed(
+  () => !!currentDetail.value?.canReject && !!approvalTaskId.value,
+);
+
+const showEditButton = computed(() => currentDetail.value?.canEdit === true);
+
+const showSubmitButton = computed(() => currentDetail.value?.canSubmit === true);
+
+const showAbandonButton = computed(() => currentDetail.value?.canAbandon === true);
+
+const showDirectPassButton = computed(
+  () => props.adminMode && currentDetail.value?.canDirectPass === true,
+);
+
+const showReverseApproveButton = computed(
+  () => props.adminMode && currentDetail.value?.canReverseApprove === true,
+);
+
+const approvalDialogTitle = computed(() =>
+  approvalDialogType.value === "approve" ? "审批通过" : "审批退回",
+);
+
+const openApprovalDialog = (type) => {
+  if (!approvalTaskId.value) {
+    ElMessage.warning("缺少审批任务ID，无法操作");
+    return;
+  }
+  approvalDialogType.value = type;
+  approvalOpinion.value = "";
+  approvalDialogVisible.value = true;
+};
+
+const submitApproval = async () => {
+  const taskId = approvalTaskId.value;
+  if (!taskId) {
+    ElMessage.warning("缺少审批任务ID，无法操作");
+    return;
+  }
+
+  const isApprove = approvalDialogType.value === "approve";
+  const payload = {
+    taskId,
+    opinion: approvalOpinion.value?.trim() || undefined,
+  };
+  const requestApi = isApprove ? approveApprovalTask : rejectApprovalTask;
+  const loadingRef = isApprove ? approveLoading : rejectLoading;
+
+  if (loadingRef.value) {
+    return;
+  }
+  loadingRef.value = true;
+  try {
+    await requestApi(payload);
+    approvalDialogVisible.value = false;
+    approvalOpinion.value = "";
+    ElMessage.success(isApprove ? "审批已通过" : "审批已退回");
+    emit("approval-done", currentDetail.value);
+    emit("close");
+  } catch (error) {
+    console.log(error);
+  } finally {
+    loadingRef.value = false;
+  }
+};
 
 const buildDetailEditForm = (detail) => ({
   overtimeDate: detail.overtimeDate || "",
@@ -85,18 +168,95 @@ const statusTextClass = (status) => {
     未提交: "status-text--draft",
     审批中: "status-text--pending",
     已通过: "status-text--success",
+    已退回: "status-text--rejected",
     已驳回: "status-text--rejected",
     已废弃: "status-text--discarded",
   };
   return statusMap[status] || "status-text--draft";
 };
 
+const refreshCurrentDetail = async () => {
+  const overtimeRequestId = getOvertimeRequestId(currentDetail.value);
+  if (overtimeRequestId === null) {
+    return;
+  }
+  currentDetail.value = await fetchOvertimeRequestDetail(
+    overtimeRequestId,
+    currentDetail.value,
+  );
+  emit("update-detail", currentDetail.value);
+};
+
+const buildSavePayload = (submitFlag) => {
+  const form = detailEditMode.value ? detailEditForm.value : currentDetail.value;
+  const overtimeDate = form.overtimeDate || currentDetail.value.overtimeDate;
+  const startTimeValue =
+    form.startTimeOnly ||
+    currentDetail.value.startTimeOnly ||
+    form.startTime ||
+    currentDetail.value.startTime ||
+    currentDetail.value.overtimeStartTime;
+  const endTimeValue =
+    form.endTimeOnly ||
+    currentDetail.value.endTimeOnly ||
+    form.endTime ||
+    currentDetail.value.endTime ||
+    currentDetail.value.overtimeEndTime;
+  return {
+    overtimeRequestId: getOvertimeRequestId(currentDetail.value) || undefined,
+    overtimeDate,
+    overtimeStartTime: buildOvertimeSaveDateTime(overtimeDate, startTimeValue),
+    overtimeEndTime: buildOvertimeSaveDateTime(overtimeDate, endTimeValue),
+    restMinutes: Number(form.breakMinutes ?? currentDetail.value.breakMinutes ?? 0),
+    overtimeTypeCode: currentDetail.value.overtimeTypeCode || undefined,
+    overtimeTypeName: currentDetail.value.overtimeType || undefined,
+    compensationType: currentDetail.value.compensationType || undefined,
+    reason: (form.overtimeReason ?? currentDetail.value.overtimeReason)?.trim() || undefined,
+    remark: (form.remark ?? currentDetail.value.remark)?.trim() || undefined,
+    submitFlag,
+  };
+};
+
 const handleEditDetail = () => {
-  if (!currentDetail.value?.billNo) {
+  if (!currentDetail.value?.canEdit || getOvertimeRequestId(currentDetail.value) === null) {
     return;
   }
   detailEditForm.value = buildDetailEditForm(currentDetail.value);
   detailEditMode.value = true;
+};
+
+const handleSubmitDetail = () => {
+  if (!currentDetail.value?.canSubmit) {
+    return;
+  }
+  if (getOvertimeRequestId(currentDetail.value) === null) {
+    ElMessage.warning("缺少加班单ID，无法提交");
+    return;
+  }
+  ElMessageBox.confirm("确认提交当前加班申请并进入审批流程？", "提交确认", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+    type: "warning",
+  })
+    .then(async () => {
+      try {
+        const res = await saveOvertimeRequestSelf(buildSavePayload("1"), { isLoading: true });
+        const saveResult = res?.data || {};
+        currentDetail.value = normalizeOvertimeDetail(
+          {
+            ...currentDetail.value,
+            status: saveResult.status || "审批中",
+            requestStatus: saveResult.status || "审批中",
+          },
+          currentDetail.value,
+        );
+        await refreshCurrentDetail();
+        ElMessage.success("加班申请已提交审批");
+      } catch (error) {
+        console.log(error);
+      }
+    })
+    .catch(() => {});
 };
 
 const handleCancelEditDetail = () => {
@@ -118,154 +278,134 @@ const validateDetail = () => {
     ElMessage.warning("申请加班小时数需大于 0");
     return false;
   }
-  if (!form.overtimeReason?.trim()) {
-    ElMessage.warning("请填写加班原因");
-    return false;
-  }
-  if (!form.remark?.trim()) {
-    ElMessage.warning("请填写备注说明");
-    return false;
-  }
   return true;
 };
 
 const handleSaveDetail = () => {
-  if (!currentDetail.value?.billNo || !validateDetail()) {
+  if (!currentDetail.value?.canEdit || getOvertimeRequestId(currentDetail.value) === null) {
     return;
   }
-  const updatedRecord = {
-    ...currentDetail.value,
-    overtimeDate: detailEditForm.value.overtimeDate,
-    startTimeOnly: detailEditForm.value.startTime,
-    endTimeOnly: detailEditForm.value.endTime,
-    startTime: `${detailEditForm.value.overtimeDate} ${detailEditForm.value.startTime}`,
-    endTime: `${detailEditForm.value.overtimeDate} ${detailEditForm.value.endTime}`,
-    breakMinutes: Number(detailEditForm.value.breakMinutes || 0),
-    overtimeHours: computedOvertimeHours.value,
-    overtimeReason: detailEditForm.value.overtimeReason,
-    remark: detailEditForm.value.remark,
-  };
-  currentDetail.value = { ...updatedRecord };
-  detailEditMode.value = false;
-  detailEditForm.value = {};
-  emit("update-detail", updatedRecord);
-  ElMessage.success("加班单信息已保存");
+  if (!validateDetail()) {
+    return;
+  }
+  saveOvertimeRequestSelf(buildSavePayload("0"), { isLoading: true })
+    .then(async (res) => {
+      detailEditMode.value = false;
+      detailEditForm.value = {};
+      const saveResult = res?.data || {};
+      currentDetail.value = normalizeOvertimeDetail(
+        {
+          ...currentDetail.value,
+          status: saveResult.status || currentDetail.value.status,
+          requestStatus: saveResult.status || currentDetail.value.requestStatus,
+        },
+        currentDetail.value,
+      );
+      await refreshCurrentDetail();
+      ElMessage.success("加班单信息已保存");
+    })
+    .catch((error) => {
+      console.log(error);
+    });
 };
 
-const handleDiscardDetail = () => {
-  if (!currentDetail.value?.billNo) {
+const runAdminDetailAction = async ({
+  requestFn,
+  confirmTitle,
+  confirmMessage,
+  successMessage,
+}) => {
+  const overtimeRequestId = getOvertimeRequestId(currentDetail.value);
+  if (overtimeRequestId === null) {
+    ElMessage.warning("缺少加班单ID，无法操作");
     return;
   }
-  ElMessageBox.confirm(
-    "确定要废弃当前加班单吗？废弃后该单据将不再进入审批流程。",
-    "废弃确认",
-    {
+  try {
+    await ElMessageBox.confirm(confirmMessage, confirmTitle, {
       confirmButtonText: "确定",
       cancelButtonText: "取消",
       type: "warning",
-    },
-  )
-    .then(() => {
-      const updatedRecord = {
-        ...currentDetail.value,
-        status: "已废弃",
-        approver: "无需审批",
-        comment: "申请人已废弃该加班单",
-      };
-      currentDetail.value = { ...updatedRecord };
-      detailEditMode.value = false;
-      emit("update-detail", updatedRecord);
-      ElMessage.success("加班单已废弃");
-    })
-    .catch(() => {});
-};
-
-const handleDeleteDetail = () => {
-  if (!currentDetail.value?.billNo) {
+    });
+  } catch {
     return;
   }
-  ElMessageBox.confirm("确定要删除当前加班单吗？删除后不可恢复。", "删除确认", {
+  try {
+    await requestFn({ overtimeRequestId }, { isLoading: true });
+    detailEditMode.value = false;
+    await refreshCurrentDetail();
+    ElMessage.success(successMessage);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const handleDirectPassDetail = () => {
+  if (!showDirectPassButton.value) {
+    return;
+  }
+  runAdminDetailAction({
+    requestFn: directPassOvertimeRequestAdmin,
+    confirmTitle: "提交生效确认",
+    confirmMessage: "确定将当前加班单提交生效吗？提交后将直接置为已通过。",
+    successMessage: "加班单已提交生效",
+  });
+};
+
+const handleReverseApproveDetail = () => {
+  if (!showReverseApproveButton.value) {
+    return;
+  }
+  runAdminDetailAction({
+    requestFn: reverseApproveOvertimeRequestAdmin,
+    confirmTitle: "反审批确认",
+    confirmMessage: "确定将当前已通过加班单反审批为未提交吗？",
+    successMessage: "加班单已反审批",
+  });
+};
+
+const handleDiscardDetail = () => {
+  if (!currentDetail.value?.canAbandon) {
+    return;
+  }
+  const overtimeRequestId = getOvertimeRequestId(currentDetail.value);
+  if (overtimeRequestId === null) {
+    ElMessage.warning("缺少加班单ID，无法操作");
+    return;
+  }
+  const abandonApi = props.adminMode
+    ? abandonOvertimeRequestAdmin
+    : abandonOvertimeRequestSelf;
+  const confirmTitle = props.adminMode ? "废弃确认" : "撤回确认";
+  const confirmMessage = props.adminMode
+    ? "确定要废弃当前加班单吗？废弃后该单据将不再进入审批流程。"
+    : "确定要撤回当前加班单吗？撤回后单据将回到未提交状态。";
+  const successMessage = props.adminMode ? "加班单已废弃" : "加班单已撤回";
+  ElMessageBox.confirm(confirmMessage, confirmTitle, {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     type: "warning",
   })
-    .then(() => {
-      emit("delete-detail", currentDetail.value);
-      ElMessage.success("加班单已删除");
-    })
+    .then(() =>
+      abandonApi({ overtimeRequestId }, { isLoading: true }).then(async () => {
+        detailEditMode.value = false;
+        await refreshCurrentDetail();
+        ElMessage.success(successMessage);
+      }),
+    )
     .catch(() => {});
 };
 
-const handlePrint = () => {
-  templateDialogVisible.value = true;
-};
-
-const handleTemplateConfirm = (template) => {
-  if (!template) {
-    return;
-  }
-  ElMessage.success(`已按“${template.label}”生成 PDF 输出`);
-};
-
 const approvalFlow = computed(() => {
-  if (!currentDetail.value?.billNo) {
+  if (getOvertimeRequestId(currentDetail.value) === null && !currentDetail.value?.billNo) {
     return [];
   }
-
-  const detail = currentDetail.value;
-  const baseFlow = [
-    {
-      time: `${detail.applyDate} 18:18`,
-      title: "发起申请 · 提交申请",
-      actor: detail.applicant,
-      description: "提交加班申请，等待直属上级审批。",
-      active: true,
-    },
-  ];
-
-  if (detail.status === "未提交") {
-    return [
-      {
-        time: `${detail.applyDate} 18:18`,
-        title: "保存草稿",
-        actor: detail.applicant,
-        description: "加班单暂未提交审批。",
-        active: true,
-      },
-    ];
-  }
-
-  if (detail.status === "已废弃") {
-    return [
-      {
-        time: `${detail.applyDate} 18:18`,
-        title: "废弃申请",
-        actor: detail.applicant,
-        description: detail.comment,
-        active: true,
-      },
-    ];
-  }
-
-  return [
-    ...baseFlow,
-    {
-      time: `${detail.applyDate} 18:20`,
-      title:
-        detail.status === "已通过"
-          ? "直属上级审批 · 审批通过"
-          : "直属上级审批 · 提交申请",
-      actor: detail.approver,
-      description: detail.comment,
-      active: detail.status === "审批中",
-    },
-  ];
+  return buildOvertimeApprovalFlow(currentDetail.value);
 });
 </script>
 
 <template>
   <div
-    v-if="currentDetail?.billNo"
+    v-if="getOvertimeRequestId(currentDetail) !== null || currentDetail?.billNo"
     class="overtime-detail-content-wrap"
   >
     <div class="overtime-detail-sidebar__header">
@@ -287,33 +427,57 @@ const approvalFlow = computed(() => {
         </template>
         <template v-else>
           <el-button
+            v-if="showApproveButton"
             type="primary"
-            plain
+            :loading="approveLoading"
+            @click="openApprovalDialog('approve')"
+          >
+            通过
+          </el-button>
+          <el-button
+            v-if="showRejectButton"
+            type="danger"
+            :loading="rejectLoading"
+            @click="openApprovalDialog('reject')"
+          >
+            退回
+          </el-button>
+          <el-button
+            v-if="showEditButton"
+            type="primary"
             @click="handleEditDetail"
           >
             修改
           </el-button>
           <el-button
-            type="success"
-            plain
-            @click="handlePrint"
+            v-if="showSubmitButton"
+            type="primary"
+            @click="handleSubmitDetail"
           >
-            套打
+            提交
           </el-button>
           <el-button
+            v-if="showDirectPassButton"
+            type="primary"
+            @click="handleDirectPassDetail"
+          >
+            提交生效
+          </el-button>
+          <el-button
+            v-if="showReverseApproveButton"
             type="warning"
             plain
-            :disabled="currentDetail.status === '已废弃'"
-            @click="handleDiscardDetail"
+            @click="handleReverseApproveDetail"
           >
-            废弃
+            反审批
           </el-button>
           <el-button
-            type="danger"
+            v-if="showAbandonButton"
+            type="warning"
             plain
-            @click="handleDeleteDetail"
+            @click="handleDiscardDetail"
           >
-            删除
+            {{ adminMode ? "废弃" : "撤回" }}
           </el-button>
           <el-button
             v-if="showBack"
@@ -330,6 +494,39 @@ const approvalFlow = computed(() => {
         </el-button>
       </div>
     </div>
+
+    <el-dialog
+      v-model="approvalDialogVisible"
+      :title="approvalDialogTitle"
+      width="500px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <el-form label-width="80px">
+        <el-form-item label="审批意见">
+          <el-input
+            v-model="approvalOpinion"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入审批意见（非必填）"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="approvalDialogVisible = false">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="approveLoading || rejectLoading"
+            @click="submitApproval"
+          >
+            提交
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
 
     <div class="detail-layout">
       <section class="detail-card detail-card--main">
@@ -471,18 +668,12 @@ const approvalFlow = computed(() => {
               <div class="approval-step__time">{{ item.time }}</div>
               <div class="approval-step__title">{{ item.title }}</div>
               <div class="approval-step__actor">{{ item.actor }}</div>
-              <p>{{ item.description }}</p>
+              <p v-if="item.description">{{ item.description }}</p>
             </div>
           </div>
         </div>
       </section>
     </div>
-
-    <OvertimeTemplateDialog
-      v-model="templateDialogVisible"
-      :templates="templateOptions"
-      @confirm="handleTemplateConfirm"
-    />
   </div>
 </template>
 
