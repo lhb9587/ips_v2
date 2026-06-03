@@ -187,7 +187,7 @@ const fetchOvertimeDetail = async (rowData) => {
     ElMessage.warning("当前记录缺少加班单ID，无法打开详情");
     throw new Error("missing overtimeRequestId");
   }
-  return fetchOvertimeRequestDetail(rowRequestId, rowData);
+  return fetchOvertimeRequestDetail(rowRequestId);
 };
 
 const fuzzySearch = () => {

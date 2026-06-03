@@ -7,13 +7,11 @@ import {
   abandonOvertimeRequestAdmin,
   abandonOvertimeRequestSelf,
   approveApprovalTask,
-  directPassOvertimeRequestAdmin,
   rejectApprovalTask,
   reverseApproveOvertimeRequestAdmin,
   saveOvertimeRequestSelf,
 } from "@/api/attendance";
 import {
-  buildOvertimeApprovalFlow,
   buildOvertimeSaveDateTime,
   fetchOvertimeRequestDetail,
   getOvertimeRequestId,
@@ -77,10 +75,6 @@ const showEditButton = computed(() => currentDetail.value?.canEdit === true);
 const showSubmitButton = computed(() => currentDetail.value?.canSubmit === true);
 
 const showAbandonButton = computed(() => currentDetail.value?.canAbandon === true);
-
-const showDirectPassButton = computed(
-  () => props.adminMode && currentDetail.value?.canDirectPass === true,
-);
 
 const showReverseApproveButton = computed(
   () => props.adminMode && currentDetail.value?.canReverseApprove === true,
@@ -180,10 +174,7 @@ const refreshCurrentDetail = async () => {
   if (overtimeRequestId === null) {
     return;
   }
-  currentDetail.value = await fetchOvertimeRequestDetail(
-    overtimeRequestId,
-    currentDetail.value,
-  );
+  currentDetail.value = await fetchOvertimeRequestDetail(overtimeRequestId);
   emit("update-detail", currentDetail.value);
 };
 
@@ -240,16 +231,7 @@ const handleSubmitDetail = () => {
   })
     .then(async () => {
       try {
-        const res = await saveOvertimeRequestSelf(buildSavePayload("1"), { isLoading: true });
-        const saveResult = res?.data || {};
-        currentDetail.value = normalizeOvertimeDetail(
-          {
-            ...currentDetail.value,
-            status: saveResult.status || "审批中",
-            requestStatus: saveResult.status || "审批中",
-          },
-          currentDetail.value,
-        );
+        await saveOvertimeRequestSelf(buildSavePayload("1"), { isLoading: true });
         await refreshCurrentDetail();
         ElMessage.success("加班申请已提交审批");
       } catch (error) {
@@ -292,15 +274,6 @@ const handleSaveDetail = () => {
     .then(async (res) => {
       detailEditMode.value = false;
       detailEditForm.value = {};
-      const saveResult = res?.data || {};
-      currentDetail.value = normalizeOvertimeDetail(
-        {
-          ...currentDetail.value,
-          status: saveResult.status || currentDetail.value.status,
-          requestStatus: saveResult.status || currentDetail.value.requestStatus,
-        },
-        currentDetail.value,
-      );
       await refreshCurrentDetail();
       ElMessage.success("加班单信息已保存");
     })
@@ -337,18 +310,6 @@ const runAdminDetailAction = async ({
   } catch (error) {
     console.log(error);
   }
-};
-
-const handleDirectPassDetail = () => {
-  if (!showDirectPassButton.value) {
-    return;
-  }
-  runAdminDetailAction({
-    requestFn: directPassOvertimeRequestAdmin,
-    confirmTitle: "提交生效确认",
-    confirmMessage: "确定将当前加班单提交生效吗？提交后将直接置为已通过。",
-    successMessage: "加班单已提交生效",
-  });
 };
 
 const handleReverseApproveDetail = () => {
@@ -399,7 +360,61 @@ const approvalFlow = computed(() => {
   if (getOvertimeRequestId(currentDetail.value) === null && !currentDetail.value?.billNo) {
     return [];
   }
-  return buildOvertimeApprovalFlow(currentDetail.value);
+
+  const detail = currentDetail.value;
+  const applyTime =
+    detail.applyTime || detail.applyDate || detail.submitTime || detail.createTime || "";
+  const requestStatus = detail.requestStatus || detail.status || "";
+  const talentName = detail.talentName || detail.applicant || "";
+  const overtimeTypeName = detail.overtimeType || "加班";
+
+  const baseFlow = [
+    {
+      time: `${applyTime}`,
+      title: "发起申请",
+      actor: talentName,
+      description: `提交${overtimeTypeName}申请，等待直属上级审批。`,
+      active: true,
+    },
+  ];
+
+  if (requestStatus === "未提交") {
+    return [
+      {
+        time: `${applyTime}`,
+        title: "保存草稿",
+        actor: talentName,
+        description: "加班单暂未提交审批。",
+        active: true,
+      },
+    ];
+  }
+
+  if (requestStatus === "已废弃") {
+    return [
+      {
+        time: `${applyTime}`,
+        title: "废弃申请",
+        actor: talentName,
+        description: detail.approvalStatus || "",
+        active: true,
+      },
+    ];
+  }
+
+  return [
+    ...baseFlow,
+    {
+      time: `${applyTime}`,
+      title:
+        requestStatus === "已通过"
+          ? "直属上级审批 · 审批通过"
+          : "直属上级审批",
+      actor: detail.currentApproverNames || detail.approver || "",
+      description: detail.approvalStatus || "",
+      active: requestStatus === "审批中",
+    },
+  ];
 });
 </script>
 
@@ -455,13 +470,6 @@ const approvalFlow = computed(() => {
             @click="handleSubmitDetail"
           >
             提交
-          </el-button>
-          <el-button
-            v-if="showDirectPassButton"
-            type="primary"
-            @click="handleDirectPassDetail"
-          >
-            提交生效
           </el-button>
           <el-button
             v-if="showReverseApproveButton"
@@ -668,7 +676,7 @@ const approvalFlow = computed(() => {
               <div class="approval-step__time">{{ item.time }}</div>
               <div class="approval-step__title">{{ item.title }}</div>
               <div class="approval-step__actor">{{ item.actor }}</div>
-              <p v-if="item.description">{{ item.description }}</p>
+              <p>{{ item.description }}</p>
             </div>
           </div>
         </div>

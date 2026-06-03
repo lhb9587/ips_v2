@@ -1,199 +1,143 @@
 <!-- 补卡申请页，负责创建、保存和提交员工补签卡单。 -->
 <script setup>
-import { computed, reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { onMounted, reactive, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
-import dayjs from "dayjs";
 import Layout from "@/layouts/main";
+import {
+  querySupplementRequestSelfInit,
+  saveSupplementRequestSelf,
+} from "@/api/attendance";
+import {
+  buildSupplementSavePayload,
+  createEmptySupplementItem,
+  isSupplementItemValid,
+  normalizeSupplementItem,
+} from "@/views/hrm/my-attendance/utils/supplementDetail";
 
+const route = useRoute();
 const router = useRouter();
 
-const storageKey = "mySupplementCardRecords";
+const employeeInfo = reactive({
+  name: "",
+  code: "",
+  position: "",
+  organization: "",
+});
 
-const employeeInfo = {
-  name: "张员工",
-  code: "EMP2026136",
-  position: "Java后端开发工程师",
-  organization: "产品研发中心",
-};
+const supplementReasonOptions = ref([]);
+const canApply = ref(true);
+const disabledReason = ref("");
+const saving = ref(false);
+const editingSupplementRequestId = ref(null);
 
-const supplementTypes = ["上班补签", "下班补签", "外出补签", "其他补签"];
-const supplementReasons = [
-  "忘记打卡",
-  "外出公干",
-  "参加公司团建",
-  "体育活动",
-];
-
-const defaultRecords = [
-  {
-    billNo: "BQ202604025347",
-    applicant: employeeInfo.name,
-    employeeCode: employeeInfo.code,
-    position: employeeInfo.position,
-    organization: employeeInfo.organization,
-    applyDate: "2026-04-02",
-    status: "审批中",
-    approver: "李经理",
-    approvalComment: "部门负责人审批中",
-    items: [
-      {
-        attendanceDate: "2026-04-02",
-        timePoint: "09:00",
-        type: "上班补签",
-        reason: "忘记打卡",
-        remark: "早会开始前到岗，忘记刷卡。",
-      },
-    ],
-  },
-  {
-    billNo: "BQ202603181126",
-    applicant: employeeInfo.name,
-    employeeCode: employeeInfo.code,
-    position: employeeInfo.position,
-    organization: employeeInfo.organization,
-    applyDate: "2026-03-18",
-    status: "已通过",
-    approver: "王主管",
-    approvalComment: "审批通过",
-    items: [
-      {
-        attendanceDate: "2026-03-18",
-        timePoint: "18:00",
-        type: "下班补签",
-        reason: "外出公干",
-        remark: "客户现场沟通后直接下班。",
-      },
-    ],
-  },
-];
-
-const readRecords = () => {
-  const storedRecords = localStorage.getItem(storageKey);
-  if (!storedRecords) {
-    return [...defaultRecords];
-  }
-  try {
-    const records = JSON.parse(storedRecords);
-    return Array.isArray(records) && records.length ? records : [...defaultRecords];
-  } catch (error) {
-    return [...defaultRecords];
-  }
-};
-
-const records = ref(readRecords());
+const defaultAttendanceTime = new Date(2000, 0, 1, 9, 0, 0);
 
 const form = reactive({
-  billNo: `BQ${dayjs().format("YYYYMMDD")}${String(Date.now()).slice(-4)}`,
-  applyDate: dayjs().format("YYYY-MM-DD"),
-  applicant: employeeInfo.name,
-  items: [
-    {
-      attendanceDate: "",
-      timePoint: "",
-      type: "",
-      reason: "",
-      remark: "",
-    },
-  ],
+  items: [createEmptySupplementItem()],
 });
 
-const currentItemSummary = computed(() => {
-  const filledItems = form.items.filter(
-    (item) => item.attendanceDate || item.timePoint || item.type || item.reason,
-  );
-  if (!filledItems.length) {
-    return "请先填写至少一条补签卡信息。";
+const fetchSupplementApplicationInit = async () => {
+  try {
+    const res = await querySupplementRequestSelfInit(
+      {
+        sourceDateTime: route.query.sourceDateTime || undefined,
+        sourceType: route.query.sourceType || undefined,
+      },
+      { isLoading: true },
+    );
+    const data = res?.data || {};
+    const employee = data?.employee || {};
+
+    employeeInfo.name = employee.talentName || "";
+    employeeInfo.code = employee.talentCode || "";
+    employeeInfo.organization = employee.deptName || "";
+    employeeInfo.position = employee.positionName || "";
+
+    canApply.value = data.canApply !== false;
+    disabledReason.value = data.disabledReason || "";
+    supplementReasonOptions.value = Array.isArray(data.supplementReasons)
+      ? data.supplementReasons
+      : [];
+
+    const defaultDetail = data.defaultDetail || {};
+    form.items = [
+      normalizeSupplementItem({
+        attendanceDateTime: defaultDetail.attendanceDateTime || "",
+        remark: defaultDetail.remark || "",
+      }),
+    ];
+  } catch (error) {
+    ElMessage.warning("补签初始化数据获取失败");
   }
-  return `当前已录入 ${filledItems.length} 条补签卡信息，提交后进入审批流程。`;
-});
-
-const persistRecords = () => {
-  localStorage.setItem(storageKey, JSON.stringify(records.value));
 };
 
-const createEmptyItem = () => ({
-  attendanceDate: "",
-  timePoint: "",
-  type: "",
-  reason: "",
-  remark: "",
-});
-
-const addSupplementItem = () => {
-  form.items.push(createEmptyItem());
-};
-
-const removeSupplementItem = (index) => {
-  if (form.items.length === 1) {
-    ElMessage.warning("至少保留一条补签卡信息");
-    return;
-  }
-  form.items.splice(index, 1);
-};
-
-const buildRecord = (status) => ({
-  billNo: form.billNo,
-  applicant: form.applicant,
-  employeeCode: employeeInfo.code,
-  position: employeeInfo.position,
-  organization: employeeInfo.organization,
-  applyDate: form.applyDate,
-  status,
-  approver: status === "未提交" ? "未提交" : "李经理",
-  approvalComment: status === "未提交" ? "草稿暂未进入审批" : "已提交，等待部门负责人审批",
-  items: form.items.map((item) => ({ ...item })),
+onMounted(() => {
+  fetchSupplementApplicationInit();
 });
 
 const validateForm = () => {
-  const invalidIndex = form.items.findIndex(
-    (item) => !item.attendanceDate || !item.timePoint || !item.type || !item.reason,
-  );
-  if (invalidIndex > -1) {
-    ElMessage.warning(`请完善第 ${invalidIndex + 1} 条补签卡信息`);
+  if (!canApply.value) {
+    ElMessage.warning(disabledReason.value || "当前不可申请补签");
+    return false;
+  }
+  const item = form.items[0];
+  if (!isSupplementItemValid(item)) {
+    ElMessage.warning("请完善补签信息");
     return false;
   }
   return true;
 };
 
-const resetForm = () => {
-  form.billNo = `BQ${dayjs().format("YYYYMMDD")}${String(Date.now()).slice(-4)}`;
-  form.applyDate = dayjs().format("YYYY-MM-DD");
-  form.items = [createEmptyItem()];
+const submitSupplementRequest = async (actionType) => {
+  const item = form.items[0];
+  const payload = buildSupplementSavePayload(item, {
+    supplementRequestId: editingSupplementRequestId.value || undefined,
+    talentCode: employeeInfo.code || undefined,
+    actionType,
+  });
+  const res = await saveSupplementRequestSelf(payload, { isLoading: true });
+  return res?.data || {};
 };
 
-const upsertRecord = (record) => {
-  const index = records.value.findIndex((item) => item.billNo === record.billNo);
-  if (index > -1) {
-    records.value.splice(index, 1, record);
-  } else {
-    records.value.unshift(record);
-  }
-  persistRecords();
-};
-
-const handleSave = () => {
-  if (!validateForm()) {
+const handleSave = async () => {
+  if (!validateForm() || saving.value) {
     return;
   }
-  upsertRecord(buildRecord("未提交"));
-  ElMessage.success("补签草稿已保存");
-  resetForm();
+  saving.value = true;
+  try {
+    await submitSupplementRequest("save");
+    ElMessage.success("补签草稿已保存");
+    goSupplementList();
+  } catch (error) {
+    console.log(error);
+  } finally {
+    saving.value = false;
+  }
 };
 
 const handleSubmit = () => {
-  if (!validateForm()) {
+  if (!validateForm() || saving.value) {
     return;
   }
   ElMessageBox.confirm("确认提交当前补签申请并进入审批流程？", "提交确认", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     type: "warning",
-  }).then(() => {
-    upsertRecord(buildRecord("审批中"));
-    ElMessage.success("补签申请已提交审批");
-    resetForm();
-  });
+  })
+    .then(async () => {
+      saving.value = true;
+      try {
+        await submitSupplementRequest("submit");
+        ElMessage.success("补签申请已提交审批");
+        goSupplementList();
+      } catch (error) {
+        console.log(error);
+      } finally {
+        saving.value = false;
+      }
+    })
+    .catch(() => {});
 };
 
 const goSupplementList = () => {
@@ -207,11 +151,34 @@ const goSupplementList = () => {
       <div class="page-toolbar">
         <div>
           <h2>我要补卡</h2>
+          <p
+            v-if="!canApply && disabledReason"
+            class="page-toolbar__warning"
+          >
+            {{ disabledReason }}
+          </p>
         </div>
         <div class="page-toolbar__actions">
-          <el-button @click="handleSave">保存</el-button>
-          <el-button type="primary" @click="handleSubmit">提交</el-button>
-          <el-button type="success" plain @click="goSupplementList">
+          <el-button
+            :loading="saving"
+            :disabled="!canApply"
+            @click="handleSave"
+          >
+            保存
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="saving"
+            :disabled="!canApply"
+            @click="handleSubmit"
+          >
+            提交
+          </el-button>
+          <el-button
+            type="success"
+            plain
+            @click="goSupplementList"
+          >
             补签卡列表
           </el-button>
         </div>
@@ -223,83 +190,45 @@ const goSupplementList = () => {
             <div class="section-heading">基础信息</div>
             <div class="readonly-grid">
               <div class="readonly-cell readonly-cell--label">姓名</div>
-              <div class="readonly-cell">{{ employeeInfo.name }}</div>
+              <div class="readonly-cell">{{ employeeInfo.name || "--" }}</div>
               <div class="readonly-cell readonly-cell--label">员工编码</div>
-              <div class="readonly-cell">{{ employeeInfo.code }}</div>
+              <div class="readonly-cell">{{ employeeInfo.code || "--" }}</div>
               <div class="readonly-cell readonly-cell--label">职位</div>
-              <div class="readonly-cell">{{ employeeInfo.position }}</div>
+              <div class="readonly-cell">{{ employeeInfo.position || "--" }}</div>
               <div class="readonly-cell readonly-cell--label">所属组织</div>
               <div class="readonly-cell readonly-cell--wide">
-                {{ employeeInfo.organization }}
+                {{ employeeInfo.organization || "--" }}
               </div>
             </div>
           </section>
 
           <section class="info-section supplement-form-section">
-            <div class="section-heading section-heading--with-action">
-              <span>补签卡信息</span>
-              <el-button type="primary" plain @click="addSupplementItem">
-                新增补签卡
-              </el-button>
-            </div>
+            <div class="section-heading">补签信息</div>
             <el-form label-width="108px" label-position="left">
-              <div
-                v-for="(item, index) in form.items"
-                :key="index"
-                class="supplement-item"
-              >
-                <div class="supplement-item__header">
-                  <strong>补签卡 {{ index + 1 }}</strong>
-                  <el-button
-                    link
-                    type="danger"
-                    @click="removeSupplementItem(index)"
-                  >
-                    删除
-                  </el-button>
-                </div>
-
+              <div class="supplement-item">
                 <div class="form-grid">
-                  <el-form-item label="考勤日期" required>
+                  <el-form-item label="考勤时间" required>
                     <el-date-picker
-                      v-model="item.attendanceDate"
-                      type="date"
-                      value-format="YYYY-MM-DD"
-                      placeholder="请选择考勤日期"
+                      v-model="form.items[0].attendanceTime"
+                      type="datetime"
+                      value-format="YYYY-MM-DD HH:mm"
+                      format="YYYY-MM-DD HH:mm"
+                      placeholder="请选择考勤时间"
+                      :default-time="defaultAttendanceTime"
+                      :disabled="!canApply"
                     />
                   </el-form-item>
-                  <el-form-item label="补签时间点" required>
-                    <el-time-select
-                      v-model="item.timePoint"
-                      start="00:00"
-                      step="00:15"
-                      end="23:45"
-                      placeholder="请选择时间点"
-                    />
-                  </el-form-item>
-                  <el-form-item label="补签卡类型" required>
+                  <el-form-item label="补签原因" required>
                     <el-select
-                      v-model="item.type"
-                      placeholder="请选择补签卡类型"
+                      v-model="form.items[0].reasonCode"
+                      placeholder="请选择补签原因"
+                      :disabled="!canApply"
                     >
                       <el-option
-                        v-for="type in supplementTypes"
-                        :key="type"
-                        :label="type"
-                        :value="type"
-                      />
-                    </el-select>
-                  </el-form-item>
-                  <el-form-item label="补签卡原因" required>
-                    <el-select
-                      v-model="item.reason"
-                      placeholder="请选择补签卡原因"
-                    >
-                      <el-option
-                        v-for="reason in supplementReasons"
-                        :key="reason"
-                        :label="reason"
-                        :value="reason"
+                        v-for="reason in supplementReasonOptions"
+                        :key="reason.reasonCode"
+                        :label="reason.reasonName"
+                        :value="reason.reasonCode"
                       />
                     </el-select>
                   </el-form-item>
@@ -307,32 +236,17 @@ const goSupplementList = () => {
 
                 <el-form-item label="备注">
                   <el-input
-                    v-model="item.remark"
+                    v-model="form.items[0].remark"
                     type="textarea"
                     :rows="3"
                     placeholder="请填写异常说明、补充依据或其他需要说明的信息"
+                    :disabled="!canApply"
                   />
                 </el-form-item>
               </div>
             </el-form>
           </section>
         </main>
-
-        <aside class="application-side">
-          <section class="info-section">
-            <div class="section-heading">单据信息</div>
-            <div class="bill-table">
-              <div>单据编号</div>
-              <div>{{ form.billNo }}</div>
-              <div>申请人</div>
-              <div>{{ form.applicant }}</div>
-              <div>申请日期</div>
-              <div>{{ form.applyDate }}</div>
-              <div>录入摘要</div>
-              <div>{{ currentItemSummary }}</div>
-            </div>
-          </section>
-        </aside>
       </div>
     </div>
   </Layout>
@@ -380,6 +294,10 @@ const goSupplementList = () => {
   font-size: 12px;
 }
 
+.page-toolbar__warning {
+  color: #c45656;
+}
+
 .page-toolbar__actions {
   display: flex;
   gap: 12px;
@@ -387,15 +305,10 @@ const goSupplementList = () => {
 }
 
 .application-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
-  gap: 16px;
   margin-top: 14px;
-  align-items: start;
 }
 
-.application-main,
-.application-side {
+.application-main {
   display: grid;
   gap: 14px;
 }
@@ -406,13 +319,6 @@ const goSupplementList = () => {
   color: #122448;
   font-size: 15px;
   font-weight: 600;
-}
-
-.section-heading--with-action {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
 }
 
 .readonly-grid {
@@ -456,18 +362,6 @@ const goSupplementList = () => {
   background: #fbfcff;
 }
 
-.supplement-item + .supplement-item {
-  margin-top: 14px;
-}
-
-.supplement-item__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  color: #122448;
-}
-
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -479,48 +373,13 @@ const goSupplementList = () => {
   width: 100%;
 }
 
-.bill-table {
-  display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
-  padding: 18px;
-}
-
-.bill-table div {
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  padding: 0 14px;
-  border: 1px solid #e2e8f2;
-  border-top: 0;
-  color: #122448;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.bill-table div:nth-child(-n + 2) {
-  border-top: 1px solid #e2e8f2;
-}
-
-.bill-table div:nth-child(odd) {
-  background: #f2f5fa;
-  font-weight: 600;
-}
-
 @media (max-width: 1400px) {
-  .application-layout {
-    grid-template-columns: minmax(0, 1fr) 360px;
-  }
-
   .readonly-grid {
     grid-template-columns: 110px minmax(0, 1fr) 120px minmax(0, 1fr) 100px minmax(0, 1fr);
   }
 }
 
 @media (max-width: 1200px) {
-  .application-layout {
-    grid-template-columns: 1fr;
-  }
-
   .readonly-grid {
     grid-template-columns: 120px minmax(0, 1fr);
   }
@@ -548,10 +407,6 @@ const goSupplementList = () => {
 
   .form-grid {
     grid-template-columns: 1fr;
-  }
-
-  .bill-table {
-    grid-template-columns: 110px minmax(0, 1fr);
   }
 }
 </style>

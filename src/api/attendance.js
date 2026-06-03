@@ -803,6 +803,105 @@ export function abandonOvertimeRequestSelf(data, config = {}) {
   })
 }
 
+export function querySupplementRequestSelfInit(data = {}, config = {}) {
+  return request({
+    url: attendanceApi.querySupplementRequestSelfInit,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function saveSupplementRequestSelf(data, config = {}) {
+  return request({
+    url: attendanceApi.saveSupplementRequestSelf,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function querySupplementRequestSelfPage(data, config = {}) {
+  return request({
+    url: attendanceApi.querySupplementRequestSelfPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function querySupplementRequestAdminDetail(data, config = {}) {
+  return request({
+    url: attendanceApi.querySupplementRequestAdminDetail,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function deleteSupplementRequestSelf(data, config = {}) {
+  return request({
+    url: attendanceApi.deleteSupplementRequestSelf,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function abandonSupplementRequestSelf(data, config = {}) {
+  return request({
+    url: attendanceApi.abandonSupplementRequestSelf,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function querySupplementRequestAdminPage(data, config = {}) {
+  return request({
+    url: attendanceApi.querySupplementRequestAdminPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function directPassSupplementRequestAdmin(data, config = {}) {
+  return request({
+    url: attendanceApi.directPassSupplementRequestAdmin,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function reverseApproveSupplementRequestAdmin(data, config = {}) {
+  return request({
+    url: attendanceApi.reverseApproveSupplementRequestAdmin,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function abandonSupplementRequestAdmin(data, config = {}) {
+  return request({
+    url: attendanceApi.abandonSupplementRequestAdmin,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
+export function exportSupplementRequestAdmin(data, config = {}) {
+  return request({
+    url: attendanceApi.exportSupplementRequestAdmin,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryApprovalCenterPage(data, config = {}) {
   return request({
     url: attendanceApi.queryApprovalCenterPage,

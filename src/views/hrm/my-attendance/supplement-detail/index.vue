@@ -1,97 +1,93 @@
 <!-- 补签卡详情页，用于承接补签列表跳转后的独立详情展示。 -->
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
 import Layout from "@/layouts/main";
 import SupplementDetailContent from "./components/SupplementDetailContent.vue";
+import {
+  fetchSupplementRequestDetail,
+  getSupplementRequestId,
+  normalizeSupplementDetail,
+} from "@/views/hrm/my-attendance/utils/supplementDetail";
 
 const route = useRoute();
 const router = useRouter();
 
-const storageKey = "mySupplementCardRecords";
+const detailInfo = ref({});
+const detailLoading = ref(false);
 
-const buildFallbackDetail = () => ({
-  billNo: route.params.billNo || "BQ202604025347",
-  applicant: "张员工",
-  employeeCode: "EMP2026136",
-  position: "Java后端开发工程师",
-  organization: "产品研发中心",
-  applyDate: "2026-04-02",
-  status: "审批中",
-  approver: "李经理",
-  approvalComment: "部门负责人审批中",
-  items: [
-    {
-      attendanceDate: "2026-04-02",
-      timePoint: "09:00",
-      type: "上班补签",
-      reason: "忘记打卡",
-      remark: "早会开始前到岗，忘记刷卡。",
-    },
-  ],
-});
+const resolveSupplementRequestId = () => {
+  const queryId = route.query.supplementRequestId;
+  if (queryId === undefined || queryId === null || queryId === "") {
+    return null;
+  }
+  return queryId;
+};
 
-const readRecords = () => {
-  const storedRecords = localStorage.getItem(storageKey);
-  if (!storedRecords) {
-    return [];
+const readSessionDetail = () => {
+  const storedDetail = sessionStorage.getItem("mySupplementCurrentDetail");
+  if (!storedDetail) {
+    return null;
   }
   try {
-    const records = JSON.parse(storedRecords);
-    return Array.isArray(records) ? records : [];
-  } catch (error) {
-    return [];
-  }
-};
-
-const readDetail = () => {
-  const storedDetail = sessionStorage.getItem("mySupplementCurrentDetail");
-  if (storedDetail) {
-    try {
-      const detail = JSON.parse(storedDetail);
-      if (!route.params.billNo || detail.billNo === route.params.billNo) {
-        return detail;
-      }
-    } catch (error) {
-      return buildFallbackDetail();
+    const detail = JSON.parse(storedDetail);
+    if (route.params.billNo && detail.billNo && detail.billNo !== route.params.billNo) {
+      return null;
     }
+    return detail;
+  } catch (error) {
+    return null;
   }
-
-  const matchedRecord = readRecords().find(
-    (record) => record.billNo === route.params.billNo,
-  );
-  return matchedRecord || buildFallbackDetail();
 };
 
-const detailInfo = ref(readDetail());
-
-const persistDetail = (record) => {
-  detailInfo.value = { ...record };
-  const records = readRecords();
-  const index = records.findIndex((item) => item.billNo === record.billNo);
-  if (index > -1) {
-    records.splice(index, 1, record);
-  } else {
-    records.unshift(record);
+const fetchDetail = async () => {
+  const supplementRequestId =
+    resolveSupplementRequestId() ?? getSupplementRequestId(readSessionDetail() || {});
+  if (supplementRequestId === null) {
+    ElMessage.warning("缺少补签单ID，无法打开详情");
+    goBack();
+    return;
   }
-  localStorage.setItem(storageKey, JSON.stringify(records));
-  sessionStorage.setItem("mySupplementCurrentDetail", JSON.stringify(record));
+  detailLoading.value = true;
+  try {
+    detailInfo.value = await fetchSupplementRequestDetail(supplementRequestId, {
+      requestNo: route.params.billNo,
+      billNo: route.params.billNo,
+    });
+  } catch (error) {
+    console.log(error);
+  } finally {
+    detailLoading.value = false;
+  }
 };
 
 const goBack = () => {
   router.push({ name: "my-supplement-list" });
 };
+
+const handleUpdateDetail = (record) => {
+  detailInfo.value = normalizeSupplementDetail(record, detailInfo.value);
+};
+
+onMounted(() => {
+  fetchDetail();
+});
 </script>
 
 <template>
   <Layout>
-    <div class="supplement-detail-wrapper">
+    <div
+      v-loading="detailLoading"
+      class="supplement-detail-wrapper"
+    >
       <SupplementDetailContent
+        v-if="getSupplementRequestId(detailInfo) !== null || detailInfo?.billNo"
         :detailInfo="detailInfo"
         :showClose="false"
         :showBack="true"
         @back="goBack"
-        @update-detail="persistDetail"
+        @update-detail="handleUpdateDetail"
       />
     </div>
   </Layout>

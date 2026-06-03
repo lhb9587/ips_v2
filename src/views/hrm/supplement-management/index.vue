@@ -1,36 +1,42 @@
+<!-- 后台补签卡列表页：分页查询、详情侧栏与批量管理操作。 -->
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
+import dayjs from "dayjs";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import SupplementDetailContent from "@/views/hrm/my-attendance/supplement-detail/components/SupplementDetailContent.vue";
-import { saveTableConfig } from "@/utils";
+import {
+  abandonSupplementRequestAdmin,
+  directPassSupplementRequestAdmin,
+  exportSupplementRequestAdmin,
+  querySupplementRequestAdminPage,
+  reverseApproveSupplementRequestAdmin,
+} from "@/api/attendance";
+import { downLoad, saveTableConfig } from "@/utils";
+import {
+  buildSupplementRequestIdsPayload,
+  fetchSupplementRequestDetail,
+  getSupplementRequestId,
+  normalizeSupplementDetail,
+} from "@/views/hrm/my-attendance/utils/supplementDetail";
 
 const route = useRoute();
 const store = useStore();
 
+const bussId = 479;
 const gridName = "supplementManagementGrid";
-const columnOptions = [
-  { title: "单据编号", value: "billNo" },
-  { title: "员工编码", value: "employeeCode" },
-  { title: "姓名", value: "employeeName" },
-  { title: "组织", value: "organization" },
-  { title: "考勤日期", value: "attendanceDate" },
-  { title: "补签类型", value: "type" },
-  { title: "补签时间点", value: "timePoint" },
-  { title: "补签原因", value: "reason" },
-  { title: "子项数", value: "itemCount" },
-  { title: "单据状态", value: "billStatus" },
-  { title: "审批人", value: "approver" },
-  { title: "备注", value: "remark" },
-];
 
-const columnList = ref([...columnOptions]);
+const columnList = ref([]);
+const setColumn = (list) => {
+  columnList.value = Array.isArray(list) ? list : [];
+};
+
 const activeClass = ref([]);
 const rowHeight = ref(40);
 const isFull = ref(false);
@@ -43,17 +49,6 @@ let rowClickTimer = null;
 
 const gridOptions = {
   rowMultiSelectWithClick: true,
-};
-
-const setColumn = (list) => {
-  if (!Array.isArray(list) || list.length === 0) {
-    columnList.value = [...columnOptions];
-    return;
-  }
-  const validColumns = list.filter((item) =>
-    columnOptions.some((column) => column.value === item.value),
-  );
-  columnList.value = validColumns.length > 0 ? validColumns : [...columnOptions];
 };
 
 const changeBorder = (newVal) => {
@@ -136,293 +131,241 @@ const listQuery = ref({
 
 const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
 const formInline = ref({});
+const total = ref(0);
+const gridData = ref([]);
 
-const statusToDetailMap = {
-  草稿: "未提交",
-  审批中: "审批中",
-  已审批: "已通过",
-  已驳回: "已驳回",
-  已废弃: "已废弃",
-  已生效: "已通过",
-};
-
-const statusToListMap = {
-  未提交: "草稿",
-  审批中: "审批中",
-  已通过: "已审批",
-  已驳回: "已驳回",
-  已废弃: "已废弃",
-};
-
-const supplementOrderList = ref([
-  {
-    billNo: "BQD20260401001",
-    employeeCode: "HR2023001",
-    employeeName: "张敏",
-    position: "招聘专员",
-    organization: "华东运营中心",
-    applyDate: "2026-04-01",
-    billStatus: "已审批",
-    approver: "李经理",
-    approvalComment: "审批通过",
-    items: [
-      {
-        attendanceDate: "2026-04-01",
-        timePoint: "09:00",
-        type: "上班补签",
-        reason: "忘记打卡",
-        remark: "早会前到岗，忘记刷卡。",
-      },
-    ],
-  },
-  {
-    billNo: "BQD20260403002",
-    employeeCode: "HR2023002",
-    employeeName: "李倩",
-    position: "人力资源主管",
-    organization: "人力资源部",
-    applyDate: "2026-04-03",
-    billStatus: "审批中",
-    approver: "王总监",
-    approvalComment: "部门负责人审批中",
-    items: [
-      {
-        attendanceDate: "2026-04-03",
-        timePoint: "18:00",
-        type: "下班补签",
-        reason: "外出公干",
-        remark: "客户现场沟通后直接下班。",
-      },
-    ],
-  },
-  {
-    billNo: "BQD20260405003",
-    employeeCode: "HR2023003",
-    employeeName: "王浩",
-    position: "产品经理",
-    organization: "产品研发部",
-    applyDate: "2026-04-05",
-    billStatus: "草稿",
-    approver: "未提交",
-    approvalComment: "草稿暂未进入审批",
-    items: [
-      {
-        attendanceDate: "2026-04-05",
-        timePoint: "09:30",
-        type: "上班补签",
-        reason: "其他补签",
-        remark: "园区入口排队导致未及时打卡。",
-      },
-    ],
-  },
-  {
-    billNo: "BQD20260408004",
-    employeeCode: "HR2023004",
-    employeeName: "赵雪",
-    position: "财务会计",
-    organization: "财务管理部",
-    applyDate: "2026-04-08",
-    billStatus: "已审批",
-    approver: "陈总监",
-    approvalComment: "审批通过",
-    items: [
-      {
-        attendanceDate: "2026-04-08",
-        timePoint: "13:30",
-        type: "外出补签",
-        reason: "外出公干",
-        remark: "午间外出办理银行业务后返回。",
-      },
-      {
-        attendanceDate: "2026-04-08",
-        timePoint: "18:00",
-        type: "下班补签",
-        reason: "外出公干",
-        remark: "结束业务后直接返回家中。",
-      },
-    ],
-  },
-  {
-    billNo: "BQD20260412005",
-    employeeCode: "HR2023005",
-    employeeName: "陈博",
-    position: "法务专员",
-    organization: "法务中心",
-    applyDate: "2026-04-12",
-    billStatus: "已驳回",
-    approver: "周经理",
-    approvalComment: "请补充外出说明后重新提交",
-    items: [
-      {
-        attendanceDate: "2026-04-12",
-        timePoint: "09:00",
-        type: "上班补签",
-        reason: "外出公干",
-        remark: "材料不足，需补充说明。",
-      },
-    ],
-  },
-  {
-    billNo: "BQD20260416006",
-    employeeCode: "HR2023006",
-    employeeName: "周岚",
-    position: "市场经理",
-    organization: "市场发展部",
-    applyDate: "2026-04-16",
-    billStatus: "审批中",
-    approver: "何总监",
-    approvalComment: "等待部门负责人审批",
-    items: [
-      {
-        attendanceDate: "2026-04-16",
-        timePoint: "18:15",
-        type: "下班补签",
-        reason: "参加公司团建",
-        remark: "团建活动结束后统一离场。",
-      },
-    ],
-  },
-]);
-
-const getFirstItem = (record) => record.items?.[0] || {};
-
-const buildListRow = (record) => {
-  const firstItem = getFirstItem(record);
-  return {
-    ...record,
-    attendanceDate: firstItem.attendanceDate || "--",
-    type: firstItem.type || "--",
-    timePoint: firstItem.timePoint || "--",
-    reason: firstItem.reason || "--",
-    remark: firstItem.remark || "--",
-    itemCount: record.items?.length || 0,
+const buildListQueryParams = () => {
+  const keyword = diminput.value.trim();
+  const params = {
+    pageNo: listQuery.value.pageNo,
+    pageSize: Math.min(listQuery.value.pageSize, 200),
+    ...formInline.value,
   };
+  if (!keyword) {
+    return params;
+  }
+  if (/[\u4e00-\u9fa5]/.test(keyword)) {
+    params.talentName = keyword;
+  } else {
+    params.requestNo = keyword;
+  }
+  return params;
 };
 
-const buildDetailFromRecord = (record) => ({
-  billNo: record.billNo,
-  applicant: record.employeeName,
-  employeeCode: record.employeeCode,
-  position: record.position,
-  organization: record.organization,
-  applyDate: record.applyDate,
-  status: statusToDetailMap[record.billStatus] || record.billStatus,
-  approver: record.approver,
-  approvalComment: record.approvalComment,
-  items: Array.isArray(record.items) ? record.items.map((item) => ({ ...item })) : [],
+const buildExportParams = () => {
+  const params = { ...buildListQueryParams() };
+  delete params.pageNo;
+  delete params.pageSize;
+  return params;
+};
+
+const normalizeRecord = (item = {}, index = 0) => ({
+  ...item,
+  id: item.supplementRequestId,
+  sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index + 1,
 });
 
-const buildRecordFromDetail = (detail, sourceRecord = {}) => ({
-  ...sourceRecord,
-  billNo: detail.billNo,
-  employeeCode: detail.employeeCode,
-  employeeName: detail.applicant,
-  position: detail.position,
-  organization: detail.organization,
-  applyDate: detail.applyDate,
-  billStatus: statusToListMap[detail.status] || detail.status,
-  approver: detail.approver,
-  approvalComment: detail.approvalComment,
-  items: Array.isArray(detail.items) ? detail.items.map((item) => ({ ...item })) : [],
-});
+const fetchSupplementRequestList = () => {
+  querySupplementRequestAdminPage(buildListQueryParams(), { isLoading: true })
+    .then((res) => {
+      const records = Array.isArray(res?.data) ? res.data : [];
+      gridData.value = records.map((item, index) => normalizeRecord(item, index));
+      total.value = Number(res?.total || 0);
+      if (Number(res?.currPage)) {
+        listQuery.value.pageNo = Number(res.currPage);
+      }
+    })
+    .catch(() => {
+      gridData.value = [];
+      total.value = 0;
+    });
+};
 
-const filteredList = computed(() => {
-  const keyword = diminput.value.trim().toLowerCase();
-  if (!keyword) {
-    return supplementOrderList.value;
+const fetchSupplementDetail = async (rowData) => {
+  const supplementRequestId = getSupplementRequestId(rowData);
+  if (supplementRequestId === null) {
+    ElMessage.warning("当前记录缺少补签单ID，无法打开详情");
+    throw new Error("missing supplementRequestId");
   }
-  return supplementOrderList.value.filter((item) => {
-    const row = buildListRow(item);
-    return [
-      row.billNo,
-      row.employeeCode,
-      row.employeeName,
-      row.organization,
-      row.attendanceDate,
-      row.type,
-      row.timePoint,
-      row.reason,
-      row.billStatus,
-      row.approver,
-      row.remark,
-    ].some((field) => String(field || "").toLowerCase().includes(keyword));
-  });
-});
-
-const total = computed(() => filteredList.value.length);
-
-const gridData = computed(() => {
-  const start = (listQuery.value.pageNo - 1) * listQuery.value.pageSize;
-  const end = start + listQuery.value.pageSize;
-  return filteredList.value.slice(start, end).map((item, index) => ({
-    ...buildListRow(item),
-    sid: start + index,
-  }));
-});
+  return fetchSupplementRequestDetail(supplementRequestId, rowData);
+};
 
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
   formInline.value = {};
+  fetchSupplementRequestList();
 };
 
 const getSelectedRows = () => gridRef.value?.getRowList?.() || [];
 
-const updateBillStatus = (targetRows, status) => {
-  const targetIds = new Set(targetRows.map((item) => item.billNo));
-  supplementOrderList.value = supplementOrderList.value.map((item) => {
-    if (!targetIds.has(item.billNo)) {
-      return item;
-    }
-    return {
-      ...item,
-      billStatus: status,
-    };
-  });
+const getRowRequestId = (row) => getSupplementRequestId(row);
+
+const validateOperableRows = (rows, flagKey, actionLabel) => {
+  if (!rows.length) {
+    ElMessage.warning(`请先选择需要${actionLabel}的补签卡`);
+    return null;
+  }
+  const operableRows = rows.filter((item) => item?.[flagKey]);
+  if (!operableRows.length) {
+    ElMessage.warning(`所选记录中没有可${actionLabel}的补签卡`);
+    return null;
+  }
+  if (operableRows.length !== rows.length) {
+    ElMessage.warning(`所选记录中包含不可${actionLabel}的补签卡，请重新选择`);
+    return null;
+  }
+  return operableRows;
+};
+
+const refreshListAfterBatchAction = (processedIds = []) => {
+  const processedIdSet = new Set(processedIds.map((id) => String(id)));
+  if (
+    currentDetail.value &&
+    processedIdSet.has(String(getRowRequestId(currentDetail.value) || ""))
+  ) {
+    closeDetailSidebar();
+  }
+  gridRef.value?.getRowNode?.()?.forEach?.((node) => node.setSelected(false));
+  fetchSupplementRequestList();
+};
+
+const runBatchAdminAction = async ({
+  rows,
+  flagKey,
+  actionLabel,
+  confirmMessage,
+  requestFn,
+  successLabel,
+  skipFlagCheck = false,
+}) => {
+  if (!rows.length) {
+    ElMessage.warning(`请先选择需要${actionLabel}的补签卡`);
+    return;
+  }
+  const operableRows = skipFlagCheck
+    ? rows
+    : validateOperableRows(rows, flagKey, actionLabel);
+  if (!operableRows) {
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(confirmMessage, `${actionLabel}确认`, {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+  } catch {
+    return;
+  }
+  const payload = buildSupplementRequestIdsPayload(operableRows);
+  if (!payload) {
+    return ElMessage.warning(`选中记录缺少补签单ID，无法${actionLabel}`);
+  }
+  try {
+    const res = await requestFn(payload, { isLoading: true });
+    const successCount = Number(res?.data?.successCount || operableRows.length);
+    ElMessage.success(`已${successLabel} ${successCount} 条补签卡`);
+    refreshListAfterBatchAction(
+      res?.data?.supplementRequestIds ||
+        operableRows.map((item) => getRowRequestId(item)),
+    );
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 const handleSubmitEffect = () => {
-  const selectedRows = getSelectedRows();
-  if (selectedRows.length === 0) {
-    return ElMessage.warning("请先选择需要提交生效的补签卡");
+  runBatchAdminAction({
+    rows: getSelectedRows(),
+    flagKey: "canDirectPass",
+    actionLabel: "提交生效",
+    confirmMessage: "确定将选中的补签卡提交生效吗？提交后将直接置为已通过。",
+    requestFn: directPassSupplementRequestAdmin,
+    successLabel: "提交生效",
+  });
+};
+
+const handleExport = (command) => {
+  const payload = {
+    ...buildExportParams(),
+    exportMode: command === "exportSelected" ? "SELECTED" : "ALL",
+  };
+
+  if (command === "exportSelected") {
+    const selectedRows = getSelectedRows();
+    if (!selectedRows.length) {
+      return ElMessage.warning("请先选择需要导出的补签卡");
+    }
+    const supplementRequestIds = [
+      ...new Set(
+        selectedRows
+          .map((item) => getRowRequestId(item))
+          .filter((id) => id || id === 0),
+      ),
+    ];
+    if (!supplementRequestIds.length) {
+      return ElMessage.warning("选中记录缺少补签单ID，无法导出");
+    }
+    payload.supplementRequestIds = supplementRequestIds.join(",");
   }
-  updateBillStatus(selectedRows, "已生效");
-  ElMessage.success(`已提交 ${selectedRows.length} 条补签卡生效`);
+
+  exportSupplementRequestAdmin(payload, { isLoading: true }).then((res) => {
+    const filePath = res?.data?.filePath;
+    const fileName = res?.data?.fileName || "后台补签卡导出.xlsx";
+    if (!filePath) {
+      return ElMessage.warning("导出文件地址为空");
+    }
+    downLoad(filePath, fileName);
+    ElMessage.success(command === "exportSelected" ? "选中导出成功" : "全部导出成功");
+  });
 };
 
 const handleMoreCommand = (command) => {
-  const selectedRows = getSelectedRows();
-
-  if (command === "exportSelected") {
-    if (selectedRows.length === 0) {
-      return ElMessage.warning("请先选择需要导出的补签卡");
-    }
-    return ElMessage.success(`已导出 ${selectedRows.length} 条选中记录`);
-  }
-
-  if (command === "exportAll") {
-    return ElMessage.success(`已导出 ${filteredList.value.length} 条列表记录`);
+  if (command === "exportSelected" || command === "exportAll") {
+    return handleExport(command);
   }
 
   if (command === "reverseApproval") {
-    if (selectedRows.length === 0) {
-      return ElMessage.warning("请先选择需要反审批的补签卡");
-    }
-    updateBillStatus(selectedRows, "草稿");
-    return ElMessage.success(`已完成 ${selectedRows.length} 条补签卡反审批`);
+    return runBatchAdminAction({
+      rows: getSelectedRows(),
+      flagKey: "canReverseApprove",
+      actionLabel: "反审批",
+      confirmMessage: "确定将选中的已通过补签单反审批为未提交吗？",
+      requestFn: reverseApproveSupplementRequestAdmin,
+      successLabel: "反审批",
+    });
   }
 
   if (command === "discard") {
-    if (selectedRows.length === 0) {
-      return ElMessage.warning("请先选择需要废弃的补签卡");
-    }
-    updateBillStatus(selectedRows, "已废弃");
-    return ElMessage.success(`已废弃 ${selectedRows.length} 条补签卡`);
+    return runBatchAdminAction({
+      rows: getSelectedRows(),
+      actionLabel: "废弃",
+      confirmMessage: "确定要废弃选中的补签卡吗？废弃后该单据将不再进入审批流程。",
+      requestFn: abandonSupplementRequestAdmin,
+      successLabel: "废弃",
+      skipFlagCheck: true,
+    });
   }
 };
 
+const formatDateTimeCell = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+  const target = dayjs(value);
+  return target.isValid() ? target.format("YYYY-MM-DD HH:mm:ss") : "";
+};
+
 const cellRenderer = (params) => {
-  const value = params.value || params.value === 0 ? params.value : "";
-  return `<span title="${value}">${value}</span>`;
+  let displayValue = params.value || params.value === 0 ? params.value : "";
+  if (
+    ["attendanceDateTime", "applyTime", "submitTime", "approveTime"].includes(
+      params?.colDef?.field,
+    )
+  ) {
+    displayValue = formatDateTimeCell(params.value);
+  }
+  return `<span title="${displayValue}">${displayValue}</span>`;
 };
 
 const handleRowClick = (params) => {
@@ -432,10 +375,15 @@ const handleRowClick = (params) => {
   if (rowClickTimer) {
     clearTimeout(rowClickTimer);
   }
-  rowClickTimer = setTimeout(() => {
-    currentDetail.value = buildDetailFromRecord(params.data);
-    detailDrawerVisible.value = true;
-    rowClickTimer = null;
+  rowClickTimer = setTimeout(async () => {
+    try {
+      currentDetail.value = await fetchSupplementDetail(params.data);
+      detailDrawerVisible.value = true;
+    } catch (error) {
+      console.log(error);
+    } finally {
+      rowClickTimer = null;
+    }
   }, 220);
 };
 
@@ -445,23 +393,31 @@ const closeDetailSidebar = () => {
 };
 
 const handleUpdateDetailRecord = (updatedRecord) => {
-  const recordIndex = supplementOrderList.value.findIndex(
-    (item) => item.billNo === updatedRecord.billNo,
+  const record = normalizeSupplementDetail(updatedRecord);
+  const recordId = getSupplementRequestId(record);
+  if (recordId === null) {
+    return;
+  }
+  const recordIndex = gridData.value.findIndex(
+    (item) => getRowRequestId(item) === recordId,
   );
   if (recordIndex === -1) {
     return;
   }
-  const updatedListRecord = buildRecordFromDetail(
-    updatedRecord,
-    supplementOrderList.value[recordIndex],
-  );
-  supplementOrderList.value.splice(recordIndex, 1, updatedListRecord);
-  currentDetail.value = buildDetailFromRecord(updatedListRecord);
+  gridData.value.splice(recordIndex, 1, {
+    ...gridData.value[recordIndex],
+    ...record,
+    status: record.status || record.billStatus,
+  });
+  currentDetail.value = { ...record };
 };
 
-const handlePagination = () => {};
+const handlePagination = () => {
+  fetchSupplementRequestList();
+};
 
 onMounted(() => {
+  fetchSupplementRequestList();
   document.addEventListener("fullscreenchange", handleFullScreenChange);
 });
 
@@ -539,6 +495,7 @@ onUnmounted(() => {
               <div class="d-flex gap-2">
                 <TopListTool
                   :gridName="gridName"
+                  :buss-id="bussId"
                   @changeBorder="changeBorder"
                   @changeRowStyle="changeRowStyle"
                   @changeRowHeight="changeRowHeight"
@@ -548,6 +505,7 @@ onUnmounted(() => {
                     ...listQuery,
                     ...formInline,
                     searchWord: diminput,
+                    bussId,
                   }"
                   :isFull="isFull"
                 >
@@ -559,6 +517,7 @@ onUnmounted(() => {
             <GridView
               ref="gridRef"
               :gridName="gridName"
+              :bussId="bussId"
               :height="gridHeight"
               :rowHeight="rowHeight"
               :columnDefs="columnList"
@@ -566,6 +525,7 @@ onUnmounted(() => {
               :activeClass="activeClass"
               :cellRenderer="cellRenderer"
               :gridOptions="gridOptions"
+              showSelectionColumn
               :rowClick="handleRowClick"
             />
           </div>
@@ -602,6 +562,7 @@ onUnmounted(() => {
       >
         <SupplementDetailContent
           :detailInfo="currentDetail"
+          admin-mode
           @close="closeDetailSidebar"
           @update-detail="handleUpdateDetailRecord"
         />

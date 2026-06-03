@@ -572,7 +572,7 @@ const approvalFlow = computed(() => {
   const baseFlow = [
     {
       time: `${detail.applyDate} 10:18`,
-      title: "发起申请 · 提交申请",
+      title: "发起申请",
       actor: detail.applicant,
       description: `提交${detail.leaveType}申请，等待直属上级审批。`,
       active: true,
@@ -610,7 +610,7 @@ const approvalFlow = computed(() => {
       title:
         detail.status === "已通过"
           ? "直属上级审批 · 审批通过"
-          : "直属上级审批 · 提交申请",
+          : "直属上级审批",
       actor: detail.approver,
       description: detail.comment,
       active: detail.status === "审批中",

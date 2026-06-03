@@ -35,11 +35,46 @@ const formatDateTimeText = (value) => {
 };
 
 const formatDateText = (value) => {
-  if (!value) {
+  if (value === undefined || value === null || value === "") {
     return "";
   }
-  const text = String(value);
+  const parsed = dayjs(value);
+  if (parsed.isValid()) {
+    return parsed.format("YYYY-MM-DD");
+  }
+  const text = String(value).trim();
   return text.includes("T") ? text.split("T")[0] : text.slice(0, 10);
+};
+
+const getApiFirstDetail = (apiDetail = {}) =>
+  (Array.isArray(apiDetail?.details) ? apiDetail.details : [])[0] || {};
+
+/** 加班日期、时段仅取自详情接口，不使用列表行 fallback。 */
+const resolveOvertimeDate = (apiDetail = {}) => {
+  const firstDetail = getApiFirstDetail(apiDetail);
+  return (
+    formatDateText(apiDetail.overtimeDate) ||
+    formatDateText(firstDetail.overtimeDate) ||
+    formatDateText(apiDetail.overtimeStartTime) ||
+    formatDateText(apiDetail.startTime) ||
+    formatDateText(firstDetail.startTime) ||
+    ""
+  );
+};
+
+const resolveOvertimeStartTime = (apiDetail = {}) => {
+  const firstDetail = getApiFirstDetail(apiDetail);
+  return (
+    apiDetail.overtimeStartTime ||
+    apiDetail.startTime ||
+    firstDetail.startTime ||
+    ""
+  );
+};
+
+const resolveOvertimeEndTime = (apiDetail = {}) => {
+  const firstDetail = getApiFirstDetail(apiDetail);
+  return apiDetail.overtimeEndTime || apiDetail.endTime || firstDetail.endTime || "";
 };
 
 export const buildOvertimeSaveDateTime = (overtimeDate, timeValue) => {
@@ -58,124 +93,88 @@ export const buildOvertimeSaveDateTime = (overtimeDate, timeValue) => {
   return overtimeDate && timeOnly ? `${overtimeDate} ${timeOnly}` : text;
 };
 
-export const normalizeOvertimeDetail = (detail = {}, fallback = {}) => {
-  const merged = {
-    ...fallback,
-    ...detail,
-    details: Array.isArray(detail?.details)
-      ? detail.details
-      : Array.isArray(fallback?.details)
-        ? fallback.details
-        : [],
-    approvalLogs: Array.isArray(detail?.approvalLogs)
-      ? detail.approvalLogs
-      : Array.isArray(fallback?.approvalLogs)
-        ? fallback.approvalLogs
-        : [],
-  };
-
-  const firstDetail = merged.details[0] || {};
-  const overtimeRequestId =
-    getOvertimeRequestId(merged) ?? getOvertimeRequestId(fallback);
-  const requestNo =
-    merged.requestNo || merged.billNo || fallback.requestNo || fallback.billNo || "";
-
-  const overtimeDate =
-    formatDateText(merged.overtimeDate) ||
-    formatDateText(firstDetail.overtimeDate) ||
-    formatDateText(fallback.overtimeDate);
-
-  const startTime =
-    merged.overtimeStartTime ||
-    merged.startTime ||
-    firstDetail.startTime ||
-    fallback.startTime ||
-    "";
-  const endTime =
-    merged.overtimeEndTime ||
-    merged.endTime ||
-    firstDetail.endTime ||
-    fallback.endTime ||
-    "";
-
+/** 仅映射 admin/detail 接口（queryOvertimeRequestAdminDetail）返回体，不合并列表或其它来源。 */
+export const normalizeOvertimeDetail = (apiDetail = {}) => {
+  const firstDetail = getApiFirstDetail(apiDetail);
+  const overtimeRequestId = getOvertimeRequestId(apiDetail);
+  const requestNo = apiDetail.requestNo || apiDetail.billNo || "";
+  const overtimeDate = resolveOvertimeDate(apiDetail);
+  const startTime = resolveOvertimeStartTime(apiDetail);
+  const endTime = resolveOvertimeEndTime(apiDetail);
   const breakMinutes =
-    merged.restMinutes ??
-    merged.breakMinutes ??
-    firstDetail.restMinutes ??
-    fallback.breakMinutes ??
-    0;
-
+    apiDetail.restMinutes ?? apiDetail.breakMinutes ?? firstDetail.restMinutes ?? 0;
   const overtimeHours =
-    merged.applyOvertimeHours ??
-    merged.applyHours ??
-    merged.overtimeHours ??
+    apiDetail.applyOvertimeHours ??
+    apiDetail.applyHours ??
+    apiDetail.overtimeHours ??
     firstDetail.applyHours ??
-    fallback.overtimeHours ??
     0;
-
-  const approvalInstanceId =
-    merged.approvalInstanceId ?? merged.instanceId ?? fallback.approvalInstanceId ?? null;
+  const approvalInstanceId = apiDetail.approvalInstanceId ?? apiDetail.instanceId ?? null;
 
   return {
-    ...merged,
+    ...apiDetail,
+    details: Array.isArray(apiDetail.details) ? apiDetail.details : [],
+    approvalLogs: Array.isArray(apiDetail.approvalLogs) ? apiDetail.approvalLogs : [],
     ...(approvalInstanceId !== null
       ? {
           approvalInstanceId,
-          instanceId: merged.instanceId ?? approvalInstanceId,
+          instanceId: apiDetail.instanceId ?? approvalInstanceId,
         }
       : {}),
     ...(overtimeRequestId !== null
       ? { overtimeRequestId, requestId: overtimeRequestId }
       : {}),
     ...(requestNo ? { requestNo, billNo: requestNo } : {}),
-    applicant: merged.talentName || merged.applicant || fallback.applicant || "",
-    employeeCode: merged.talentCode || merged.employeeCode || fallback.employeeCode || "",
-    organization: merged.deptName || merged.organization || fallback.organization || "",
-    position: merged.positionName || merged.position || fallback.position || "",
+    talentName: apiDetail.talentName || apiDetail.applicant || "",
+    applicant: apiDetail.talentName || apiDetail.applicant || "",
+    employeeCode: apiDetail.talentCode || apiDetail.employeeCode || "",
+    organization: apiDetail.deptName || apiDetail.organization || "",
+    position: apiDetail.positionName || apiDetail.position || "",
     overtimeDate,
     startTime: formatDateTimeText(startTime) || startTime,
     endTime: formatDateTimeText(endTime) || endTime,
-    startTimeOnly: merged.startTimeOnly || parseTimeOnly(startTime),
-    endTimeOnly: merged.endTimeOnly || parseTimeOnly(endTime),
+    startTimeOnly: apiDetail.startTimeOnly || parseTimeOnly(startTime),
+    endTimeOnly: apiDetail.endTimeOnly || parseTimeOnly(endTime),
     breakMinutes,
     overtimeHours,
-    overtimeReason: merged.reason || merged.overtimeReason || fallback.overtimeReason || "",
-    overtimeType:
-      merged.overtimeTypeName || merged.overtimeType || fallback.overtimeType || "",
-    compensationType: merged.compensationType || fallback.compensationType || "",
-    status:
-      merged.status ||
-      merged.requestStatus ||
-      merged.approvalStatus ||
-      fallback.status ||
-      "",
-    requestStatus:
-      merged.requestStatus ||
-      merged.status ||
-      fallback.requestStatus ||
-      "",
+    overtimeReason: apiDetail.reason || apiDetail.overtimeReason || "",
+    overtimeType: apiDetail.overtimeTypeName || apiDetail.overtimeType || "",
+    compensationType: apiDetail.compensationType || "",
+    status: apiDetail.status || apiDetail.requestStatus || apiDetail.approvalStatus || "",
+    requestStatus: apiDetail.requestStatus || apiDetail.status || "",
     approvalStatus:
-      merged.approvalStatus ||
-      merged.requestStatus ||
-      merged.status ||
-      fallback.approvalStatus ||
-      "",
-    remark: merged.remark ?? fallback.remark ?? "",
+      apiDetail.approvalStatus || apiDetail.requestStatus || apiDetail.status || "",
+    remark: apiDetail.remark ?? "",
     approver:
-      merged.currentApproverNames ||
-      merged.currentApproverName ||
-      merged.approver ||
-      fallback.approver ||
+      apiDetail.currentApproverNames ||
+      apiDetail.currentApproverName ||
+      apiDetail.approver ||
       "",
     applyDate:
-      formatDateText(merged.submitTime) ||
-      formatDateText(merged.applyTime) ||
-      formatDateText(merged.createTime) ||
-      fallback.applyDate ||
+      formatDateText(apiDetail.submitTime) ||
+      formatDateText(apiDetail.applyTime) ||
+      formatDateText(apiDetail.createTime) ||
       "",
-    source: merged.source || fallback.source || "员工自助",
+    applyTime:
+      formatDateTimeText(apiDetail.applyTime) ||
+      formatDateTimeText(apiDetail.submitTime) ||
+      formatDateTimeText(apiDetail.createTime) ||
+      "",
+    currentApproverNames:
+      apiDetail.currentApproverNames ||
+      apiDetail.currentApproverName ||
+      apiDetail.approver ||
+      "",
+    source: apiDetail.source || "员工自助",
   };
 };
+
+const mergeApprovalCenterExtras = (detail = {}, extra = {}) => ({
+  ...detail,
+  taskId: detail.taskId ?? extra.taskId ?? null,
+  canApprove: detail.canApprove ?? extra.canApprove,
+  canReject: detail.canReject ?? extra.canReject,
+});
 
 export const buildApprovalCenterOvertimeFallback = (row = {}) => ({
   instanceId: row.instanceId,
@@ -193,179 +192,24 @@ export const buildApprovalCenterOvertimeFallback = (row = {}) => ({
 
 export async function fetchOvertimeRequestDetail(
   overtimeRequestId,
-  fallback = {},
   config = { isLoading: false },
 ) {
   if (overtimeRequestId === undefined || overtimeRequestId === null || overtimeRequestId === "") {
     throw new Error("overtimeRequestId is required");
   }
   const res = await queryOvertimeRequestAdminDetail({ overtimeRequestId }, config);
-  return normalizeOvertimeDetail(res?.data || {}, { ...fallback, overtimeRequestId });
+  return normalizeOvertimeDetail(res?.data || {});
 }
 
-const APPROVAL_ACTION_TYPE_LABEL_MAP = {
-  submit: "发起申请",
-  提交: "发起申请",
-  approve: "直属上级审批",
-  同意: "直属上级审批",
-  审批: "直属上级审批",
-  审批通过: "直属上级审批",
-  reject: "审批退回",
-  退回: "审批退回",
-  abandon: "废弃申请",
-  废弃: "废弃申请",
-  direct_pass: "提交生效",
-  提交生效: "提交生效",
-  reverse_approve: "反审批",
-  反审批: "反审批",
-};
-
-const APPROVAL_ACTION_RESULT_LABEL_MAP = {
-  submitted: "提交申请",
-  submit: "提交申请",
-  approved: "审批通过",
-  passed: "审批通过",
-  pass: "审批通过",
-  rejected: "已退回",
-  reject: "已退回",
-  returned: "已退回",
-  pending: "审批中",
-  processing: "审批中",
-  abandoned: "已废弃",
-  discarded: "已废弃",
-  审批中: "审批中",
-  已通过: "审批通过",
-  已退回: "已退回",
-  已驳回: "已退回",
-  已废弃: "已废弃",
-};
-
-const normalizeApprovalFlowLabel = (value, labelMap) => {
-  if (value === undefined || value === null || value === "") {
-    return "";
-  }
-  const text = String(value).trim();
-  if (labelMap[text]) {
-    return labelMap[text];
-  }
-  const lowerText = text.toLowerCase();
-  if (labelMap[lowerText]) {
-    return labelMap[lowerText];
-  }
-  return text;
-};
-
-const buildApprovalLogTitle = (log = {}) => {
-  const rawActionType = log?.actionType;
-  const rawActionResult = log?.actionResult;
-  const actionTypeLabel = normalizeApprovalFlowLabel(
-    rawActionType,
-    APPROVAL_ACTION_TYPE_LABEL_MAP,
+/** 审批中心打开详情时，在 admin/detail 结果上补全列表行上的审批任务字段。 */
+export async function fetchOvertimeRequestDetailForApproval(
+  overtimeRequestId,
+  approvalRow = {},
+  config = { isLoading: false },
+) {
+  const detail = await fetchOvertimeRequestDetail(overtimeRequestId, config);
+  return mergeApprovalCenterExtras(
+    detail,
+    buildApprovalCenterOvertimeFallback(approvalRow),
   );
-  const actionResultLabel = normalizeApprovalFlowLabel(
-    rawActionResult,
-    APPROVAL_ACTION_RESULT_LABEL_MAP,
-  );
-
-  if (
-    actionTypeLabel === "发起申请" &&
-    ["提交申请", "审批中"].includes(actionResultLabel)
-  ) {
-    return "发起申请 · 提交申请";
-  }
-  if (actionTypeLabel === "直属上级审批" && actionResultLabel === "审批通过") {
-    return "直属上级审批 · 审批通过";
-  }
-  if (actionTypeLabel === "审批退回") {
-    return actionResultLabel ? `审批退回 · ${actionResultLabel}` : "审批退回";
-  }
-  if (actionTypeLabel === "废弃申请") {
-    return actionResultLabel ? `废弃申请 · ${actionResultLabel}` : "废弃申请";
-  }
-
-  const titleParts = [actionTypeLabel, actionResultLabel].filter(Boolean);
-  if (titleParts.length === 2 && titleParts[0] === titleParts[1]) {
-    return titleParts[0];
-  }
-  return titleParts.join(" · ") || "审批记录";
-};
-
-const buildApprovalLogDescription = (log = {}, title = "") => {
-  const comment = String(log?.actionComment || "").trim();
-  const normalizedComment = normalizeApprovalFlowLabel(
-    comment,
-    APPROVAL_ACTION_RESULT_LABEL_MAP,
-  );
-  if (
-    comment &&
-    comment !== title &&
-    normalizedComment !== title &&
-    !["提交", "退回", "同意", "废弃"].includes(comment)
-  ) {
-    return comment;
-  }
-
-  if (title.includes("发起申请")) {
-    return "提交加班申请，等待直属上级审批。";
-  }
-  if (title.includes("审批退回") || title.includes("已退回")) {
-    return "审批已退回，请修改后重新提交。";
-  }
-  if (title.includes("审批通过")) {
-    return "审批已通过。";
-  }
-  if (title.includes("废弃申请")) {
-    return "申请人已废弃该加班单。";
-  }
-  return "";
-};
-
-export const buildOvertimeApprovalFlow = (detail = {}) => {
-  const logs = Array.isArray(detail.approvalLogs) ? detail.approvalLogs : [];
-  const status = detail.status || detail.requestStatus || "";
-  const approvalStatus = detail.approvalStatus || status;
-  const isPending = status === "审批中" || approvalStatus === "审批中";
-  const applicant = detail.applicant || detail.talentName || "";
-  const applyTime =
-    formatDateTimeText(detail.applyTime) ||
-    formatDateTimeText(detail.submitTime) ||
-    formatDateTimeText(detail.createTime) ||
-    detail.applyDate ||
-    "";
-
-  if (!logs.length) {
-    if (status === "未提交") {
-      return [
-        {
-          time: applyTime,
-          title: "保存草稿",
-          actor: applicant,
-          description: "加班单暂未提交审批。",
-          active: true,
-        },
-      ];
-    }
-    return [];
-  }
-
-  const sortedLogs = [...logs].sort((left, right) => {
-    const leftTime = dayjs(left?.actionTime).valueOf();
-    const rightTime = dayjs(right?.actionTime).valueOf();
-    if (!Number.isFinite(leftTime) || !Number.isFinite(rightTime)) {
-      return 0;
-    }
-    return leftTime - rightTime;
-  });
-
-  return sortedLogs.map((log, index) => {
-    const title = buildApprovalLogTitle(log);
-    const isLast = index === sortedLogs.length - 1;
-    return {
-      time: formatDateTimeText(log?.actionTime) || String(log?.actionTime || ""),
-      title,
-      actor: log?.operatorName || "",
-      description: buildApprovalLogDescription(log, title),
-      active: isLast && isPending,
-    };
-  });
-};
+}

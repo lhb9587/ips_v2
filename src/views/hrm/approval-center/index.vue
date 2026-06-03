@@ -17,10 +17,12 @@ import {
 } from "@/api/attendance";
 import LeaveDetailContent from "@/views/hrm/my-attendance/leave-list/components/LeaveDetailContent.vue";
 import OvertimeDetailContent from "@/views/hrm/my-attendance/overtime-list/components/OvertimeDetailContent.vue";
+import SupplementDetailContent from "@/views/hrm/my-attendance/supplement-detail/components/SupplementDetailContent.vue";
+import { fetchOvertimeRequestDetailForApproval } from "@/views/hrm/my-attendance/utils/overtimeDetail";
 import {
-  buildApprovalCenterOvertimeFallback,
-  fetchOvertimeRequestDetail,
-} from "@/views/hrm/my-attendance/utils/overtimeDetail";
+  buildApprovalCenterSupplementFallback,
+  fetchSupplementRequestDetail,
+} from "@/views/hrm/my-attendance/utils/supplementDetail";
 
 const route = useRoute();
 const store = useStore();
@@ -84,9 +86,12 @@ const fetchLeaveDetailById = async (leaveRequestId, fallback = {}) => {
 };
 
 const fetchOvertimeDetailById = async (overtimeRequestId, fallback = {}) =>
-  fetchOvertimeRequestDetail(
-    overtimeRequestId,
-    buildApprovalCenterOvertimeFallback(fallback),
+  fetchOvertimeRequestDetailForApproval(overtimeRequestId, fallback);
+
+const fetchSupplementDetailById = async (supplementRequestId, fallback = {}) =>
+  fetchSupplementRequestDetail(
+    supplementRequestId,
+    buildApprovalCenterSupplementFallback(fallback),
   );
 
 const closeDetailSidebar = () => {
@@ -272,6 +277,16 @@ const BIZ_TYPE_DETAIL_CONFIG = {
     missingIdMessage: "当前记录缺少加班单ID，无法打开详情",
     fetchDetail: fetchOvertimeDetailById,
   },
+  supplement: {
+    missingIdMessage: "当前记录缺少补签单ID，无法打开详情",
+    fetchDetail: fetchSupplementDetailById,
+  },
+};
+
+const DETAIL_SIDEBAR_NAME_MAP = {
+  leave: "approval-center-leave-detail-sidebar",
+  overtime: "approval-center-overtime-detail-sidebar",
+  supplement: "approval-center-supplement-detail-sidebar",
 };
 
 const handleRowClick = (params) => {
@@ -452,11 +467,7 @@ onUnmounted(() => {
     <DragSidebar
       v-if="detailDrawerVisible"
       v-model="detailDrawerVisible"
-      :sidebarName="
-        currentDetailBizType === 'overtime'
-          ? 'approval-center-overtime-detail-sidebar'
-          : 'approval-center-leave-detail-sidebar'
-      "
+      :sidebarName="DETAIL_SIDEBAR_NAME_MAP[currentDetailBizType] || 'approval-center-detail-sidebar'"
       :minWidth="900"
       :width="1180"
       :noCloseOnEsc="true"
@@ -478,6 +489,16 @@ onUnmounted(() => {
         class="overtime-detail-sidebar"
       >
         <OvertimeDetailContent
+          :detailInfo="currentDetail"
+          @close="closeDetailSidebar"
+          @approval-done="handleApprovalDone"
+        />
+      </div>
+      <div
+        v-else-if="currentDetail && currentDetailBizType === 'supplement'"
+        class="supplement-detail-sidebar"
+      >
+        <SupplementDetailContent
           :detailInfo="currentDetail"
           @close="closeDetailSidebar"
           @approval-done="handleApprovalDone"
@@ -507,7 +528,8 @@ onUnmounted(() => {
   }
 }
 
-.overtime-detail-sidebar {
+.overtime-detail-sidebar,
+.supplement-detail-sidebar {
   min-height: 100vh;
   padding: 16px;
   background: #fff;

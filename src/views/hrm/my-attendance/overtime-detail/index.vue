@@ -33,10 +33,7 @@ const fetchDetail = async () => {
   }
   detailLoading.value = true;
   try {
-    currentDetail.value = await fetchOvertimeRequestDetail(overtimeRequestId, {
-      requestNo: route.params.billNo,
-      billNo: route.params.billNo,
-    });
+    currentDetail.value = await fetchOvertimeRequestDetail(overtimeRequestId);
   } catch (error) {
     console.log(error);
   } finally {
@@ -49,7 +46,7 @@ const goOvertimeList = () => {
 };
 
 const handleUpdateDetail = (record) => {
-  currentDetail.value = normalizeOvertimeDetail(record, currentDetail.value);
+  currentDetail.value = normalizeOvertimeDetail(record);
 };
 
 onMounted(() => {
