@@ -902,6 +902,15 @@ export function exportSupplementRequestAdmin(data, config = {}) {
   })
 }
 
+export function querySupplementMissingCheckPage(data, config = {}) {
+  return request({
+    url: attendanceApi.querySupplementMissingCheckPage,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryApprovalCenterPage(data, config = {}) {
   return request({
     url: attendanceApi.queryApprovalCenterPage,

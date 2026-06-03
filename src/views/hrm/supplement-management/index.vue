@@ -1,7 +1,7 @@
 <!-- 后台补签卡列表页：分页查询、详情侧栏与批量管理操作。 -->
 <script setup>
 import { onMounted, onUnmounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage, ElMessageBox } from "element-plus";
 import dayjs from "dayjs";
@@ -27,6 +27,7 @@ import {
 } from "@/views/hrm/my-attendance/utils/supplementDetail";
 
 const route = useRoute();
+const router = useRouter();
 const store = useStore();
 
 const bussId = 479;
@@ -416,6 +417,10 @@ const handlePagination = () => {
   fetchSupplementRequestList();
 };
 
+const handleMissingCheck = () => {
+  router.push({ name: "supplement-missing-check" });
+};
+
 onMounted(() => {
   fetchSupplementRequestList();
   document.addEventListener("fullscreenchange", handleFullScreenChange);
@@ -468,6 +473,7 @@ onUnmounted(() => {
                   >
                     提交生效
                   </el-button>
+                  <el-button @click="handleMissingCheck">缺卡检查</el-button>
                   <el-dropdown @command="handleMoreCommand">
                     <el-button>
                       更多

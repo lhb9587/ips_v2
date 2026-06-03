@@ -271,7 +271,7 @@ const handleSaveDetail = () => {
     return;
   }
   saveOvertimeRequestSelf(buildSavePayload("0"), { isLoading: true })
-    .then(async (res) => {
+    .then(async () => {
       detailEditMode.value = false;
       detailEditForm.value = {};
       await refreshCurrentDetail();

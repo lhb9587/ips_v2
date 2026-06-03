@@ -92,9 +92,25 @@
           },
           {
             path: "/hrm/supplement-management",
-            name: "supplement-management",
+            name: "supplement-management-root",
             meta: { title: "补签卡", authRequired: true },
-            component: () => import("@/views/hrm/supplement-management/index"),
+            component: () => import("@/views/common/route-view.vue"),
+            children: [
+              {
+                path: "/hrm/supplement-management",
+                name: "supplement-management",
+                meta: { title: "补签卡", authRequired: true },
+                component: () => import("@/views/hrm/supplement-management/index"),
+              },
+              {
+                path: "missing-check",
+                name: "supplement-missing-check",
+                meta: { title: "缺卡检查", authRequired: true },
+                hidden: true,
+                component: () =>
+                  import("@/views/hrm/supplement-management/missing-check/index"),
+              },
+            ],
           },
           {
             path: "/hrm/attendance-profile",
