@@ -438,7 +438,7 @@ const openTimelineDialog = () => {
           <p>按需求原型展示请假创建、保存、提交与记录查看链路。</p>
         </div>
         <div class="page-toolbar__actions">
-          <el-button @click="handleSave">保存</el-button>
+          <el-button type="primary" @click="handleSave">保存</el-button>
           <el-button
             type="primary"
             @click="handleSubmit"
@@ -446,7 +446,7 @@ const openTimelineDialog = () => {
             提交
           </el-button>
           <el-button
-            type="success"
+            type="primary"
             plain
             @click="goLeaveList"
           >
