@@ -51,17 +51,6 @@ const candidateTableRef = ref(null);
 const selectedCandidates = ref([]);
 const candidateQuery = reactive(createDefaultCandidateQuery());
 
-const overwriteOptions = [
-  {
-    label: "忽略",
-    value: "SKIP_EXISTING",
-  },
-  {
-    label: "更新",
-    value: "DIFF_UPDATE",
-  },
-];
-
 const mapDepartmentOptions = (list = []) =>
   list.map((item) => ({
     value: item.organizationCode || item.deptId,
@@ -219,10 +208,6 @@ const handleConfirm = () => {
     ElMessage.warning("请选择假期类型");
     return;
   }
-  if (!formData.overwriteMode) {
-    ElMessage.warning("请选择已存在额度处理方式");
-    return;
-  }
   emit("confirm", {
     periodStartDate: formData.periodStartDate,
     overwriteMode: formData.overwriteMode,
@@ -298,23 +283,6 @@ const handleConfirm = () => {
                 :key="item.leaveTypeCode"
                 :label="item.leaveTypeName"
                 :value="item.leaveTypeCode"
-              />
-            </el-select>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-label">已存在额度处理方式</div>
-          <div class="form-content">
-            <el-select
-              v-model="formData.overwriteMode"
-              style="width: 100%"
-            >
-              <el-option
-                v-for="item in overwriteOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
               />
             </el-select>
           </div>

@@ -10,6 +10,7 @@ import {
   getSupplementRequestId,
   normalizeSupplementDetail,
 } from "@/views/hrm/my-attendance/utils/supplementDetail";
+import { navigateAttendanceDetailBack } from "@/views/hrm/my-attendance/utils/detailPageNavigation";
 
 const route = useRoute();
 const router = useRouter();
@@ -63,7 +64,11 @@ const fetchDetail = async () => {
 };
 
 const goBack = () => {
-  router.push({ name: "my-supplement-list" });
+  navigateAttendanceDetailBack(router, route, { name: "my-supplement-list" });
+};
+
+const handleCloseInfo = () => {
+  goBack();
 };
 
 const handleUpdateDetail = (record) => {
@@ -87,6 +92,8 @@ onMounted(() => {
         :showClose="false"
         :showBack="true"
         @back="goBack"
+        @close="handleCloseInfo"
+        @approval-done="handleCloseInfo"
         @update-detail="handleUpdateDetail"
       />
     </div>

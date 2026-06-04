@@ -3,7 +3,7 @@
 import dayjs from "dayjs";
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
@@ -18,13 +18,23 @@ import {
 import LeaveDetailContent from "@/views/hrm/my-attendance/leave-list/components/LeaveDetailContent.vue";
 import OvertimeDetailContent from "@/views/hrm/my-attendance/overtime-list/components/OvertimeDetailContent.vue";
 import SupplementDetailContent from "@/views/hrm/my-attendance/supplement-detail/components/SupplementDetailContent.vue";
-import { fetchOvertimeRequestDetailForApproval } from "@/views/hrm/my-attendance/utils/overtimeDetail";
+import {
+  fetchOvertimeRequestDetailForApproval,
+  getOvertimeRequestId,
+} from "@/views/hrm/my-attendance/utils/overtimeDetail";
 import {
   buildApprovalCenterSupplementFallback,
   fetchSupplementRequestDetail,
+  getSupplementRequestId,
 } from "@/views/hrm/my-attendance/utils/supplementDetail";
+import {
+  getLeaveRequestId,
+  normalizeLeaveDetail,
+} from "@/views/hrm/my-attendance/utils/leaveDetail";
+import { ATTENDANCE_DETAIL_FROM } from "@/views/hrm/my-attendance/utils/detailPageNavigation";
 
 const route = useRoute();
+const router = useRouter();
 const store = useStore();
 
 const bussId = 472;
@@ -103,8 +113,9 @@ const handleApprovalDone = () => {
   closeDetailSidebar();
   fetchApprovalCenterList();
 };
+
 const gridOptions = {
-  rowMultiSelectWithClick: true,
+  suppressRowClickSelection: true,
 };
 
 const formInline = ref({
@@ -316,6 +327,76 @@ const handleRowClick = (params) => {
   }, 200);
 };
 
+const handleRowDoubleClick = async (params) => {
+  const rowData = params?.data || {};
+  const detailConfig = BIZ_TYPE_DETAIL_CONFIG[rowData.bizType];
+  if (!detailConfig) {
+    return;
+  }
+  const bizId = rowData.bizId;
+  if (!bizId && bizId !== 0) {
+    ElMessage.warning(detailConfig.missingIdMessage);
+    return;
+  }
+  if (rowClickTimer) {
+    clearTimeout(rowClickTimer);
+    rowClickTimer = null;
+  }
+  detailDrawerVisible.value = false;
+  try {
+    const detail = await detailConfig.fetchDetail(bizId, rowData);
+    const billNo = detail.requestNo || detail.billNo || rowData.bizNo || "";
+    const fromQuery = {
+      from: ATTENDANCE_DETAIL_FROM.APPROVAL_CENTER,
+      tab: tabList.value[selectedTab.value]?.value || "all",
+    };
+
+    if (rowData.bizType === "leave") {
+      const leaveRequestId = getLeaveRequestId(detail) ?? bizId;
+      sessionStorage.setItem(
+        "myLeaveCurrentDetail",
+        JSON.stringify(normalizeLeaveDetail(detail, rowData)),
+      );
+      router.push({
+        name: "my-leave-detail",
+        params: { billNo },
+        query: { leaveRequestId: String(leaveRequestId), ...fromQuery },
+      });
+      return;
+    }
+
+    if (rowData.bizType === "overtime") {
+      const overtimeRequestId = getOvertimeRequestId(detail) ?? bizId;
+      if (overtimeRequestId === null) {
+        ElMessage.warning(detailConfig.missingIdMessage);
+        return;
+      }
+      router.push({
+        name: "my-overtime-detail",
+        params: { billNo },
+        query: { overtimeRequestId: String(overtimeRequestId), ...fromQuery },
+      });
+      return;
+    }
+
+    if (rowData.bizType === "supplement") {
+      const supplementRequestId = getSupplementRequestId(detail) ?? bizId;
+      if (supplementRequestId === null) {
+        ElMessage.warning(detailConfig.missingIdMessage);
+        return;
+      }
+      sessionStorage.setItem("mySupplementCurrentDetail", JSON.stringify(detail));
+      router.push({
+        name: "my-supplement-detail",
+        params: { billNo },
+        query: { supplementRequestId: String(supplementRequestId), ...fromQuery },
+      });
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+
 const cellRenderer = (params) => {
   const value = params.value || params.value === 0 ? params.value : "";
   return `<span title="${value}">${value}</span>`;
@@ -443,7 +524,7 @@ onUnmounted(() => {
               :cellRenderer="cellRenderer"
               :gridOptions="gridOptions"
               :rowClick="handleRowClick"
-              showSelectionColumn
+              :rowDoubleClicked="handleRowDoubleClick"
             />
           </div>
 

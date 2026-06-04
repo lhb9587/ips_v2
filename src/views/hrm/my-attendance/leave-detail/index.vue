@@ -9,6 +9,7 @@ import {
   getLeaveRequestId,
   normalizeLeaveDetail,
 } from "@/views/hrm/my-attendance/utils/leaveDetail";
+import { navigateAttendanceDetailBack } from "@/views/hrm/my-attendance/utils/detailPageNavigation";
 
 const route = useRoute();
 const router = useRouter();
@@ -53,7 +54,11 @@ const fetchDetailById = async () => {
 };
 
 const goLeaveList = () => {
-  router.push({ name: "my-leave-list" });
+  navigateAttendanceDetailBack(router, route, { name: "my-leave-list" });
+};
+
+const handleCloseInfo = () => {
+  goLeaveList();
 };
 
 const handleUpdateDetail = (record) => {
@@ -75,6 +80,8 @@ onMounted(() => {
         :showClose="false"
         :showBack="true"
         @back="goLeaveList"
+        @close="handleCloseInfo"
+        @approval-done="handleCloseInfo"
         @update-detail="handleUpdateDetail"
       />
     </div>

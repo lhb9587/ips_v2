@@ -9,6 +9,7 @@ import {
   fetchOvertimeRequestDetail,
   normalizeOvertimeDetail,
 } from "@/views/hrm/my-attendance/utils/overtimeDetail";
+import { navigateAttendanceDetailBack } from "@/views/hrm/my-attendance/utils/detailPageNavigation";
 
 const route = useRoute();
 const router = useRouter();
@@ -42,7 +43,11 @@ const fetchDetail = async () => {
 };
 
 const goOvertimeList = () => {
-  router.push({ name: "my-overtime-list" });
+  navigateAttendanceDetailBack(router, route, { name: "my-overtime-list" });
+};
+
+const handleCloseInfo = () => {
+  goOvertimeList();
 };
 
 const handleUpdateDetail = (record) => {
@@ -66,6 +71,8 @@ onMounted(() => {
         :showClose="false"
         :showBack="true"
         @back="goOvertimeList"
+        @close="handleCloseInfo"
+        @approval-done="handleCloseInfo"
         @update-detail="handleUpdateDetail"
       />
     </div>

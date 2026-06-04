@@ -911,6 +911,16 @@ export function querySupplementMissingCheckPage(data, config = {}) {
   })
 }
 
+export function queryAttendanceSelfStatistics(data = {}, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceSelfStatistics,
+    method: 'post',
+    data,
+    isLoading: false,
+    ...config
+  })
+}
+
 export function queryApprovalCenterPage(data, config = {}) {
   return request({
     url: attendanceApi.queryApprovalCenterPage,

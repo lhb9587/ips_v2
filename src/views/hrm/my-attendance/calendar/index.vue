@@ -1,7 +1,7 @@
 <!-- 考勤日历页，展示员工月度统计、月历状态与单日考勤详情。 -->
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import dayjs from "dayjs";
 import Layout from "@/layouts/main";
@@ -10,6 +10,7 @@ import {
   queryAttendanceCalendarMonth,
 } from "@/api/attendance";
 
+const route = useRoute();
 const router = useRouter();
 
 const weekLabels = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
@@ -17,7 +18,7 @@ const businessActions = [
   { label: "我要请假", type: "primary", routeName: "my-leave-application" },
   { label: "我要出差", type: "primary", path: "/businesstrip-management" },
   { label: "我要加班", type: "primary", routeName: "my-overtime-application" },
-  { label: "我要调班", type: "primary", routeName: "schedule-swap-list" },
+  { label: "我要补卡", type: "primary", routeName: "my-supplement-application" },
 ];
 const statCards = [
   {
@@ -70,6 +71,7 @@ const statCards = [
     tone: "red",
   },
 ];
+const approvalSummaryTypes = new Set(["leave", "overtime", "supplement"]);
 const statusIconRules = [
   {
     type: "exception",
@@ -81,12 +83,14 @@ const statusIconRules = [
     icon: "bx bx-calendar-minus",
     summaryKey: "leaveSummary",
     countKey: "leaveDays",
+    listRouteName: "my-leave-list",
   },
   {
     type: "overtime",
     icon: "bx bx-time-five",
     summaryKey: "overtimeSummary",
     countKey: "overtimeHours",
+    listRouteName: "my-overtime-list",
   },
   {
     type: "trip",
@@ -99,13 +103,21 @@ const statusIconRules = [
     icon: "bx bx-calendar-check",
     summaryKey: "supplementSummary",
     countKey: "supplementCount",
+    listRouteName: "my-supplement-list",
   },
 ];
 
 const monthLoading = ref(false);
 const detailLoading = ref(false);
-const currentMonth = ref(dayjs().startOf("month"));
-const selectedDate = ref(dayjs().format("YYYY-MM-DD"));
+const resolveInitialDate = () => {
+  const queryDate = String(route.query.date || "").trim();
+  if (queryDate && dayjs(queryDate).isValid()) {
+    return queryDate;
+  }
+  return dayjs().format("YYYY-MM-DD");
+};
+const currentMonth = ref(dayjs(resolveInitialDate()).startOf("month"));
+const selectedDate = ref(resolveInitialDate());
 const monthData = ref({
   stats: {},
   days: [],
@@ -273,16 +285,36 @@ function resolveDayIcons(snapshot) {
         return;
       }
       icons.push({
+        type: rule.type,
         icon: rule.icon,
-        tone: resolveBusinessTone(snapshot[rule.summaryKey]),
+        tone: resolveBusinessTone(snapshot[rule.summaryKey], rule.type),
         tooltip: buildBusinessTooltip(rule.type, snapshot[rule.summaryKey]),
+        routeName: rule.listRouteName,
       });
     });
 
   return icons.slice(0, 4);
 }
 
-function resolveBusinessTone(summary) {
+function normalizeSummaryList(summary) {
+  if (summary === null || summary === undefined) {
+    return null;
+  }
+  if (Array.isArray(summary) && summary.length > 0) {
+    return summary;
+  }
+  return null;
+}
+
+function resolveBusinessTone(summary, type) {
+  if (approvalSummaryTypes.has(type)) {
+    const list = normalizeSummaryList(summary);
+    if (!list) {
+      return "exception";
+    }
+    return list[0]?.status === "已通过" ? "success" : "exception";
+  }
+
   const text = String(summary || "").trim();
   if (!text) {
     return "success";
@@ -327,8 +359,11 @@ function buildBusinessTooltip(type, summary) {
     leave: "请假",
     overtime: "加班",
     trip: "出差",
-    supplement: "补签",
+    supplement: "补卡",
   };
+  if (approvalSummaryTypes.has(type)) {
+    return labelMap[type] || "状态";
+  }
   const text = String(summary || "").trim();
   return text || labelMap[type] || "状态";
 }
@@ -439,11 +474,33 @@ function handleBusinessAction(item) {
   }
 }
 
+function handleDayIconClick(icon) {
+  if (!icon.routeName) {
+    return;
+  }
+  router.push({ name: icon.routeName });
+}
+
+function resolveSupplementSourceDateTime() {
+  const dateText = detailData.value?.attendanceDate || selectedDate.value;
+  if (!dateText) {
+    return undefined;
+  }
+  return dayjs(dateText).format("YYYY-MM-DD");
+}
+
 function goSupplement() {
   if (supplementActionDisabled.value) {
     return;
   }
-  router.push({ name: "my-supplement-application" });
+  const sourceDateTime = resolveSupplementSourceDateTime();
+  router.push({
+    name: "my-supplement-application",
+    query: {
+      sourceType: "calendar",
+      ...(sourceDateTime ? { sourceDateTime } : {}),
+    },
+  });
 }
 
 watch(currentMonth, async () => {
@@ -563,7 +620,11 @@ onMounted(async () => {
                 >
                   <span
                     class="calendar-status-icon"
-                    :class="`calendar-status-icon--${icon.tone}`"
+                    :class="[
+                      `calendar-status-icon--${icon.tone}`,
+                      { 'calendar-status-icon--clickable': icon.routeName },
+                    ]"
+                    @click.stop="handleDayIconClick(icon)"
                   >
                     <i :class="icon.icon"></i>
                   </span>
@@ -903,6 +964,10 @@ onMounted(async () => {
   color: #42a964;
 }
 
+.calendar-status-icon--clickable {
+  cursor: pointer;
+}
+
 .calendar-detail {
   overflow: hidden;
 }
@@ -920,7 +985,7 @@ onMounted(async () => {
 
 .detail-row {
   display: grid;
-  grid-template-columns: 160px minmax(0, 1fr);
+  grid-template-columns: 120px minmax(0, 1fr);
 }
 
 .detail-row__label,

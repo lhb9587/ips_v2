@@ -16,7 +16,6 @@ import {
   createEmptySupplementItem,
   fetchSupplementRequestDetail,
   getSupplementRequestId,
-  isSupplementItemValid,
   normalizeSupplementDetail,
   normalizeSupplementItem,
 } from "@/views/hrm/my-attendance/utils/supplementDetail";
@@ -36,7 +35,7 @@ const props = defineProps({
   },
   backText: {
     type: String,
-    default: "返回补签卡列表",
+    default: "返回",
   },
   singleItemOnly: {
     type: Boolean,
@@ -204,8 +203,12 @@ const handleCancelEditItems = () => {
 
 const validateEditItems = () => {
   const item = itemEditList.value[0];
-  if (!isSupplementItemValid(item)) {
-    ElMessage.warning("请完善补签信息");
+  if (!item?.attendanceTime) {
+    ElMessage.warning("请选择考勤时间");
+    return false;
+  }
+  if (!item?.reasonCode) {
+    ElMessage.warning("请选择补签原因");
     return false;
   }
   return true;
@@ -238,12 +241,11 @@ const handleSaveItems = async () => {
 };
 
 const handleSubmit = () => {
-  if (isEditingItems.value) {
-    ElMessage.warning("请先保存或取消补签信息编辑");
-    return;
-  }
   if (!showSubmitButton.value || saving.value) {
     ElMessage.warning("当前补签单无需提交");
+    return;
+  }
+  if (isEditingItems.value && !validateEditItems()) {
     return;
   }
   ElMessageBox.confirm("确认提交当前补签申请并进入审批流程？", "提交确认", {
@@ -254,7 +256,7 @@ const handleSubmit = () => {
     .then(async () => {
       saving.value = true;
       try {
-        const item = displayItem.value;
+        const item = isEditingItems.value ? itemEditList.value[0] : displayItem.value;
         await saveSupplementRequestSelf(
           buildSupplementSavePayload(item, {
             supplementRequestId: getSupplementRequestId(detailInfo.value) || undefined,
@@ -263,8 +265,10 @@ const handleSubmit = () => {
           }),
           { isLoading: true },
         );
-        ElMessage.success("补签单已提交");
+        await refreshCurrentDetail();
+        handleCancelEditItems();
         emit("refresh-list");
+        ElMessage.success("补签单已提交");
       } catch (error) {
         console.log(error);
       } finally {
@@ -358,14 +362,6 @@ const handleDiscard = () => {
             修改
           </el-button>
           <el-button
-            v-if="showSubmitButton"
-            type="primary"
-            :loading="saving"
-            @click="handleSubmit"
-          >
-            提交
-          </el-button>
-          <el-button
             v-if="showAbandonButton"
             type="warning"
             plain
@@ -373,18 +369,26 @@ const handleDiscard = () => {
           >
             废弃
           </el-button>
-          <el-button
-            v-if="showBack"
-            @click="emit('back')"
-          >
-            {{ backText }}
-          </el-button>
         </template>
+        <el-button
+          v-if="showSubmitButton"
+          type="primary"
+          :loading="saving"
+          @click="handleSubmit"
+        >
+          提交
+        </el-button>
         <el-button
           v-if="showClose"
           @click="emit('close')"
         >
           关闭
+        </el-button>
+        <el-button
+          v-if="showBack"
+          @click="emit('back')"
+        >
+          {{ backText }}
         </el-button>
       </div>
     </div>

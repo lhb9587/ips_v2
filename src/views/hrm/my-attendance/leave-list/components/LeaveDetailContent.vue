@@ -5,6 +5,8 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import dayjs from "dayjs";
 import { downLoadAll } from "@/utils";
 import {
+  abandonLeaveRequestAdmin,
+  abandonLeaveRequestSelf,
   approveApprovalTask,
   queryLeaveRequestAdminDetail,
   queryLeaveRequestSelfInit,
@@ -17,7 +19,10 @@ import {
   handleLeaveAttachmentUploadSuccess,
   uploadLeaveAttachment,
 } from "@/views/hrm/my-attendance/utils/leaveAttachmentUpload";
-import { normalizeLeaveDetail } from "@/views/hrm/my-attendance/utils/leaveDetail";
+import {
+  getLeaveRequestId,
+  normalizeLeaveDetail,
+} from "@/views/hrm/my-attendance/utils/leaveDetail";
 
 const props = defineProps({
   detailInfo: {
@@ -29,6 +34,10 @@ const props = defineProps({
     default: true,
   },
   showBack: {
+    type: Boolean,
+    default: false,
+  },
+  adminMode: {
     type: Boolean,
     default: false,
   },
@@ -155,6 +164,8 @@ const showRejectButton = computed(
 const showEditButton = computed(() => currentDetail.value?.canEdit === true);
 
 const showSubmitButton = computed(() => currentDetail.value?.canSubmit === true);
+
+const showAbandonButton = computed(() => currentDetail.value?.canAbandon === true);
 
 const approvalDialogTitle = computed(() =>
   approvalDialogType.value === "approve" ? "审批通过" : "审批退回",
@@ -439,12 +450,39 @@ const handleEditDetail = () => {
   detailEditMode.value = true;
 };
 
+const validateDetailEditForm = () => {
+  if (hasUploadingFiles.value) {
+    ElMessage.warning("附件上传中，请稍后再保存");
+    return false;
+  }
+  if (!detailEditForm.value.leaveType) {
+    ElMessage.warning("请选择假期类型");
+    return false;
+  }
+  if (!detailEditForm.value.startDate || !detailEditForm.value.endDate) {
+    ElMessage.warning("请填写开始时间和结束时间");
+    return false;
+  }
+  if (detailDuration.value <= 0) {
+    ElMessage.warning("结束时间不能早于开始时间");
+    return false;
+  }
+  if (!detailEditForm.value.reason) {
+    ElMessage.warning("请填写请假说明");
+    return false;
+  }
+  return true;
+};
+
 const handleSubmitDetail = () => {
   if (!currentDetail.value?.canSubmit) {
     return;
   }
   if (!currentDetail.value?.leaveRequestId) {
     ElMessage.warning("缺少请假单ID，无法提交");
+    return;
+  }
+  if (detailEditMode.value && !validateDetailEditForm()) {
     return;
   }
   if (hasUploadingFiles.value) {
@@ -458,7 +496,9 @@ const handleSubmitDetail = () => {
   })
     .then(async () => {
       try {
-        const payload = buildSavePayload("submit", currentDetail.value, false);
+        const payload = detailEditMode.value
+          ? buildSavePayload("submit", detailEditForm.value, true)
+          : buildSavePayload("submit", currentDetail.value, false);
         const res = await saveLeaveRequestSelf(payload);
         const updatedRecord = {
           ...currentDetail.value,
@@ -466,6 +506,7 @@ const handleSubmitDetail = () => {
         };
         currentDetail.value = { ...updatedRecord };
         await refreshCurrentDetail();
+        handleCancelEditDetail();
         ElMessage.success("请假申请已提交审批");
       } catch (error) {
         console.log(error);
@@ -478,6 +519,37 @@ const handleCancelEditDetail = () => {
   detailEditMode.value = false;
   detailEditForm.value = {};
   syncOtherLeaveTypesExpanded(currentDetail.value.leaveTypeName);
+};
+
+const handleDiscardDetail = () => {
+  if (!currentDetail.value?.canAbandon) {
+    return;
+  }
+  const leaveRequestId = getLeaveRequestId(currentDetail.value);
+  if (leaveRequestId === null) {
+    ElMessage.warning("缺少请假单ID，无法操作");
+    return;
+  }
+  const abandonApi = props.adminMode
+    ? abandonLeaveRequestAdmin
+    : abandonLeaveRequestSelf;
+  ElMessageBox.confirm(
+    "确定要废弃当前请假单吗？废弃后该单据将不再进入审批流程。",
+    "废弃确认",
+    {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    },
+  )
+    .then(() =>
+      abandonApi({ leaveRequestId }, { isLoading: true }).then(async () => {
+        detailEditMode.value = false;
+        await refreshCurrentDetail();
+        ElMessage.success("请假单已废弃");
+      }),
+    )
+    .catch(() => {});
 };
 
 const handleExpandOtherLeaveTypes = () => {
@@ -502,24 +574,7 @@ const handleSaveDetail = () => {
   if (!currentDetail.value?.leaveRequestId) {
     return;
   }
-  if (hasUploadingFiles.value) {
-    ElMessage.warning("附件上传中，请稍后再保存");
-    return;
-  }
-  if (!detailEditForm.value.leaveType) {
-    ElMessage.warning("请选择假期类型");
-    return;
-  }
-  if (!detailEditForm.value.startDate || !detailEditForm.value.endDate) {
-    ElMessage.warning("请填写开始时间和结束时间");
-    return;
-  }
-  if (detailDuration.value <= 0) {
-    ElMessage.warning("结束时间不能早于开始时间");
-    return;
-  }
-  if (!detailEditForm.value.reason) {
-    ElMessage.warning("请填写请假说明");
+  if (!validateDetailEditForm()) {
     return;
   }
 
@@ -663,24 +718,31 @@ const approvalFlow = computed(() => {
             修改
           </el-button>
           <el-button
-            v-if="showSubmitButton"
+            v-if="showAbandonButton"
             type="primary"
-            @click="handleSubmitDetail"
+            @click="handleDiscardDetail"
           >
-            提交
-          </el-button>
-          <el-button
-            v-if="showBack"
-            @click="emit('back')"
-          >
-            返回请假列表
+            废弃
           </el-button>
         </template>
+        <el-button
+          v-if="showSubmitButton"
+          type="primary"
+          @click="handleSubmitDetail"
+        >
+          提交
+        </el-button>
         <el-button
           v-if="showClose"
           @click="emit('close')"
         >
           关闭
+        </el-button>
+        <el-button
+          v-if="showBack"
+          @click="emit('back')"
+        >
+          返回
         </el-button>
       </div>
     </div>

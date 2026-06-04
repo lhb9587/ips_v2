@@ -1,5 +1,6 @@
 <!-- 请假申请页，负责创建、保存和提交员工请假单。 -->
 <script setup>
+/* eslint-disable */
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -454,7 +455,7 @@ const openTimelineDialog = () => {
         </div>
       </div>
 
-      <section class="notice-panel">
+      <!-- <section class="notice-panel">
         <div class="notice-card">
           <span>本月已提交请假申请次数</span>
           <strong>{{ submittedCount }} 次</strong>
@@ -472,7 +473,7 @@ const openTimelineDialog = () => {
             打开年度时间轴
           </button>
         </div>
-      </section>
+      </section> -->
 
       <div class="application-layout">
         <main class="application-main">
@@ -785,7 +786,7 @@ const openTimelineDialog = () => {
 .time-control {
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 112px;
+  grid-template-columns: minmax(0, 1fr) 150px;
   gap: 10px;
 }
 

@@ -224,6 +224,9 @@ const handleSubmitDetail = () => {
     ElMessage.warning("缺少加班单ID，无法提交");
     return;
   }
+  if (detailEditMode.value && !validateDetail()) {
+    return;
+  }
   ElMessageBox.confirm("确认提交当前加班申请并进入审批流程？", "提交确认", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
@@ -233,6 +236,7 @@ const handleSubmitDetail = () => {
       try {
         await saveOvertimeRequestSelf(buildSavePayload("1"), { isLoading: true });
         await refreshCurrentDetail();
+        handleCancelEditDetail();
         ElMessage.success("加班申请已提交审批");
       } catch (error) {
         console.log(error);
@@ -336,21 +340,20 @@ const handleDiscardDetail = () => {
   const abandonApi = props.adminMode
     ? abandonOvertimeRequestAdmin
     : abandonOvertimeRequestSelf;
-  const confirmTitle = props.adminMode ? "废弃确认" : "撤回确认";
-  const confirmMessage = props.adminMode
-    ? "确定要废弃当前加班单吗？废弃后该单据将不再进入审批流程。"
-    : "确定要撤回当前加班单吗？撤回后单据将回到未提交状态。";
-  const successMessage = props.adminMode ? "加班单已废弃" : "加班单已撤回";
-  ElMessageBox.confirm(confirmMessage, confirmTitle, {
-    confirmButtonText: "确定",
-    cancelButtonText: "取消",
-    type: "warning",
-  })
+  ElMessageBox.confirm(
+    "确定要废弃当前加班单吗？废弃后该单据将不再进入审批流程。",
+    "废弃确认",
+    {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    },
+  )
     .then(() =>
       abandonApi({ overtimeRequestId }, { isLoading: true }).then(async () => {
         detailEditMode.value = false;
         await refreshCurrentDetail();
-        ElMessage.success(successMessage);
+        ElMessage.success("加班单已废弃");
       }),
     )
     .catch(() => {});
@@ -465,13 +468,6 @@ const approvalFlow = computed(() => {
             修改
           </el-button>
           <el-button
-            v-if="showSubmitButton"
-            type="primary"
-            @click="handleSubmitDetail"
-          >
-            提交
-          </el-button>
-          <el-button
             v-if="showReverseApproveButton"
             type="warning"
             plain
@@ -481,24 +477,30 @@ const approvalFlow = computed(() => {
           </el-button>
           <el-button
             v-if="showAbandonButton"
-            type="warning"
-            plain
+            type="primary"
             @click="handleDiscardDetail"
           >
-            {{ adminMode ? "废弃" : "撤回" }}
-          </el-button>
-          <el-button
-            v-if="showBack"
-            @click="emit('back')"
-          >
-            返回加班列表
+            废弃
           </el-button>
         </template>
+        <el-button
+          v-if="showSubmitButton"
+          type="primary"
+          @click="handleSubmitDetail"
+        >
+          提交
+        </el-button>
         <el-button
           v-if="showClose"
           @click="emit('close')"
         >
           关闭
+        </el-button>
+        <el-button
+          v-if="showBack"
+          @click="emit('back')"
+        >
+          返回
         </el-button>
       </div>
     </div>

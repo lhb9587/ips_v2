@@ -101,6 +101,7 @@ const attendanceApi = {
   abandonSupplementRequestAdmin: `${ATTENDANCE_URL}/api/supplement/request/admin/abandon`,
   exportSupplementRequestAdmin: `${ATTENDANCE_URL}/api/supplement/request/admin/export`,
   querySupplementMissingCheckPage: `${ATTENDANCE_URL}/api/supplement/request/admin/missing/page`,
+  queryAttendanceSelfStatistics: `${ATTENDANCE_URL}/api/attendance/self/statistics`,
   queryApprovalCenterPage: `${ATTENDANCE_URL}/api/approval/center/page`,
   approveApprovalTask: `${ATTENDANCE_URL}/api/approval/task/approve`,
   rejectApprovalTask: `${ATTENDANCE_URL}/api/approval/task/reject`,

@@ -438,7 +438,7 @@ onUnmounted(() => {
                   <el-input
                     v-model="diminput"
                     style="width: 200px"
-                    placeholder="搜索..."
+                    placeholder="请输入员工姓名"
                     clearable
                     @keyup.enter="fuzzySearch"
                     class="top-search"
@@ -548,6 +548,7 @@ onUnmounted(() => {
       >
         <LeaveDetailContent
           :detailInfo="currentDetail"
+          admin-mode
           @close="closeDetailSidebar"
           @update-detail="handleUpdateDetailRecord"
         />

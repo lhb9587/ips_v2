@@ -1,5 +1,6 @@
 <!-- 补卡申请页，负责创建、保存和提交员工补签卡单。 -->
 <script setup>
+import dayjs from "dayjs";
 import { onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -11,7 +12,6 @@ import {
 import {
   buildSupplementSavePayload,
   createEmptySupplementItem,
-  isSupplementItemValid,
   normalizeSupplementItem,
 } from "@/views/hrm/my-attendance/utils/supplementDetail";
 
@@ -39,13 +39,7 @@ const form = reactive({
 
 const fetchSupplementApplicationInit = async () => {
   try {
-    const res = await querySupplementRequestSelfInit(
-      {
-        sourceDateTime: route.query.sourceDateTime || undefined,
-        sourceType: route.query.sourceType || undefined,
-      },
-      { isLoading: true },
-    );
+    const res = await querySupplementRequestSelfInit({}, { isLoading: true });
     const data = res?.data || {};
     const employee = data?.employee || {};
 
@@ -61,11 +55,24 @@ const fetchSupplementApplicationInit = async () => {
       : [];
 
     const defaultDetail = data.defaultDetail || {};
+    const isCalendarEntry = route.query.sourceType === "calendar";
+    const calendarDate = route.query.sourceDateTime
+      ? dayjs(route.query.sourceDateTime).format("YYYY-MM-DD")
+      : "";
     form.items = [
-      normalizeSupplementItem({
-        attendanceDateTime: defaultDetail.attendanceDateTime || "",
-        remark: defaultDetail.remark || "",
-      }),
+      normalizeSupplementItem(
+        isCalendarEntry
+          ? {
+              attendanceDateTime: calendarDate
+                ? `${calendarDate} ${dayjs(defaultAttendanceTime).format("HH:mm")}`
+                : "",
+              remark: "",
+            }
+          : {
+              attendanceDateTime: defaultDetail.attendanceDateTime || "",
+              remark: defaultDetail.remark || "",
+            },
+      ),
     ];
   } catch (error) {
     ElMessage.warning("补签初始化数据获取失败");
@@ -82,8 +89,12 @@ const validateForm = () => {
     return false;
   }
   const item = form.items[0];
-  if (!isSupplementItemValid(item)) {
-    ElMessage.warning("请完善补签信息");
+  if (!item?.attendanceTime) {
+    ElMessage.warning("请选择考勤时间");
+    return false;
+  }
+  if (!item?.reasonCode) {
+    ElMessage.warning("请选择补签原因");
     return false;
   }
   return true;
