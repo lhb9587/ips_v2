@@ -9,6 +9,7 @@ import {
   abandonLeaveRequestSelf,
   approveApprovalTask,
   queryLeaveRequestAdminDetail,
+  queryLeaveRequestSelfCalcDuration,
   queryLeaveRequestSelfInit,
   rejectApprovalTask,
   saveLeaveRequestSelf,
@@ -20,9 +21,11 @@ import {
   uploadLeaveAttachment,
 } from "@/views/hrm/my-attendance/utils/leaveAttachmentUpload";
 import {
+  buildLeaveApprovalFlow,
   getLeaveRequestId,
   normalizeLeaveDetail,
 } from "@/views/hrm/my-attendance/utils/leaveDetail";
+import { formatLeaveTypeLabel } from "@/views/hrm/my-attendance/utils/leaveType";
 
 const props = defineProps({
   detailInfo: {
@@ -43,7 +46,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["back", "close", "update-detail", "approval-done"]);
+const emit = defineEmits(["back", "close", "update-detail", "approval-done", "refresh-list"]);
 
 const detailEditMode = ref(false);
 const approvalDialogVisible = ref(false);
@@ -54,6 +57,15 @@ const rejectLoading = ref(false);
 const detailEditForm = ref({});
 const currentDetail = ref({});
 const defaultLeaveTypeNames = ["法定年假", "司龄假", "事假", "病假"];
+
+const startTime2Options = [
+  { label: "上午 9:00", value: "9:00:00" },
+  { label: "下午 14:00", value: "14:00:00" },
+];
+const endTime2Options = [
+  { label: "上午 14:00", value: "14:00:00" },
+  { label: "下午 18:00", value: "18:00:00" },
+];
 
 const leaveTypeOptions = ref([]);
 const otherLeaveTypesExpanded = ref(false);
@@ -71,7 +83,9 @@ const selectedLeaveTypeName = computed(() =>
 );
 
 const leaveTypeSectionTitle = computed(() =>
-  selectedLeaveTypeName.value ? `假期类型-${selectedLeaveTypeName.value}` : "假期类型",
+  selectedLeaveTypeName.value
+    ? `假期类型-${formatLeaveTypeLabel(selectedLeaveTypeName.value)}`
+    : "假期类型",
 );
 
 const primaryLeaveTypeOptions = computed(() =>
@@ -222,62 +236,102 @@ watch(
   { immediate: true },
 );
 
-const parseLeaveTime = (timeText) => {
+const buildDateTime = (date, time2, fallback) => {
+  const time = time2 || fallback;
+  return `${date} ${time}`;
+};
+
+const normalizeTime2 = (timeText, isEnd = false) => {
   const text = String(timeText || "").trim();
   if (!text) {
-    return { date: "", period: "上午" };
+    return isEnd ? "18:00:00" : "9:00:00";
+  }
+
+  const options = isEnd ? endTime2Options : startTime2Options;
+  const matched = options.find((item) => item.value === text);
+  if (matched) {
+    return matched.value;
+  }
+
+  const parts = text.split(":");
+  if (parts.length >= 2) {
+    const normalized = `${Number(parts[0])}:${String(parts[1]).padStart(2, "0")}:${String(parts[2] || "00").padStart(2, "0")}`;
+    const byValue = options.find((item) => item.value === normalized);
+    if (byValue) {
+      return byValue.value;
+    }
+    const hour = Number(parts[0]);
+    if (isEnd) {
+      return hour >= 18 ? "18:00:00" : "14:00:00";
+    }
+    return hour >= 14 ? "14:00:00" : "9:00:00";
+  }
+
+  if (text === "下午") {
+    return isEnd ? "18:00:00" : "14:00:00";
+  }
+  if (text === "上午") {
+    return isEnd ? "14:00:00" : "9:00:00";
+  }
+
+  return isEnd ? "18:00:00" : "9:00:00";
+};
+
+const parseDateTimeField = (timeText, isEnd = false) => {
+  const text = String(timeText || "").trim();
+  if (!text) {
+    return { date: "", time2: isEnd ? "18:00:00" : "9:00:00" };
   }
 
   if (text.includes("上午") || text.includes("下午")) {
     const [date = "", period = "上午"] = text.split(" ");
-    return { date, period };
+    return { date, time2: normalizeTime2(period, isEnd) };
   }
 
   const normalized = text.includes("T") ? text : text.replace(" ", "T");
   const parsed = dayjs(normalized);
   if (!parsed.isValid()) {
-    return { date: "", period: "上午" };
+    return { date: "", time2: isEnd ? "18:00:00" : "9:00:00" };
   }
+
+  const time2 = `${parsed.hour()}:${String(parsed.minute()).padStart(2, "0")}:${String(parsed.second()).padStart(2, "0")}`;
   return {
     date: parsed.format("YYYY-MM-DD"),
-    period: parsed.hour() >= 12 ? "下午" : "上午",
+    time2: normalizeTime2(time2, isEnd),
   };
 };
 
-const formatLeaveTime = (date, period) => {
+const resolveLeaveTimeFields = (detail = {}) => {
+  const startParsed = parseDateTimeField(detail.startTime, false);
+  const endParsed = parseDateTimeField(detail.endTime, true);
+
+  return {
+    startTime: detail.startDate || startParsed.date,
+    startTime2: detail.startTime2 || startParsed.time2,
+    endTime: detail.endDate || endParsed.date,
+    endTime2: detail.endTime2 || endParsed.time2,
+  };
+};
+
+const formatTime2Label = (time2, isEnd = false) => {
+  const options = isEnd ? endTime2Options : startTime2Options;
+  return options.find((item) => item.value === time2)?.label || time2;
+};
+
+const formatLeaveTimeDisplay = (detail, isEnd = false) => {
+  const fields = resolveLeaveTimeFields(detail);
+  const date = isEnd ? fields.endTime : fields.startTime;
+  const time2 = isEnd ? fields.endTime2 : fields.startTime2;
   if (!date) {
     return "";
   }
-  return `${date} ${period || "上午"}`;
-};
-
-const getPeriodValue = (period) => (period === "下午" ? 1 : 0);
-
-const calculateDuration = (startDate, startPeriod, endDate, endPeriod) => {
-  if (!startDate || !endDate) {
-    return 0;
-  }
-  const start = new Date(`${startDate}T00:00:00`);
-  const end = new Date(`${endDate}T00:00:00`);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return 0;
-  }
-  const dayDiff = Math.floor((end - start) / 86400000);
-  if (dayDiff < 0) {
-    return 0;
-  }
-  const halfDayCount =
-    dayDiff * 2 + getPeriodValue(endPeriod) - getPeriodValue(startPeriod) + 1;
-  return Math.max(Number((halfDayCount * 0.5).toFixed(1)), 0);
+  return `${date} ${formatTime2Label(time2, isEnd)}`;
 };
 
 const buildDetailEditForm = (detail) => ({
   leaveType: detail.leaveTypeName,
   unit: detail.durationUnit,
-  startDate: parseLeaveTime(detail.startTime).date,
-  startPeriod: parseLeaveTime(detail.startTime).period,
-  endDate: parseLeaveTime(detail.endTime).date,
-  endPeriod: parseLeaveTime(detail.endTime).period,
+  ...resolveLeaveTimeFields(detail),
   reason: detail.leaveReason,
   attachmentFiles: (detail.attachments || []).map((item, index) => ({
     name: item?.fileName || String(item?.attachmentId || ""),
@@ -333,47 +387,81 @@ const onPreview = (data) => {
   downloadAttachment(data);
 };
 
-const detailDuration = computed(() =>
-  calculateDuration(
-    detailEditForm.value.startDate,
-    detailEditForm.value.startPeriod,
-    detailEditForm.value.endDate,
-    detailEditForm.value.endPeriod,
-  ),
-);
-
-const normalizeAttachmentFiles = (files) => {
-  return (files || [])
-    .map((item) => item.name)
-    .filter(Boolean);
-};
+const detailDuration = ref(0);
+const detailQuotaEnough = ref(true);
+const detailCalcMessage = ref("");
 
 const resolveLeaveTypeCode = (leaveTypeName) => {
   const matched = leaveTypeOptions.value.find((item) => item.label === leaveTypeName);
   return matched?.key || currentDetail.value.leaveTypeCode || "";
 };
 
-const buildDateTimeByPeriod = (date, period, isEnd = false) => {
-  if (!date) {
-    return "";
-  }
-  if (period === "下午") {
-    return `${date} ${isEnd ? "18:00:00" : "14:00:00"}`;
-  }
-  return `${date} ${isEnd ? "14:00:00" : "09:00:00"}`;
+const resetDetailCalcState = () => {
+  detailDuration.value = 0;
+  detailQuotaEnough.value = true;
+  detailCalcMessage.value = "";
 };
 
-const normalizeDateTimeText = (timeText, isEnd = false) => {
-  const parsed = parseLeaveTime(timeText);
-  if (parsed.date) {
-    return buildDateTimeByPeriod(parsed.date, parsed.period, isEnd);
+const calcDetailDuration = async () => {
+  if (!detailEditMode.value) {
+    return;
   }
-  const raw = String(timeText || "").trim();
-  if (!raw) {
-    return "";
+
+  const leaveTypeCode = resolveLeaveTypeCode(detailEditForm.value.leaveType);
+  const { startTime, startTime2, endTime, endTime2 } = detailEditForm.value;
+  if (!leaveTypeCode || !startTime || !endTime) {
+    resetDetailCalcState();
+    return;
   }
-  const dt = dayjs(raw);
-  return dt.isValid() ? dt.format("YYYY-MM-DD HH:mm:ss") : raw;
+
+  const startDateTime = buildDateTime(startTime, startTime2, "9:00:00");
+  const endDateTime = buildDateTime(endTime, endTime2, "18:00:00");
+  if (dayjs(endDateTime).isBefore(dayjs(startDateTime))) {
+    resetDetailCalcState();
+    return;
+  }
+
+  try {
+    const res = await queryLeaveRequestSelfCalcDuration(
+      {
+        leaveTypeCode,
+        startTime,
+        startTime2,
+        endTime,
+        endTime2,
+      },
+      { isLoading: false },
+    );
+    const data = res?.data || {};
+    detailDuration.value = Number(data.duration || 0);
+    detailQuotaEnough.value = data.quotaEnough !== false;
+    detailCalcMessage.value = data.message || "";
+  } catch (error) {
+    resetDetailCalcState();
+  }
+};
+
+watch(
+  () =>
+    detailEditMode.value
+      ? [
+          detailEditForm.value.leaveType,
+          detailEditForm.value.startTime,
+          detailEditForm.value.startTime2,
+          detailEditForm.value.endTime,
+          detailEditForm.value.endTime2,
+        ]
+      : null,
+  () => {
+    calcDetailDuration();
+  },
+  { immediate: true, deep: true },
+);
+
+const normalizeAttachmentFiles = (files) => {
+  return (files || [])
+    .map((item) => item.name)
+    .filter(Boolean);
 };
 
 const buildAttachmentIds = (files = []) =>
@@ -394,20 +482,21 @@ const buildSavePayload = (actionType, source, useEditForm = false) => {
   const leaveTypeCode = resolveLeaveTypeCode(
     useEditForm ? source.leaveType : source.leaveTypeName,
   );
-  const startTime = useEditForm
-    ? buildDateTimeByPeriod(source.startDate, source.startPeriod, false)
-    : normalizeDateTimeText(source.startTime, false);
-  const endTime = useEditForm
-    ? buildDateTimeByPeriod(source.endDate, source.endPeriod, true)
-    : normalizeDateTimeText(source.endTime, true);
+  const timeFields = useEditForm
+    ? {
+        startTime: source.startTime,
+        startTime2: source.startTime2,
+        endTime: source.endTime,
+        endTime2: source.endTime2,
+      }
+    : resolveLeaveTimeFields(source);
   const reason = useEditForm ? source.reason : source.leaveReason;
   const attachmentIds = buildAttachmentIds(useEditForm ? source.attachmentFiles : source.attachments);
 
   return {
     requestId: currentDetail.value.leaveRequestId,
     leaveTypeCode,
-    startTime,
-    endTime,
+    ...timeFields,
     reason,
     actionType,
     attachmentIds: attachmentIds || undefined,
@@ -459,12 +548,30 @@ const validateDetailEditForm = () => {
     ElMessage.warning("请选择假期类型");
     return false;
   }
-  if (!detailEditForm.value.startDate || !detailEditForm.value.endDate) {
+  if (!detailEditForm.value.startTime || !detailEditForm.value.endTime) {
     ElMessage.warning("请填写开始时间和结束时间");
+    return false;
+  }
+  const startDateTime = buildDateTime(
+    detailEditForm.value.startTime,
+    detailEditForm.value.startTime2,
+    "9:00:00",
+  );
+  const endDateTime = buildDateTime(
+    detailEditForm.value.endTime,
+    detailEditForm.value.endTime2,
+    "18:00:00",
+  );
+  if (dayjs(endDateTime).isBefore(dayjs(startDateTime))) {
+    ElMessage.warning("结束时间不能早于开始时间");
     return false;
   }
   if (detailDuration.value <= 0) {
     ElMessage.warning("结束时间不能早于开始时间");
+    return false;
+  }
+  if (!detailQuotaEnough.value) {
+    ElMessage.warning(detailCalcMessage.value || "当前请假无法申请，请调整假期类型或起止时间");
     return false;
   }
   if (!detailEditForm.value.reason) {
@@ -499,15 +606,10 @@ const handleSubmitDetail = () => {
         const payload = detailEditMode.value
           ? buildSavePayload("submit", detailEditForm.value, true)
           : buildSavePayload("submit", currentDetail.value, false);
-        const res = await saveLeaveRequestSelf(payload);
-        const updatedRecord = {
-          ...currentDetail.value,
-          requestStatus: res?.data?.status || "审批中",
-        };
-        currentDetail.value = { ...updatedRecord };
-        await refreshCurrentDetail();
+        await saveLeaveRequestSelf(payload);
         handleCancelEditDetail();
         ElMessage.success("请假申请已提交审批");
+        emit("refresh-list");
       } catch (error) {
         console.log(error);
       }
@@ -581,13 +683,23 @@ const handleSaveDetail = () => {
   const updatedRecord = {
     ...currentDetail.value,
     leaveTypeName: detailEditForm.value.leaveType,
-    startTime: formatLeaveTime(
-      detailEditForm.value.startDate,
-      detailEditForm.value.startPeriod,
+    startDate: detailEditForm.value.startTime,
+    startTime2: detailEditForm.value.startTime2,
+    endDate: detailEditForm.value.endTime,
+    endTime2: detailEditForm.value.endTime2,
+    startTime: formatLeaveTimeDisplay(
+      {
+        startDate: detailEditForm.value.startTime,
+        startTime2: detailEditForm.value.startTime2,
+      },
+      false,
     ),
-    endTime: formatLeaveTime(
-      detailEditForm.value.endDate,
-      detailEditForm.value.endPeriod,
+    endTime: formatLeaveTimeDisplay(
+      {
+        endDate: detailEditForm.value.endTime,
+        endTime2: detailEditForm.value.endTime2,
+      },
+      true,
     ),
     leaveDuration: detailDuration.value,
     durationUnit: "天",
@@ -613,60 +725,7 @@ const handleSaveDetail = () => {
     });
 };
 
-const approvalFlow = computed(() => {
-  if (!currentDetail.value?.leaveRequestId) {
-    return [];
-  }
-
-  const detail = currentDetail.value;
-  const baseFlow = [
-    {
-      time: `${detail.applyTime || ""}`,
-      title: "发起申请",
-      actor: detail.talentName,
-      description: `提交${detail.leaveTypeName}申请，等待直属上级审批。`,
-      active: true,
-    },
-  ];
-
-  if (detail.requestStatus === "未提交") {
-    return [
-      {
-        time: `${detail.applyTime || ""}`,
-        title: "保存草稿",
-        actor: detail.talentName,
-        description: "请假单暂未提交审批。",
-        active: true,
-      },
-    ];
-  }
-
-  if (detail.requestStatus === "已废弃") {
-    return [
-      {
-        time: `${detail.applyTime || ""}`,
-        title: "废弃申请",
-        actor: detail.talentName,
-        description: detail.approvalStatus || "",
-        active: true,
-      },
-    ];
-  }
-
-  return [
-    ...baseFlow,
-    {
-      time: `${detail.applyTime || ""}`,
-      title:
-        detail.requestStatus === "已通过"
-          ? "直属上级审批 · 审批通过"
-          : "直属上级审批",
-      actor: detail.currentApproverNames,
-      description: detail.approvalStatus || "",
-      active: detail.requestStatus === "审批中",
-    },
-  ];
-});
+const approvalFlow = computed(() => buildLeaveApprovalFlow(currentDetail.value));
 
 </script>
 
@@ -826,7 +885,7 @@ const approvalFlow = computed(() => {
                   <template v-if="item.key === 'other'">
                     其他假期<span class="detail-leave-type-card__arrow">>></span>
                   </template>
-                  <template v-else>{{ item.label }}</template>
+                  <template v-else>{{ formatLeaveTypeLabel(item.label) }}</template>
                 </div>
                 <div
                   v-if="item.showQuotaLine"
@@ -851,27 +910,25 @@ const approvalFlow = computed(() => {
                   class="detail-time-field"
                 >
                   <el-date-picker
-                    v-model="detailEditForm.startDate"
+                    v-model="detailEditForm.startTime"
                     type="date"
                     value-format="YYYY-MM-DD"
                     size="small"
                     placeholder="请选择开始日期"
                   />
                   <el-select
-                    v-model="detailEditForm.startPeriod"
+                    v-model="detailEditForm.startTime2"
                     size="small"
                   >
                     <el-option
-                      label="上午"
-                      value="上午"
-                    />
-                    <el-option
-                      label="下午"
-                      value="下午"
+                      v-for="item in startTime2Options"
+                      :key="item.value"
+                      :label="item.label"
+                      :value="item.value"
                     />
                   </el-select>
                 </div>
-                <strong v-else>{{ currentDetail.startTime }}</strong>
+                <strong v-else>{{ formatLeaveTimeDisplay(currentDetail, false) }}</strong>
               </div>
               <div class="detail-time-split">至</div>
               <div class="detail-time-item">
@@ -881,34 +938,38 @@ const approvalFlow = computed(() => {
                   class="detail-time-field"
                 >
                   <el-date-picker
-                    v-model="detailEditForm.endDate"
+                    v-model="detailEditForm.endTime"
                     type="date"
                     value-format="YYYY-MM-DD"
                     size="small"
                     placeholder="请选择结束日期"
                   />
                   <el-select
-                    v-model="detailEditForm.endPeriod"
+                    v-model="detailEditForm.endTime2"
                     size="small"
                   >
                     <el-option
-                      label="上午"
-                      value="上午"
-                    />
-                    <el-option
-                      label="下午"
-                      value="下午"
+                      v-for="item in endTime2Options"
+                      :key="item.value"
+                      :label="item.label"
+                      :value="item.value"
                     />
                   </el-select>
                 </div>
-                <strong v-else>{{ currentDetail.endTime }}</strong>
+                <strong v-else>{{ formatLeaveTimeDisplay(currentDetail, true) }}</strong>
               </div>
               <div class="detail-duration-card">
                 <span>请假时长</span>
-                <strong v-if="detailEditMode">{{ detailDuration }} 天</strong>
+                <strong v-if="detailEditMode">{{ detailDuration.toFixed(1) }} 天</strong>
                 <strong v-else>
                   {{ currentDetail.leaveDuration }} {{ currentDetail.durationUnit }}
                 </strong>
+                <p
+                  v-if="detailEditMode && !detailQuotaEnough && detailCalcMessage"
+                  class="detail-duration-card__warning"
+                >
+                  {{ detailCalcMessage }}
+                </p>
               </div>
             </div>
           </div>
@@ -1287,6 +1348,13 @@ const approvalFlow = computed(() => {
   font-weight: 600;
 }
 
+.detail-duration-card__warning {
+  margin: 8px 0 0;
+  color: #c45656;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .detail-time-split {
   display: flex;
   align-items: center;
@@ -1297,7 +1365,7 @@ const approvalFlow = computed(() => {
 
 .detail-time-field {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 82px;
+  grid-template-columns: minmax(0, 1fr) 150px;
   gap: 8px;
 }
 
@@ -1447,6 +1515,10 @@ const approvalFlow = computed(() => {
 
   .detail-leave-type-grid,
   .detail-time-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-time-field {
     grid-template-columns: 1fr;
   }
 

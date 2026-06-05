@@ -659,15 +659,6 @@ export function uploadCommonAttachment(data, config = {}) {
   })
 }
 
-export function directPassLeaveRequestAdmin(data, config = {}) {
-  return request({
-    url: attendanceApi.directPassLeaveRequestAdmin,
-    method: 'post',
-    data,
-    ...config
-  })
-}
-
 export function reverseApproveLeaveRequestAdmin(data, config = {}) {
   return request({
     url: attendanceApi.reverseApproveLeaveRequestAdmin,
@@ -707,24 +698,6 @@ export function queryOvertimeRequestAdminPage(data, config = {}) {
 export function queryOvertimeRequestAdminDetail(data, config = {}) {
   return request({
     url: attendanceApi.queryOvertimeRequestAdminDetail,
-    method: 'post',
-    data,
-    ...config
-  })
-}
-
-export function directPassOvertimeRequestAdmin(data, config = {}) {
-  return request({
-    url: attendanceApi.directPassOvertimeRequestAdmin,
-    method: 'post',
-    data,
-    ...config
-  })
-}
-
-export function reverseApproveOvertimeRequestAdmin(data, config = {}) {
-  return request({
-    url: attendanceApi.reverseApproveOvertimeRequestAdmin,
     method: 'post',
     data,
     ...config
@@ -860,15 +833,6 @@ export function abandonSupplementRequestSelf(data, config = {}) {
 export function querySupplementRequestAdminPage(data, config = {}) {
   return request({
     url: attendanceApi.querySupplementRequestAdminPage,
-    method: 'post',
-    data,
-    ...config
-  })
-}
-
-export function directPassSupplementRequestAdmin(data, config = {}) {
-  return request({
-    url: attendanceApi.directPassSupplementRequestAdmin,
     method: 'post',
     data,
     ...config

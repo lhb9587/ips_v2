@@ -86,36 +86,22 @@ const showAbandonButton = computed(
 
 const resolveApprovalTaskId = (detail = {}) => detail.taskId ?? detail.task?.taskId ?? null;
 
-const approvalTaskId = computed(() => resolveApprovalTaskId(detailInfo.value));
+const showApproveButton = computed(() => !!detailInfo.value?.canApprove);
 
-const showApproveButton = computed(
-  () => !!detailInfo.value?.canApprove && !!approvalTaskId.value,
-);
-
-const showRejectButton = computed(
-  () => !!detailInfo.value?.canReject && !!approvalTaskId.value,
-);
+const showRejectButton = computed(() => !!detailInfo.value?.canReject);
 
 const approvalDialogTitle = computed(() =>
   approvalDialogType.value === "approve" ? "审批通过" : "审批退回",
 );
 
 const openApprovalDialog = (type) => {
-  if (!approvalTaskId.value) {
-    ElMessage.warning("缺少审批任务ID，无法操作");
-    return;
-  }
   approvalDialogType.value = type;
   approvalOpinion.value = "";
   approvalDialogVisible.value = true;
 };
 
 const submitApproval = async () => {
-  const taskId = approvalTaskId.value;
-  if (!taskId) {
-    ElMessage.warning("缺少审批任务ID，无法操作");
-    return;
-  }
+  const taskId = resolveApprovalTaskId(detailInfo.value);
 
   const isApprove = approvalDialogType.value === "approve";
   const payload = {

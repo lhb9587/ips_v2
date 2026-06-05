@@ -13,10 +13,8 @@ import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import OvertimeDetailContent from "@/views/hrm/my-attendance/overtime-list/components/OvertimeDetailContent.vue";
 import {
   abandonOvertimeRequestAdmin,
-  directPassOvertimeRequestAdmin,
   exportOvertimeRequestAdmin,
   queryOvertimeRequestAdminPage,
-  reverseApproveOvertimeRequestAdmin,
 } from "@/api/attendance";
 import { downLoad, saveTableConfig } from "@/utils";
 import {
@@ -282,17 +280,6 @@ const runBatchAdminAction = async ({
   }
 };
 
-const handleSubmitEffect = () => {
-  runBatchAdminAction({
-    rows: getSelectedRows(),
-    flagKey: "canDirectPass",
-    actionLabel: "提交生效",
-    confirmMessage: "确定将选中的加班单提交生效吗？提交后将直接置为已通过。",
-    requestFn: directPassOvertimeRequestAdmin,
-    successLabel: "提交生效",
-  });
-};
-
 const handleExport = (command) => {
   const payload = {
     ...buildExportParams(),
@@ -331,17 +318,6 @@ const handleExport = (command) => {
 const handleMoreCommand = (command) => {
   if (command === "exportSelected" || command === "exportAll") {
     return handleExport(command);
-  }
-
-  if (command === "reverseApproval") {
-    return runBatchAdminAction({
-      rows: getSelectedRows(),
-      flagKey: "canReverseApprove",
-      actionLabel: "反审批",
-      confirmMessage: "确定将选中的已通过加班单反审批为未提交吗？",
-      requestFn: reverseApproveOvertimeRequestAdmin,
-      successLabel: "反审批",
-    });
   }
 
   if (command === "discard") {
@@ -505,12 +481,6 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
-                  <el-button
-                    type="primary"
-                    @click="handleSubmitEffect"
-                  >
-                    提交生效
-                  </el-button>
                   <el-dropdown @command="handleMoreCommand">
                     <el-button>
                       更多
@@ -523,9 +493,6 @@ onUnmounted(() => {
                         </el-dropdown-item>
                         <el-dropdown-item command="exportAll">
                           导出全部
-                        </el-dropdown-item>
-                        <el-dropdown-item command="reverseApproval">
-                          反审批
                         </el-dropdown-item>
                         <el-dropdown-item command="discard">
                           废弃

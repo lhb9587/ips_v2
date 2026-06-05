@@ -12,7 +12,6 @@ import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import LeaveDetailContent from "@/views/hrm/my-attendance/leave-list/components/LeaveDetailContent.vue";
 import {
   abandonLeaveRequestAdmin,
-  directPassLeaveRequestAdmin,
   exportLeaveRequestAdmin,
   queryLeaveRequestAdminDetail,
   queryLeaveRequestAdminPage,
@@ -20,6 +19,7 @@ import {
 } from "@/api/attendance";
 import { downLoad, saveTableConfig } from "@/utils";
 import {
+  buildLeaveRequestIdsPayload,
   getLeaveRequestId,
   normalizeLeaveDetail,
 } from "@/views/hrm/my-attendance/utils/leaveDetail";
@@ -148,7 +148,7 @@ const buildListQueryParams = () => {
   const keyword = diminput.value.trim();
   const params = {
     pageNo: listQuery.value.pageNo,
-    pageSize: Math.min(listQuery.value.pageSize, 200),
+    pageSize: listQuery.value.pageSize,
     ...formInline.value,
   };
   if (!keyword) {
@@ -238,6 +238,10 @@ const runBatchAdminAction = async ({
   requestFn,
   successLabel,
 }) => {
+  if (!rows.length) {
+    ElMessage.warning(`请先选择需要${actionLabel}的请假单`);
+    return;
+  }
   const operableRows = validateOperableRows(rows, flagKey, actionLabel);
   if (!operableRows) {
     return;
@@ -251,29 +255,20 @@ const runBatchAdminAction = async ({
   } catch {
     return;
   }
+  const payload = buildLeaveRequestIdsPayload(operableRows);
+  if (!payload) {
+    return ElMessage.warning(`选中记录缺少请假单ID，无法${actionLabel}`);
+  }
   try {
-    await Promise.all(
-      operableRows.map((row) => {
-        const leaveRequestId = getRowRequestId(row);
-        return requestFn({ leaveRequestId }, { isLoading: false });
-      }),
+    const res = await requestFn(payload, { isLoading: true });
+    const successCount = Number(res?.data?.successCount || operableRows.length);
+    ElMessage.success(`已${successLabel} ${successCount} 条请假单`);
+    refreshListAfterBatchAction(
+      res?.data?.leaveRequestIds || operableRows.map((item) => getRowRequestId(item)),
     );
-    ElMessage.success(`已${successLabel} ${operableRows.length} 条请假单`);
-    refreshListAfterBatchAction(operableRows.map((item) => getRowRequestId(item)));
   } catch (error) {
     console.log(error);
   }
-};
-
-const handleSubmitEffect = () => {
-  runBatchAdminAction({
-    rows: getSelectedRows(),
-    flagKey: "canDirectPass",
-    actionLabel: "提交生效",
-    confirmMessage: "确定将选中的请假单提交生效吗？提交后将直接置为已通过。",
-    requestFn: directPassLeaveRequestAdmin,
-    successLabel: "提交生效",
-  });
 };
 
 const handleExport = (command) => {
@@ -379,6 +374,11 @@ const closeDetailSidebar = () => {
   currentDetail.value = null;
 };
 
+const handleRefreshList = () => {
+  closeDetailSidebar();
+  fetchLeaveRequestList();
+};
+
 const handleUpdateDetailRecord = (updatedRecord) => {
   const record = normalizeLeaveDetail(updatedRecord);
   if (!record.leaveRequestId) {
@@ -449,12 +449,6 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
-                  <el-button
-                    type="primary"
-                    @click="handleSubmitEffect"
-                  >
-                    提交生效
-                  </el-button>
                   <el-dropdown @command="handleMoreCommand">
                     <el-button>
                       更多
@@ -551,6 +545,7 @@ onUnmounted(() => {
           admin-mode
           @close="closeDetailSidebar"
           @update-detail="handleUpdateDetailRecord"
+          @refresh-list="handleRefreshList"
         />
       </div>
     </DragSidebar>

@@ -217,7 +217,7 @@ const buildQueryParams = () => {
   const params = {
     tab: tabList.value[selectedTab.value]?.value || "all",
     pageNo: listQuery.value.pageNo,
-    pageSize: Math.min(listQuery.value.pageSize, 200),
+    pageSize: listQuery.value.pageSize,
     bizType: formInline.value.bizType || undefined,
     status: formInline.value.status || undefined,
   };

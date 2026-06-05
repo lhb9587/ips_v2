@@ -171,6 +171,7 @@ const goSupplementList = () => {
         </div>
         <div class="page-toolbar__actions">
           <el-button
+            type="primary"
             :loading="saving"
             :disabled="!canApply"
             @click="handleSave"
@@ -186,7 +187,7 @@ const goSupplementList = () => {
             提交
           </el-button>
           <el-button
-            type="success"
+            type="primary"
             plain
             @click="goSupplementList"
           >

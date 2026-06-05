@@ -173,7 +173,6 @@ export const normalizeSupplementDetail = (detail = {}, fallback = {}) => {
     canAbandon: merged.canAbandon === true,
     canApprove: merged.canApprove === true,
     canReject: merged.canReject === true,
-    canDirectPass: merged.canDirectPass === true,
     canReverseApprove: merged.canReverseApprove === true,
     taskId: merged.taskId ?? merged.task?.taskId ?? null,
   };

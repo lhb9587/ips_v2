@@ -8,14 +8,16 @@ import {
   abandonOvertimeRequestSelf,
   approveApprovalTask,
   rejectApprovalTask,
-  reverseApproveOvertimeRequestAdmin,
   saveOvertimeRequestSelf,
 } from "@/api/attendance";
 import {
+  buildOvertimeApprovalFlow,
   buildOvertimeSaveDateTime,
   fetchOvertimeRequestDetail,
+  formatOvertimeDateTimeValue,
   getOvertimeRequestId,
   normalizeOvertimeDetail,
+  resolveOvertimeDateFromDateTime,
 } from "@/views/hrm/my-attendance/utils/overtimeDetail";
 
 const props = defineProps({
@@ -76,10 +78,6 @@ const showSubmitButton = computed(() => currentDetail.value?.canSubmit === true)
 
 const showAbandonButton = computed(() => currentDetail.value?.canAbandon === true);
 
-const showReverseApproveButton = computed(
-  () => props.adminMode && currentDetail.value?.canReverseApprove === true,
-);
-
 const approvalDialogTitle = computed(() =>
   approvalDialogType.value === "approve" ? "审批通过" : "审批退回",
 );
@@ -128,9 +126,14 @@ const submitApproval = async () => {
 };
 
 const buildDetailEditForm = (detail) => ({
-  overtimeDate: detail.overtimeDate || "",
-  startTime: detail.startTimeOnly || "",
-  endTime: detail.endTimeOnly || "",
+  startTime:
+    detail.startTime ||
+    buildOvertimeSaveDateTime(detail.overtimeDate, detail.startTimeOnly) ||
+    "",
+  endTime:
+    detail.endTime ||
+    buildOvertimeSaveDateTime(detail.overtimeDate, detail.endTimeOnly) ||
+    "",
   breakMinutes: detail.breakMinutes || 0,
   overtimeHours: detail.overtimeHours || 0,
   overtimeReason: detail.overtimeReason || "",
@@ -142,13 +145,10 @@ const computedOvertimeHours = computed(() => {
   if (!startTime || !endTime) {
     return 0;
   }
-  const start = dayjs(`2000-01-01 ${startTime}`);
-  let end = dayjs(`2000-01-01 ${endTime}`);
-  if (!start.isValid() || !end.isValid()) {
+  const start = dayjs(startTime);
+  const end = dayjs(endTime);
+  if (!start.isValid() || !end.isValid() || !end.isAfter(start)) {
     return 0;
-  }
-  if (end.isBefore(start)) {
-    end = end.add(1, "day");
   }
   const durationMinutes = end.diff(start, "minute") - Number(breakMinutes || 0);
   if (durationMinutes <= 0) {
@@ -180,24 +180,23 @@ const refreshCurrentDetail = async () => {
 
 const buildSavePayload = (submitFlag) => {
   const form = detailEditMode.value ? detailEditForm.value : currentDetail.value;
-  const overtimeDate = form.overtimeDate || currentDetail.value.overtimeDate;
-  const startTimeValue =
-    form.startTimeOnly ||
-    currentDetail.value.startTimeOnly ||
-    form.startTime ||
-    currentDetail.value.startTime ||
-    currentDetail.value.overtimeStartTime;
-  const endTimeValue =
-    form.endTimeOnly ||
-    currentDetail.value.endTimeOnly ||
-    form.endTime ||
-    currentDetail.value.endTime ||
-    currentDetail.value.overtimeEndTime;
+  const startTimeValue = detailEditMode.value
+    ? form.startTime
+    : form.startTime ||
+      currentDetail.value.startTime ||
+      currentDetail.value.overtimeStartTime;
+  const endTimeValue = detailEditMode.value
+    ? form.endTime
+    : form.endTime ||
+      currentDetail.value.endTime ||
+      currentDetail.value.overtimeEndTime;
+  const overtimeStartTime = formatOvertimeDateTimeValue(startTimeValue);
+  const overtimeEndTime = formatOvertimeDateTimeValue(endTimeValue);
   return {
     overtimeRequestId: getOvertimeRequestId(currentDetail.value) || undefined,
-    overtimeDate,
-    overtimeStartTime: buildOvertimeSaveDateTime(overtimeDate, startTimeValue),
-    overtimeEndTime: buildOvertimeSaveDateTime(overtimeDate, endTimeValue),
+    overtimeDate: resolveOvertimeDateFromDateTime(overtimeStartTime),
+    overtimeStartTime,
+    overtimeEndTime,
     restMinutes: Number(form.breakMinutes ?? currentDetail.value.breakMinutes ?? 0),
     overtimeTypeCode: currentDetail.value.overtimeTypeCode || undefined,
     overtimeTypeName: currentDetail.value.overtimeType || undefined,
@@ -252,12 +251,12 @@ const handleCancelEditDetail = () => {
 
 const validateDetail = () => {
   const form = detailEditForm.value;
-  if (!form.overtimeDate) {
-    ElMessage.warning("请选择加班日期");
-    return false;
-  }
   if (!form.startTime || !form.endTime) {
     ElMessage.warning("请填写加班开始和结束时间");
+    return false;
+  }
+  if (!dayjs(form.endTime).isAfter(dayjs(form.startTime))) {
+    ElMessage.warning("结束时间需晚于开始时间");
     return false;
   }
   if (computedOvertimeHours.value <= 0) {
@@ -284,48 +283,6 @@ const handleSaveDetail = () => {
     .catch((error) => {
       console.log(error);
     });
-};
-
-const runAdminDetailAction = async ({
-  requestFn,
-  confirmTitle,
-  confirmMessage,
-  successMessage,
-}) => {
-  const overtimeRequestId = getOvertimeRequestId(currentDetail.value);
-  if (overtimeRequestId === null) {
-    ElMessage.warning("缺少加班单ID，无法操作");
-    return;
-  }
-  try {
-    await ElMessageBox.confirm(confirmMessage, confirmTitle, {
-      confirmButtonText: "确定",
-      cancelButtonText: "取消",
-      type: "warning",
-    });
-  } catch {
-    return;
-  }
-  try {
-    await requestFn({ overtimeRequestId }, { isLoading: true });
-    detailEditMode.value = false;
-    await refreshCurrentDetail();
-    ElMessage.success(successMessage);
-  } catch (error) {
-    console.log(error);
-  }
-};
-
-const handleReverseApproveDetail = () => {
-  if (!showReverseApproveButton.value) {
-    return;
-  }
-  runAdminDetailAction({
-    requestFn: reverseApproveOvertimeRequestAdmin,
-    confirmTitle: "反审批确认",
-    confirmMessage: "确定将当前已通过加班单反审批为未提交吗？",
-    successMessage: "加班单已反审批",
-  });
 };
 
 const handleDiscardDetail = () => {
@@ -363,61 +320,7 @@ const approvalFlow = computed(() => {
   if (getOvertimeRequestId(currentDetail.value) === null && !currentDetail.value?.billNo) {
     return [];
   }
-
-  const detail = currentDetail.value;
-  const applyTime =
-    detail.applyTime || detail.applyDate || detail.submitTime || detail.createTime || "";
-  const requestStatus = detail.requestStatus || detail.status || "";
-  const talentName = detail.talentName || detail.applicant || "";
-  const overtimeTypeName = detail.overtimeType || "加班";
-
-  const baseFlow = [
-    {
-      time: `${applyTime}`,
-      title: "发起申请",
-      actor: talentName,
-      description: `提交${overtimeTypeName}申请，等待直属上级审批。`,
-      active: true,
-    },
-  ];
-
-  if (requestStatus === "未提交") {
-    return [
-      {
-        time: `${applyTime}`,
-        title: "保存草稿",
-        actor: talentName,
-        description: "加班单暂未提交审批。",
-        active: true,
-      },
-    ];
-  }
-
-  if (requestStatus === "已废弃") {
-    return [
-      {
-        time: `${applyTime}`,
-        title: "废弃申请",
-        actor: talentName,
-        description: detail.approvalStatus || "",
-        active: true,
-      },
-    ];
-  }
-
-  return [
-    ...baseFlow,
-    {
-      time: `${applyTime}`,
-      title:
-        requestStatus === "已通过"
-          ? "直属上级审批 · 审批通过"
-          : "直属上级审批",
-      actor: detail.currentApproverNames || detail.approver || "",
-      description: detail.approvalStatus || "",
-      active: requestStatus === "审批中",
-    },
-  ];
+  return buildOvertimeApprovalFlow(currentDetail.value);
 });
 </script>
 
@@ -466,14 +369,6 @@ const approvalFlow = computed(() => {
             @click="handleEditDetail"
           >
             修改
-          </el-button>
-          <el-button
-            v-if="showReverseApproveButton"
-            type="warning"
-            plain
-            @click="handleReverseApproveDetail"
-          >
-            反审批
           </el-button>
           <el-button
             v-if="showAbandonButton"
@@ -565,37 +460,28 @@ const approvalFlow = computed(() => {
             <div class="detail-section__title">加班时段</div>
             <div class="detail-form-grid">
               <div class="detail-field">
-                <span>加班日期</span>
+                <span>开始时间</span>
                 <el-date-picker
                   v-if="detailEditMode"
-                  v-model="detailEditForm.overtimeDate"
-                  type="date"
-                  value-format="YYYY-MM-DD"
-                  placeholder="请选择加班日期"
-                />
-                <strong v-else>{{ currentDetail.overtimeDate }}</strong>
-              </div>
-              <div class="detail-field">
-                <span>开始时间</span>
-                <el-time-picker
-                  v-if="detailEditMode"
                   v-model="detailEditForm.startTime"
-                  value-format="HH:mm"
-                  format="HH:mm"
+                  type="datetime"
+                  value-format="YYYY-MM-DD HH:mm"
+                  format="YYYY-MM-DD HH:mm"
                   placeholder="请选择开始时间"
                 />
-                <strong v-else>{{ currentDetail.startTimeOnly }}</strong>
+                <strong v-else>{{ currentDetail.startTime }}</strong>
               </div>
               <div class="detail-field">
                 <span>结束时间</span>
-                <el-time-picker
+                <el-date-picker
                   v-if="detailEditMode"
                   v-model="detailEditForm.endTime"
-                  value-format="HH:mm"
-                  format="HH:mm"
+                  type="datetime"
+                  value-format="YYYY-MM-DD HH:mm"
+                  format="YYYY-MM-DD HH:mm"
                   placeholder="请选择结束时间"
                 />
-                <strong v-else>{{ currentDetail.endTimeOnly }}</strong>
+                <strong v-else>{{ currentDetail.endTime }}</strong>
               </div>
               <div class="detail-field">
                 <span>休息时长（分）</span>
@@ -840,7 +726,7 @@ const approvalFlow = computed(() => {
 
 .detail-form-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 

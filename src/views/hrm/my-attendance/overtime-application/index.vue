@@ -11,6 +11,10 @@ import {
   queryOvertimeRequestSelfInit,
   saveOvertimeRequestSelf,
 } from "@/api/attendance";
+import {
+  formatOvertimeDateTimeValue,
+  resolveOvertimeDateFromDateTime,
+} from "@/views/hrm/my-attendance/utils/overtimeDetail";
 import { getUserInfo } from "@/utils/user";
 
 const router = useRouter();
@@ -25,7 +29,6 @@ const employeeInfo = reactive({
 const saving = ref(false);
 
 const form = reactive({
-  overtimeDate: "",
   startTime: "",
   endTime: "",
   breakMinutes: 0,
@@ -40,30 +43,21 @@ const editingOvertimeRequestId = ref(null);
 const applyOvertimeHours = ref(0);
 const durationMessage = ref("");
 
-const buildOvertimeStartTime = () => {
-  if (!form.overtimeDate || !form.startTime) {
-    return "";
-  }
-  return `${form.overtimeDate} ${form.startTime}`;
-};
+const buildOvertimeStartTime = () => formatOvertimeDateTimeValue(form.startTime);
 
-const buildOvertimeEndTime = () => {
-  if (!form.overtimeDate || !form.startTime || !form.endTime) {
-    return "";
-  }
-  const start = dayjs(`${form.overtimeDate} ${form.startTime}`);
-  let end = dayjs(`${form.overtimeDate} ${form.endTime}`);
+const buildOvertimeEndTime = () => formatOvertimeDateTimeValue(form.endTime);
+
+const isInvalidOvertimeRange = () => {
+  const start = dayjs(buildOvertimeStartTime());
+  const end = dayjs(buildOvertimeEndTime());
   if (!start.isValid() || !end.isValid()) {
-    return "";
+    return true;
   }
-  if (end.isBefore(start)) {
-    end = end.add(1, "day");
-  }
-  return end.format("YYYY-MM-DD HH:mm");
+  return !end.isAfter(start);
 };
 
 const isSameStartEndTime = () =>
-  !!(form.startTime && form.endTime && form.startTime === form.endTime);
+  !!(form.startTime && form.endTime && buildOvertimeStartTime() === buildOvertimeEndTime());
 
 const computedOvertimeHours = computed(() => applyOvertimeHours.value);
 
@@ -76,6 +70,9 @@ const durationHint = computed(() => {
   }
   if (isSameStartEndTime()) {
     return "开始时间与结束时间不能相同，请调整后再提交。";
+  }
+  if (isInvalidOvertimeRange()) {
+    return "结束时间需晚于开始时间，请调整后再提交。";
   }
   if (computedOvertimeHours.value <= 0) {
     return "休息时长不能大于等于加班时段总时长，请调整后再提交。";
@@ -105,7 +102,6 @@ const fetchOvertimeApplicationInit = async () => {
     employeeInfo.organization = employee?.deptName || employeeInfo.organization;
     employeeInfo.position = employee?.positionName || employeeInfo.position;
 
-    form.overtimeDate = data?.defaultOvertimeDate || form.overtimeDate;
     form.breakMinutes = Number(data?.defaultRestMinutes ?? form.breakMinutes ?? 0);
     form.compensationType = data?.defaultCompensationType || form.compensationType;
 
@@ -122,7 +118,12 @@ const fetchOvertimeApplicationInit = async () => {
 const calcOvertimeDuration = async () => {
   const overtimeStartTime = buildOvertimeStartTime();
   const overtimeEndTime = buildOvertimeEndTime();
-  if (!overtimeStartTime || !overtimeEndTime || isSameStartEndTime()) {
+  if (
+    !overtimeStartTime ||
+    !overtimeEndTime ||
+    isSameStartEndTime() ||
+    isInvalidOvertimeRange()
+  ) {
     applyOvertimeHours.value = 0;
     durationMessage.value = "";
     return;
@@ -157,7 +158,6 @@ const resetOvertimeDuration = () => {
 
 watch(
   () => [
-    form.overtimeDate,
     form.startTime,
     form.endTime,
     form.breakMinutes,
@@ -165,7 +165,12 @@ watch(
     form.compensationType,
   ],
   () => {
-    if (!buildOvertimeStartTime() || !buildOvertimeEndTime() || isSameStartEndTime()) {
+    if (
+      !buildOvertimeStartTime() ||
+      !buildOvertimeEndTime() ||
+      isSameStartEndTime() ||
+      isInvalidOvertimeRange()
+    ) {
       resetOvertimeDuration();
       return;
     }
@@ -184,7 +189,6 @@ onMounted(() => {
 
 const resetForm = () => {
   editingOvertimeRequestId.value = null;
-  form.overtimeDate = "";
   form.startTime = "";
   form.endTime = "";
   form.breakMinutes = 0;
@@ -195,12 +199,12 @@ const resetForm = () => {
 };
 
 const validateForm = () => {
-  if (!form.overtimeDate) {
-    ElMessage.warning("请选择加班日期");
-    return false;
-  }
   if (!form.startTime || !form.endTime) {
     ElMessage.warning("请填写加班开始和结束时间");
+    return false;
+  }
+  if (isInvalidOvertimeRange()) {
+    ElMessage.warning("结束时间需晚于开始时间");
     return false;
   }
   if (computedOvertimeHours.value <= 0) {
@@ -212,7 +216,7 @@ const validateForm = () => {
 
 const buildSavePayload = (submitFlag) => ({
   overtimeRequestId: editingOvertimeRequestId.value || undefined,
-  overtimeDate: form.overtimeDate,
+  overtimeDate: resolveOvertimeDateFromDateTime(form.startTime),
   overtimeStartTime: buildOvertimeStartTime(),
   overtimeEndTime: buildOvertimeEndTime(),
   restMinutes: Number(form.breakMinutes || 0),
@@ -292,6 +296,7 @@ const handleOpenList = () => {
         </div>
         <div class="page-toolbar__actions">
           <el-button
+            type="primary"
             :loading="saving"
             @click="handleSave"
           >
@@ -305,7 +310,7 @@ const handleOpenList = () => {
             提交
           </el-button>
           <el-button
-            type="success"
+            type="primary"
             plain
             @click="handleOpenList"
           >
@@ -341,35 +346,14 @@ const handleOpenList = () => {
             >
               <div class="time-row">
                 <el-form-item
-                  label="加班日期"
-                  required
-                >
-                  <el-date-picker
-                    v-model="form.overtimeDate"
-                    type="date"
-                    value-format="YYYY-MM-DD"
-                    placeholder="请选择加班日期"
-                  />
-                </el-form-item>
-                <el-form-item label="休息时长（分）">
-                  <el-input-number
-                    v-model="form.breakMinutes"
-                    :min="0"
-                    :step="30"
-                    controls-position="right"
-                  />
-                </el-form-item>
-              </div>
-
-              <div class="time-row">
-                <el-form-item
                   label="开始时间"
                   required
                 >
-                  <el-time-picker
+                  <el-date-picker
                     v-model="form.startTime"
-                    value-format="HH:mm"
-                    format="HH:mm"
+                    type="datetime"
+                    value-format="YYYY-MM-DD HH:mm"
+                    format="YYYY-MM-DD HH:mm"
                     placeholder="请选择开始时间"
                   />
                 </el-form-item>
@@ -377,11 +361,23 @@ const handleOpenList = () => {
                   label="结束时间"
                   required
                 >
-                  <el-time-picker
+                  <el-date-picker
                     v-model="form.endTime"
-                    value-format="HH:mm"
-                    format="HH:mm"
+                    type="datetime"
+                    value-format="YYYY-MM-DD HH:mm"
+                    format="YYYY-MM-DD HH:mm"
                     placeholder="请选择结束时间"
+                  />
+                </el-form-item>
+              </div>
+
+              <div class="time-row time-row--single">
+                <el-form-item label="休息时长（分）">
+                  <el-input-number
+                    v-model="form.breakMinutes"
+                    :min="0"
+                    :step="30"
+                    controls-position="right"
                   />
                 </el-form-item>
               </div>
@@ -547,6 +543,11 @@ const handleOpenList = () => {
   gap: 24px;
 }
 
+.time-row--single {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: calc(50% - 12px);
+}
+
 .duration-box {
   width: 100%;
   min-height: 80px;
@@ -574,6 +575,10 @@ const handleOpenList = () => {
 @media (max-width: 1200px) {
   .time-row {
     grid-template-columns: 1fr;
+  }
+
+  .time-row--single {
+    max-width: none;
   }
 
   .readonly-grid {

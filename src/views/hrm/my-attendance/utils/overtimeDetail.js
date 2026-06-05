@@ -46,6 +46,139 @@ const formatDateText = (value) => {
   return text.includes("T") ? text.split("T")[0] : text.slice(0, 10);
 };
 
+const APPROVAL_ACTION_TYPE_LABEL_MAP = {
+  submit: "发起申请",
+  提交: "发起申请",
+  approve: "直属上级审批",
+  同意: "直属上级审批",
+  审批: "直属上级审批",
+  审批通过: "直属上级审批",
+  reject: "审批退回",
+  退回: "审批退回",
+  abandon: "废弃申请",
+  废弃: "废弃申请",
+  direct_pass: "提交生效",
+  提交生效: "提交生效",
+  reverse_approve: "反审批",
+  反审批: "反审批",
+};
+
+const APPROVAL_ACTION_RESULT_LABEL_MAP = {
+  submitted: "提交申请",
+  submit: "提交申请",
+  approved: "审批通过",
+  passed: "审批通过",
+  pass: "审批通过",
+  rejected: "已退回",
+  reject: "已退回",
+  returned: "已退回",
+  pending: "审批中",
+  processing: "审批中",
+  abandoned: "已废弃",
+  abandon: "已废弃",
+};
+
+const buildApprovalLogTitle = (log = {}) => {
+  const actionType = String(log?.actionType || "").trim();
+  const actionResult = String(log?.actionResult || "").trim();
+  const typeLabel = APPROVAL_ACTION_TYPE_LABEL_MAP[actionType] || actionType;
+  const resultLabel = APPROVAL_ACTION_RESULT_LABEL_MAP[actionResult] || actionResult;
+  if (typeLabel && resultLabel) {
+    return `${typeLabel} · ${resultLabel}`;
+  }
+  return typeLabel || resultLabel || "审批记录";
+};
+
+const buildApprovalLogDescription = (log = {}, title = "") => {
+  if (log?.actionComment) {
+    return log.actionComment;
+  }
+  return title;
+};
+
+const resolveOvertimeApplyTime = (detail = {}) =>
+  formatDateTimeText(detail.applyTime) ||
+  detail.applyDate ||
+  formatDateTimeText(detail.submitTime) ||
+  formatDateTimeText(detail.createTime) ||
+  "";
+
+export const buildOvertimeApprovalFlow = (detail = {}) => {
+  const logs = Array.isArray(detail?.approvalLogs) ? detail.approvalLogs : [];
+  const requestStatus = detail?.requestStatus || detail?.status || "";
+  const talentName = detail?.talentName || detail?.applicant || "";
+  const overtimeTypeName = detail?.overtimeType || detail?.overtimeTypeName || "加班";
+  const isPending = requestStatus === "审批中";
+  const applyTime = resolveOvertimeApplyTime(detail);
+
+  if (!logs.length) {
+    if (requestStatus === "未提交") {
+      return [
+        {
+          time: applyTime,
+          title: "保存草稿",
+          actor: talentName,
+          description: "加班单暂未提交审批。",
+          active: true,
+        },
+      ];
+    }
+
+    if (requestStatus === "已废弃") {
+      return [
+        {
+          time: applyTime,
+          title: "废弃申请",
+          actor: talentName,
+          description: detail.approvalStatus || "",
+          active: true,
+        },
+      ];
+    }
+
+    return [
+      {
+        time: applyTime,
+        title: "发起申请",
+        actor: talentName,
+        description: `提交${overtimeTypeName}申请，等待直属上级审批。`,
+        active: true,
+      },
+      {
+        time: applyTime,
+        title:
+          requestStatus === "已通过"
+            ? "直属上级审批 · 审批通过"
+            : "直属上级审批",
+        actor: detail.currentApproverNames || detail.approver || "",
+        description: detail.approvalStatus || "",
+        active: isPending,
+      },
+    ];
+  }
+
+  const sortedLogs = [...logs].sort((left, right) => {
+    const leftTime = dayjs(left?.actionTime).valueOf();
+    const rightTime = dayjs(right?.actionTime).valueOf();
+    if (!Number.isFinite(leftTime) || !Number.isFinite(rightTime)) {
+      return 0;
+    }
+    return leftTime - rightTime;
+  });
+
+  return sortedLogs.map((log, index) => {
+    const title = buildApprovalLogTitle(log);
+    const isLast = index === sortedLogs.length - 1;
+    return {
+      time: formatDateTimeText(log?.actionTime) || String(log?.actionTime || ""),
+      title,
+      actor: log?.operatorName || "",
+      description: buildApprovalLogDescription(log, title),
+      active: isLast && isPending,
+    };
+  });
+};
+
 const getApiFirstDetail = (apiDetail = {}) =>
   (Array.isArray(apiDetail?.details) ? apiDetail.details : [])[0] || {};
 
@@ -91,6 +224,17 @@ export const buildOvertimeSaveDateTime = (overtimeDate, timeValue) => {
   }
   const timeOnly = parseTimeOnly(text);
   return overtimeDate && timeOnly ? `${overtimeDate} ${timeOnly}` : text;
+};
+
+export const formatOvertimeDateTimeValue = (value) => buildOvertimeSaveDateTime(null, value);
+
+export const resolveOvertimeDateFromDateTime = (dateTime) => {
+  const formatted = formatOvertimeDateTimeValue(dateTime);
+  if (!formatted) {
+    return "";
+  }
+  const parsed = dayjs(formatted);
+  return parsed.isValid() ? parsed.format("YYYY-MM-DD") : formatDateText(formatted);
 };
 
 /** 仅映射 admin/detail 接口（queryOvertimeRequestAdminDetail）返回体，不合并列表或其它来源。 */

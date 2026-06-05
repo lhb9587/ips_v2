@@ -13,7 +13,6 @@ import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import SupplementDetailContent from "@/views/hrm/my-attendance/supplement-detail/components/SupplementDetailContent.vue";
 import {
   abandonSupplementRequestAdmin,
-  directPassSupplementRequestAdmin,
   exportSupplementRequestAdmin,
   querySupplementRequestAdminPage,
   reverseApproveSupplementRequestAdmin,
@@ -139,7 +138,7 @@ const buildListQueryParams = () => {
   const keyword = diminput.value.trim();
   const params = {
     pageNo: listQuery.value.pageNo,
-    pageSize: Math.min(listQuery.value.pageSize, 200),
+    pageSize: listQuery.value.pageSize,
     ...formInline.value,
   };
   if (!keyword) {
@@ -273,17 +272,6 @@ const runBatchAdminAction = async ({
   } catch (error) {
     console.log(error);
   }
-};
-
-const handleSubmitEffect = () => {
-  runBatchAdminAction({
-    rows: getSelectedRows(),
-    flagKey: "canDirectPass",
-    actionLabel: "提交生效",
-    confirmMessage: "确定将选中的补签卡提交生效吗？提交后将直接置为已通过。",
-    requestFn: directPassSupplementRequestAdmin,
-    successLabel: "提交生效",
-  });
 };
 
 const handleExport = (command) => {
@@ -467,12 +455,6 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
-                  <el-button
-                    type="primary"
-                    @click="handleSubmitEffect"
-                  >
-                    提交生效
-                  </el-button>
                   <el-button @click="handleMissingCheck">缺卡检查</el-button>
                   <el-dropdown @command="handleMoreCommand">
                     <el-button>

@@ -682,7 +682,6 @@ onUnmounted(() => {
                   </el-input>
                   <el-button
                     type="primary"
-                    plain
                     :loading="generateLoading"
                     @click="openGenerateDialog"
                   >
@@ -690,7 +689,6 @@ onUnmounted(() => {
                   </el-button>
                   <el-button
                     type="primary"
-                    plain
                     @click="openBatchExtendDialog"
                   >
                     批量延期

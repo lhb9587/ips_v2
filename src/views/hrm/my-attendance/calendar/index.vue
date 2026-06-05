@@ -731,10 +731,6 @@ onMounted(async () => {
   grid-template-columns: 280px minmax(0, 1fr);
 }
 
-.calendar-stats {
-  padding: 0 0 16px;
-}
-
 .calendar-stats__header,
 .calendar-detail__header {
   display: flex;
@@ -944,9 +940,9 @@ onMounted(async () => {
 }
 
 .calendar-status-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;

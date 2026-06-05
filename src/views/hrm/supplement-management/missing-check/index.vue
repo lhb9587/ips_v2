@@ -74,7 +74,7 @@ watch(
 
 const buildQueryParams = () => ({
   pageNo: listQuery.value.pageNo,
-  pageSize: Math.min(listQuery.value.pageSize, 200),
+  pageSize: listQuery.value.pageSize,
   talentName: formInline.value.talentName?.trim() || undefined,
   deptCode: formInline.value.deptCode || undefined,
   startDate: formInline.value.startDate || undefined,

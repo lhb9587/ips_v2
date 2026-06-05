@@ -18,6 +18,7 @@ import {
   queryLeaveRequestSelfPage,
 } from "@/api/attendance";
 import {
+  buildLeaveRequestIdsPayload,
   getLeaveRequestId,
   normalizeLeaveDetail,
 } from "@/views/hrm/my-attendance/utils/leaveDetail";
@@ -226,21 +227,6 @@ const handleCreate = () => {
 const getSelectedRows = () => gridRef.value?.getRowList?.() || [];
 
 const getRowRequestId = (row) => getLeaveRequestId(row);
-
-const buildLeaveRequestIdsPayload = (rows) => {
-  const ids = [
-    ...new Set(
-      rows.map((item) => getRowRequestId(item)).filter((id) => id || id === 0),
-    ),
-  ];
-  if (!ids.length) {
-    return null;
-  }
-  if (ids.length === 1) {
-    return { leaveRequestId: ids[0] };
-  }
-  return { leaveRequestIds: ids.join(",") };
-};
 
 const validateOperableRows = (rows, flagKey, actionLabel) => {
   if (!rows.length) {
@@ -642,6 +628,11 @@ const closeDetailSidebar = () => {
   detailEditForm.value = {};
 };
 
+const handleRefreshList = () => {
+  closeDetailSidebar();
+  fetchLeaveList();
+};
+
 const handlePagination = () => {
   fetchLeaveList();
 };
@@ -814,6 +805,7 @@ onUnmounted(() => {
           :detailInfo="currentDetail"
           @close="closeDetailSidebar"
           @update-detail="handleUpdateDetailRecord"
+          @refresh-list="handleRefreshList"
         />
       </div>
       <div

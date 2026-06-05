@@ -1,6 +1,7 @@
 <!-- 请假类型卡片，用于展示可选假期类型及额度信息。 -->
 <script setup>
 import { computed } from "vue";
+import { formatLeaveTypeLabel } from "@/views/hrm/my-attendance/utils/leaveType";
 
 /* eslint-disable no-undef */
 const props = defineProps({
@@ -34,7 +35,7 @@ const showActive = computed(() => props.active && !isExpandCard.value);
       <template v-if="isExpandCard">
         其他假期<span class="leave-type-card__arrow">>></span>
       </template>
-      <template v-else>{{ item.label }}</template>
+      <template v-else>{{ formatLeaveTypeLabel(item.label) }}</template>
     </div>
     <div
       v-if="item.showQuotaLine"

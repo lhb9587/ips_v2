@@ -38,10 +38,10 @@ const form = reactive({
   applicant: employeeInfo.name,
   leaveTypeKey: "",
   otherType: "",
-  startDate: "",
-  startPeriod: "上午 9:00",
-  endDate: "",
-  endPeriod: "下午 18:00",
+  startTime: "",
+  startTime2: "9:00:00",
+  endTime: "",
+  endTime2: "18:00:00",
   reason: "",
 });
 
@@ -49,8 +49,14 @@ const fileList = ref([]);
 const editingBillNo = ref("");
 const timelineDialogVisible = ref(false);
 
-const startPeriodOptions = ["上午 9:00", "下午 14:00"];
-const endPeriodOptions = ["上午 14:00", "下午 18:00"];
+const startTime2Options = [
+  { label: "上午 9:00", value: "9:00:00" },
+  { label: "上午 11:45", value: "11:45:00" },
+];
+const endTime2Options = [
+  { label: "下午 14:00", value: "14:00:00" },
+  { label: "下午 18:00", value: "18:00:00" },
+];
 const defaultLeaveTypeNames = ["法定年假", "司龄假", "事假", "病假"];
 const otherTypeOptions = ref([]);
 
@@ -186,13 +192,7 @@ const resolveSelectedLeaveTypeCode = () =>
   form.leaveTypeKey === "other" ? form.otherType : form.leaveTypeKey;
 
 const buildDateTime = (date, period, fallback) => {
-  const time = period?.includes("14:00")
-    ? "14:00:00"
-    : period?.includes("18:00")
-      ? "18:00:00"
-      : period?.includes("9:00")
-        ? "09:00:00"
-        : fallback;
+  const time = period || fallback;
   return `${date} ${time}`;
 };
 
@@ -205,14 +205,14 @@ const resetCalcDurationState = () => {
 
 const calcLeaveDuration = async () => {
   const leaveTypeCode = resolveSelectedLeaveTypeCode();
-  if (!leaveTypeCode || !form.startDate || !form.endDate) {
+  if (!leaveTypeCode || !form.startTime || !form.endTime) {
     resetCalcDurationState();
     return;
   }
 
-  const startTime = buildDateTime(form.startDate, form.startPeriod, "09:00:00");
-  const endTime = buildDateTime(form.endDate, form.endPeriod, "18:00:00");
-  if (dayjs(endTime).isBefore(dayjs(startTime))) {
+  const startDateTime = buildDateTime(form.startTime, form.startTime2, "9:00:00");
+  const endDateTime = buildDateTime(form.endTime, form.endTime2, "18:00:00");
+  if (dayjs(endDateTime).isBefore(dayjs(startDateTime))) {
     resetCalcDurationState();
     return;
   }
@@ -221,8 +221,10 @@ const calcLeaveDuration = async () => {
     const res = await queryLeaveRequestSelfCalcDuration(
       {
         leaveTypeCode,
-        startTime,
-        endTime,
+        startTime: form.startTime,
+        startTime2: form.startTime2,
+        endTime: form.endTime,
+        endTime2: form.endTime2,
       },
       { isLoading: false },
     );
@@ -247,10 +249,10 @@ watch(
   () => [
     form.leaveTypeKey,
     form.otherType,
-    form.startDate,
-    form.startPeriod,
-    form.endDate,
-    form.endPeriod,
+    form.startTime,
+    form.startTime2,
+    form.endTime,
+    form.endTime2,
   ],
   () => {
     calcLeaveDuration();
@@ -294,11 +296,11 @@ const validateForm = (submit = false) => {
     ElMessage.warning("请选择其他假期类型");
     return false;
   }
-  if (!form.startDate || !form.endDate) {
+  if (!form.startTime || !form.endTime) {
     ElMessage.warning("请选择请假开始和结束日期");
     return false;
   }
-  if (dayjs(form.endDate).isBefore(dayjs(form.startDate), "day")) {
+  if (dayjs(form.endTime).isBefore(dayjs(form.startTime), "day")) {
     ElMessage.warning("结束日期不能早于开始日期");
     return false;
   }
@@ -335,18 +337,16 @@ const resetForm = () => {
   form.applyDate = dayjs().format("YYYY-MM-DD");
   form.leaveTypeKey = leaveTypes.value[0]?.key || "";
   form.otherType = "";
-  form.startDate = "";
-  form.startPeriod = "上午 9:00";
-  form.endDate = "";
-  form.endPeriod = "下午 18:00";
+  form.startTime = "";
+  form.startTime2 = "9:00:00";
+  form.endTime = "";
+  form.endTime2 = "18:00:00";
   form.reason = "";
   fileList.value = [];
 };
 
 const submitLeaveRequest = async (actionType) => {
   const leaveTypeCode = resolveSelectedLeaveTypeCode();
-  const startTime = buildDateTime(form.startDate, form.startPeriod, "09:00:00");
-  const endTime = buildDateTime(form.endDate, form.endPeriod, "18:00:00");
   const attachmentIds = fileList.value
     .map(
       (item) =>
@@ -360,8 +360,10 @@ const submitLeaveRequest = async (actionType) => {
   const payload = {
     requestId: editingBillNo.value || undefined,
     leaveTypeCode,
-    startTime,
-    endTime,
+    startTime: form.startTime,
+    startTime2: form.startTime2,
+    endTime: form.endTime,
+    endTime2: form.endTime2,
     reason: form.reason,
     actionType,
     // 附件ID，逗号分隔，如 1001,1002
@@ -527,19 +529,17 @@ const openTimelineDialog = () => {
                 >
                   <div class="time-control">
                     <el-date-picker
-                      v-model="form.startDate"
+                      v-model="form.startTime"
                       type="date"
                       value-format="YYYY-MM-DD"
                       placeholder="请选择开始日期"
                     />
-                    <el-select
-                      v-model="form.startPeriod"
-                    >
+                    <el-select v-model="form.startTime2">
                       <el-option
-                        v-for="item in startPeriodOptions"
-                        :key="item"
-                        :label="item"
-                        :value="item"
+                        v-for="item in startTime2Options"
+                        :key="item.value"
+                        :label="item.label"
+                        :value="item.value"
                       />
                     </el-select>
                   </div>
@@ -550,19 +550,17 @@ const openTimelineDialog = () => {
                 >
                   <div class="time-control">
                     <el-date-picker
-                      v-model="form.endDate"
+                      v-model="form.endTime"
                       type="date"
                       value-format="YYYY-MM-DD"
                       placeholder="请选择结束日期"
                     />
-                    <el-select
-                      v-model="form.endPeriod"
-                    >
+                    <el-select v-model="form.endTime2">
                       <el-option
-                        v-for="item in endPeriodOptions"
-                        :key="item"
-                        :label="item"
-                        :value="item"
+                        v-for="item in endTime2Options"
+                        :key="item.value"
+                        :label="item.label"
+                        :value="item.value"
                       />
                     </el-select>
                   </div>
@@ -781,6 +779,11 @@ const openTimelineDialog = () => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: 24px;
+}
+
+.time-row :deep(.el-date-editor.el-input),
+.time-row :deep(.el-select) {
+  width: 100%;
 }
 
 .time-control {
