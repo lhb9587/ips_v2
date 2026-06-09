@@ -361,11 +361,26 @@ function buildBusinessTooltip(type, summary) {
     trip: "出差",
     supplement: "补卡",
   };
+  const label = labelMap[type] || "状态";
   if (approvalSummaryTypes.has(type)) {
-    return labelMap[type] || "状态";
+    const list = normalizeSummaryList(summary);
+    if (!list) {
+      return label;
+    }
+    const statuses = [
+      ...new Set(
+        list
+          .map((item) => String(item?.status || "").trim())
+          .filter(Boolean),
+      ),
+    ];
+    if (!statuses.length) {
+      return label;
+    }
+    return `${label}：${statuses.join(" / ")}`;
   }
   const text = String(summary || "").trim();
-  return text || labelMap[type] || "状态";
+  return text || label;
 }
 
 function formatWeekday(value) {
