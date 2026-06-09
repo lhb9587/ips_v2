@@ -3,6 +3,9 @@ import { setLayout,getLayout,getLeftSidebarCondensed,setLeftSidebarCondensed,get
 const layout = getLayout() || 'vertical';
 export const state = {
   layoutType: layout,
+  embedMode: false,
+  savedLayoutType: null,
+  embedSource: null,
   layoutWidth: 'fluid',
   leftSidebarType: 'dark',
   topbar: 'dark',
@@ -48,7 +51,12 @@ export const mutations = {
   },
   CHANGE_MYTASK_SHOWTYPE(state, mytaskShowType) {
     state.mytaskShowType = mytaskShowType
-  }
+  },
+  SET_EMBED_MODE(state, { embedMode, savedLayoutType, embedSource }) {
+    state.embedMode = embedMode
+    state.savedLayoutType = savedLayoutType
+    state.embedSource = embedSource
+  },
 }
 
 export const actions = {
@@ -56,6 +64,33 @@ export const actions = {
     commit('CHANGE_LAYOUT', layoutType);
     if(layoutType !== 'no'){
       setLayout(layoutType)
+    }
+  },
+
+  syncEmbedLayout({ state, commit }, { shouldEmbed, source }) {
+    const currentlyEmbedded = state.embedMode
+
+    if (shouldEmbed && !currentlyEmbedded) {
+      const backup = state.layoutType === 'no'
+        ? (getLayout() || 'vertical')
+        : state.layoutType
+      commit('SET_EMBED_MODE', {
+        embedMode: true,
+        savedLayoutType: backup,
+        embedSource: source,
+      })
+      commit('CHANGE_LAYOUT', 'no')
+      return
+    }
+
+    if (!shouldEmbed && currentlyEmbedded) {
+      const restore = state.savedLayoutType || getLayout() || 'vertical'
+      commit('SET_EMBED_MODE', {
+        embedMode: false,
+        savedLayoutType: null,
+        embedSource: null,
+      })
+      commit('CHANGE_LAYOUT', restore)
     }
   },
 

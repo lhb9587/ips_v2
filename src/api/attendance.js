@@ -885,6 +885,15 @@ export function queryAttendanceSelfStatistics(data = {}, config = {}) {
   })
 }
 
+export function queryAttendanceSelfPunchRecordList(data = {}, config = {}) {
+  return request({
+    url: attendanceApi.queryAttendanceSelfPunchRecordList,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryApprovalCenterPage(data, config = {}) {
   return request({
     url: attendanceApi.queryApprovalCenterPage,

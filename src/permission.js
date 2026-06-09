@@ -5,6 +5,8 @@ import store from '@/state/store'
 import { ElMessageBox,ElCheckbox } from "element-plus";
 import { h } from 'vue'
 import { menuItems } from '@/components/menu'
+import { isAttendanceRoute } from '@/constants/attendanceRoutes'
+import { resolveEmbedLayout } from '@/utils/embedLayout'
 
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
@@ -13,46 +15,7 @@ NProgress.configure({ showSpinner: false }) // NProgress Configuration
 const whiteList = ['/login','/forgot-password','/excel_preview'] // 设置白名单
 
 //由于会出现动态路由，不能使用path，取路由的name作为白名单的key
-const allowRouterList = ['personal-profile','contract-detail','project-detail','task-detail','subtask-detail','case-detail','attendance-management-root','leave-quota-management','leave-quota-management-root','leave-quota-management-ledger','leave-management','overtime-management','supplement-management','supplement-management-root','supplement-missing-check','attendance-profile','attendance-profile-history','attendance-record','attendance-summary','attendance-calculation','attendance-result-summary','leave-report-summary','comp-off-detail','attendance-group','schedule-list','schedule-list-index','schedule-unscheduled-list','schedule-vertical-list','schedule-swap-list','schedule-wizard','my-attendance-calendar','my-leave-application','my-leave-list','my-leave-detail','my-overtime-application','my-overtime-list','my-overtime-detail','my-supplement-application','my-supplement-list','my-supplement-detail','approval-center']
-const attendanceRouteNameSet = new Set([
-  'attendance-management',
-  'attendance-management-root',
-  'leave-quota-management',
-  'leave-quota-management-root',
-  'leave-quota-management-ledger',
-  'leave-management',
-  'overtime-management',
-  'supplement-management',
-  'supplement-management-root',
-  'supplement-missing-check',
-  'attendance-profile',
-  'attendance-profile-history',
-  'attendance-record',
-  'attendance-summary',
-  'attendance-calculation',
-  'attendance-result-summary',
-  'leave-report-summary',
-  'comp-off-detail',
-  'attendance-group',
-  'schedule-list',
-  'schedule-list-index',
-  'schedule-unscheduled-list',
-  'schedule-vertical-list',
-  'schedule-swap-list',
-  'schedule-wizard',
-  'my-attendance',
-  'my-attendance-calendar',
-  'my-leave-application',
-  'my-leave-list',
-  'my-leave-detail',
-  'my-overtime-application',
-  'my-overtime-list',
-  'my-overtime-detail',
-  'my-supplement-application',
-  'my-supplement-list',
-  'my-supplement-detail',
-  'approval-center',
-])
+const allowRouterList = ['personal-profile','contract-detail','project-detail','task-detail','subtask-detail','case-detail','attendance-management-root','leave-quota-management','leave-quota-management-root','leave-quota-management-ledger','leave-management','overtime-management','supplement-management','supplement-management-root','supplement-missing-check','attendance-profile','attendance-profile-history','attendance-record','attendance-summary','attendance-calculation','attendance-result-summary','leave-report-summary','comp-off-detail','attendance-group','schedule-list','schedule-list-index','schedule-unscheduled-list','schedule-vertical-list','schedule-swap-list','schedule-wizard','my-attendance-calendar','my-punch-record','my-leave-application','my-leave-list','my-leave-detail','my-overtime-application','my-overtime-list','my-overtime-detail','my-supplement-application','my-supplement-list','my-supplement-detail','approval-center']
 // 记录路由
 // let hasRoles = true
 
@@ -70,13 +33,6 @@ const openUrl = (path) =>{
     url = `http://${hostname}:${port}/v1/#${path}` // 外包测试
   }
   window.open(url);
-}
-
-function isAttendanceRoute(route) {
-  if (attendanceRouteNameSet.has(route.name)) {
-    return true
-  }
-  return route.path?.startsWith('/hrm/my-attendance')
 }
 
 //前置守卫
@@ -145,6 +101,9 @@ router.beforeEach((to, from, next) => {
               return
             }
           }
+
+          const { shouldEmbed, source } = resolveEmbedLayout(to)
+          store.dispatch('layout/syncEmbedLayout', { shouldEmbed, source })
           
           // 设置页面标题
           if (typeof to.meta.title === 'string') {

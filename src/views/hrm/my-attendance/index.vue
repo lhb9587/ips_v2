@@ -34,7 +34,11 @@ const quickEntries = [
     icon: "bx bx-calendar",
     routeName: "my-attendance-calendar",
   },
-  { label: "我的工资条", icon: "bx bx-receipt" },
+  {
+    label: "打卡记录",
+    icon: "bx bx-time-five",
+    routeName: "my-punch-record",
+  },
 ];
 
 const statsLoading = ref(false);

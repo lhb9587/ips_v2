@@ -196,6 +196,12 @@
             component: () => import("@/views/hrm/my-attendance/calendar/index"),
           },
           {
+            path: "punch-record",
+            name: "my-punch-record",
+            meta: { title: "打卡记录", authRequired: true },
+            component: () => import("@/views/hrm/my-attendance/punch-record/index"),
+          },
+          {
             path: "leave-application",
             name: "my-leave-application",
             meta: { title: "我要请假", authRequired: true },

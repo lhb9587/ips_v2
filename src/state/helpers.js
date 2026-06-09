@@ -10,6 +10,7 @@ export const authComputed = {
 export const layoutComputed = {
   ...mapState('layout', {
     layoutType: (state) => state.layoutType,
+    embedMode: (state) => state.embedMode,
     leftSidebarType: (state) => state.leftSidebarType,
     layoutWidth: (state) => state.layoutWidth,
     topbar: (state) => state.topbar,
@@ -56,7 +57,7 @@ export const caseComputed = {
 
 export const authMethods = mapActions('auth', ['logIn', 'logOut', 'register', 'resetPassword'])
 
-export const layoutMethods = mapActions('layout', ['changeLayoutType', 'changeLayoutWidth', 'changeLeftSidebarType', 'changeTopbar', 'changeLoaderValue'])
+export const layoutMethods = mapActions('layout', ['changeLayoutType', 'changeLayoutWidth', 'changeLeftSidebarType', 'changeTopbar', 'changeLoaderValue', 'syncEmbedLayout'])
 
 export const authFackMethods = mapActions('authfack', ['login', 'registeruser', 'logout'])
 
