@@ -35,10 +35,13 @@ const formInline = ref({
 const dateRange = ref([formInline.value.startDate, formInline.value.endDate]);
 
 const calculateGridHeight = () => {
-  const layout = store.state.layout.layoutType;
   const windowHeight = document.documentElement.clientHeight;
+  if (store.state.layout.embedMode) {
+    return windowHeight - 135;
+  }
+  const layout = store.state.layout.layoutType;
   if (layout === "vertical") {
-    return windowHeight - 244;
+    return windowHeight - 235;
   }
   return windowHeight - 290;
 };
@@ -46,7 +49,7 @@ const calculateGridHeight = () => {
 const gridHeight = ref(calculateGridHeight());
 
 watch(
-  () => store.state.layout.layoutType,
+  () => [store.state.layout.layoutType, store.state.layout.embedMode],
   () => {
     gridHeight.value = calculateGridHeight();
   },
@@ -180,6 +183,7 @@ onMounted(() => {
         <div
           class="card box"
           ref="boxRef"
+          style="margin-bottom: 0;"
         >
           <div
             class="card-body"

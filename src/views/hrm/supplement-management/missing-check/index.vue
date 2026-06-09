@@ -55,10 +55,13 @@ const attendanceOrganizationOptions = computed(() => {
 });
 
 const calculateGridHeight = () => {
-  const layout = store.state.layout.layoutType;
   const windowHeight = document.documentElement.clientHeight;
+  if (store.state.layout.embedMode) {
+    return windowHeight - 135;
+  }
+  const layout = store.state.layout.layoutType;
   if (layout === "vertical") {
-    return windowHeight - 244;
+    return windowHeight - 235;
   }
   return windowHeight - 290;
 };
@@ -66,7 +69,7 @@ const calculateGridHeight = () => {
 const gridHeight = ref(calculateGridHeight());
 
 watch(
-  () => store.state.layout.layoutType,
+  () => [store.state.layout.layoutType, store.state.layout.embedMode],
   () => {
     gridHeight.value = calculateGridHeight();
   },
@@ -182,7 +185,7 @@ onMounted(() => {
   <Layout>
     <div class="row">
       <div class="col-lg-12">
-        <div class="card box">
+        <div class="card box" style="margin-bottom: 0;">
           <div
             class="card-body"
             style="padding-bottom: 10px"

@@ -77,10 +77,13 @@ const changeRowHeight = (height) => {
 };
 
 const calculateGridHeight = () => {
-  const layout = store.state.layout.layoutType;
   const windowHeight = document.documentElement.clientHeight;
+  if (store.state.layout.embedMode) {
+    return windowHeight - 135;
+  }
+  const layout = store.state.layout.layoutType;
   if (layout === "vertical") {
-    return windowHeight - 244;
+    return windowHeight - 235;
   }
   return windowHeight - 290;
 };
@@ -88,7 +91,7 @@ const calculateGridHeight = () => {
 const gridHeight = ref(calculateGridHeight());
 
 watch(
-  () => store.state.layout.layoutType,
+  () => [store.state.layout.layoutType, store.state.layout.embedMode],
   () => {
     gridHeight.value = calculateGridHeight();
   },
@@ -456,6 +459,7 @@ onUnmounted(() => {
         <div
           class="card box"
           ref="boxRef"
+          style="margin-bottom: 0;"
         >
           <div
             class="card-body"

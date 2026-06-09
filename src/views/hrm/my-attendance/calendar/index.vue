@@ -284,11 +284,28 @@ function resolveDayIcons(snapshot) {
       if (Number(snapshot[rule.countKey] || 0) <= 0) {
         return;
       }
+      const summary = snapshot[rule.summaryKey];
+      const summaryList =
+        rule.type === "supplement" ? normalizeSummaryList(summary) : null;
+
+      if (summaryList?.length > 1) {
+        summaryList.forEach((summaryItem) => {
+          icons.push({
+            type: rule.type,
+            icon: rule.icon,
+            tone: resolveApprovalSummaryTone([summaryItem]),
+            tooltip: buildSupplementSummaryTooltip(summaryItem),
+            routeName: rule.listRouteName,
+          });
+        });
+        return;
+      }
+
       icons.push({
         type: rule.type,
         icon: rule.icon,
-        tone: resolveBusinessTone(snapshot[rule.summaryKey], rule.type),
-        tooltip: buildBusinessTooltip(rule.type, snapshot[rule.summaryKey]),
+        tone: resolveBusinessTone(summary, rule.type),
+        tooltip: buildBusinessTooltip(rule.type, summary),
         routeName: rule.listRouteName,
       });
     });
@@ -306,13 +323,64 @@ function normalizeSummaryList(summary) {
   return null;
 }
 
+function resolveApprovalSummaryTone(list) {
+  if (!Array.isArray(list) || !list.length) {
+    return "exception";
+  }
+  const statuses = list
+    .map((item) => String(item?.status || "").trim())
+    .filter(Boolean);
+  if (!statuses.length) {
+    return "exception";
+  }
+  if (
+    statuses.some((status) =>
+      ["未审核", "待审核", "审批中", "待审批", "未提交", "已退回"].some((keyword) =>
+        status.includes(keyword),
+      ),
+    )
+  ) {
+    return "pending";
+  }
+  if (
+    statuses.every((status) =>
+      ["已通过", "审批通过", "已审核", "已生效"].some((keyword) => status.includes(keyword)),
+    )
+  ) {
+    return "success";
+  }
+  return "exception";
+}
+
+function formatSupplementSummaryTime(item = {}) {
+  const raw =
+    item.attendanceDatetime ||
+    item.attendanceDateTime ||
+    item.attendanceTime ||
+    "";
+  if (!raw) {
+    return "";
+  }
+  const parsed = dayjs(raw);
+  return parsed.isValid() ? parsed.format("HH:mm") : String(raw);
+}
+
+function buildSupplementSummaryTooltip(item = {}) {
+  const timeText = formatSupplementSummaryTime(item);
+  const status = String(item?.status || "").trim();
+  if (timeText && status) {
+    return `补卡：${timeText} ${status}`;
+  }
+  return timeText ? `补卡：${timeText}` : status ? `补卡：${status}` : "补卡";
+}
+
 function resolveBusinessTone(summary, type) {
   if (approvalSummaryTypes.has(type)) {
     const list = normalizeSummaryList(summary);
     if (!list) {
       return "exception";
     }
-    return list[0]?.status === "已通过" ? "success" : "exception";
+    return resolveApprovalSummaryTone(list);
   }
 
   const text = String(summary || "").trim();
@@ -366,6 +434,22 @@ function buildBusinessTooltip(type, summary) {
     const list = normalizeSummaryList(summary);
     if (!list) {
       return label;
+    }
+    if (type === "supplement") {
+      const lines = list
+        .map((item) => {
+          const timeText = formatSupplementSummaryTime(item);
+          const status = String(item?.status || "").trim();
+          if (timeText && status) {
+            return `${timeText} ${status}`;
+          }
+          return timeText || status;
+        })
+        .filter(Boolean);
+      if (!lines.length) {
+        return label;
+      }
+      return `${label}：${lines.join(" / ")}`;
     }
     const statuses = [
       ...new Set(

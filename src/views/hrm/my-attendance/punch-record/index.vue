@@ -57,10 +57,13 @@ const listQuery = ref({
 const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
 
 const calculateGridHeight = () => {
-  const layout = store.state.layout.layoutType;
   const windowHeight = document.documentElement.clientHeight;
+  if (store.state.layout.embedMode) {
+    return windowHeight - 135;
+  }
+  const layout = store.state.layout.layoutType;
   if (layout === "vertical") {
-    return windowHeight - 244;
+    return windowHeight - 235;
   }
   return windowHeight - 290;
 };
@@ -68,7 +71,7 @@ const calculateGridHeight = () => {
 const gridHeight = ref(calculateGridHeight());
 
 watch(
-  () => store.state.layout.layoutType,
+  () => [store.state.layout.layoutType, store.state.layout.embedMode],
   () => {
     gridHeight.value = calculateGridHeight();
   },
@@ -262,7 +265,7 @@ onUnmounted(() => {
   <Layout>
     <div class="row">
       <div class="col-lg-12">
-        <div class="card box punch-record-card">
+        <div class="card box punch-record-card" style="margin-bottom: 0;">
           <div class="card-body punch-record-card__toolbar">
             <div class="punch-record-card__filters">
               <el-date-picker
