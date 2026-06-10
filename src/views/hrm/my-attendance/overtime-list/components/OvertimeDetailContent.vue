@@ -39,7 +39,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["back", "close", "update-detail", "approval-done"]);
+const emit = defineEmits(["back", "close", "update-detail", "approval-done", "refresh-list"]);
 
 const detailEditMode = ref(false);
 const approvalDialogVisible = ref(false);
@@ -234,9 +234,9 @@ const handleSubmitDetail = () => {
     .then(async () => {
       try {
         await saveOvertimeRequestSelf(buildSavePayload("1"), { isLoading: true });
-        await refreshCurrentDetail();
         handleCancelEditDetail();
         ElMessage.success("加班申请已提交审批");
+        emit("refresh-list");
       } catch (error) {
         console.log(error);
       }

@@ -413,6 +413,11 @@ const closeDetailSidebar = () => {
   currentDetail.value = null;
 };
 
+const handleRefreshList = () => {
+  closeDetailSidebar();
+  fetchOvertimeRequestList();
+};
+
 const handleUpdateDetailRecord = (updatedRecord) => {
   const record = normalizeOvertimeDetail(updatedRecord);
   const recordId = getOvertimeRequestId(record);
@@ -580,6 +585,7 @@ onUnmounted(() => {
           admin-mode
           @close="closeDetailSidebar"
           @update-detail="handleUpdateDetailRecord"
+          @refresh-list="handleRefreshList"
         />
       </div>
     </DragSidebar>

@@ -340,6 +340,11 @@ const closeDetailSidebar = () => {
   currentDetail.value = null;
 };
 
+const handleRefreshList = () => {
+  closeDetailSidebar();
+  fetchOvertimeList();
+};
+
 const handlePagination = () => {
   fetchOvertimeList();
 };
@@ -517,6 +522,7 @@ onUnmounted(() => {
           :detailInfo="currentDetail"
           @close="closeDetailSidebar"
           @update-detail="handleUpdateDetailRecord"
+          @refresh-list="handleRefreshList"
         />
       </div>
     </DragSidebar>

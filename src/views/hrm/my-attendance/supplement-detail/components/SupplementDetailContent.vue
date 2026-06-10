@@ -251,10 +251,9 @@ const handleSubmit = () => {
           }),
           { isLoading: true },
         );
-        await refreshCurrentDetail();
         handleCancelEditItems();
+        ElMessage.success("补签申请已提交审批");
         emit("refresh-list");
-        ElMessage.success("补签单已提交");
       } catch (error) {
         console.log(error);
       } finally {
@@ -349,8 +348,7 @@ const handleDiscard = () => {
           </el-button>
           <el-button
             v-if="showAbandonButton"
-            type="warning"
-            plain
+            type="primary"
             @click="handleDiscard"
           >
             废弃

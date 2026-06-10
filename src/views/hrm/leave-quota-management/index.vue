@@ -323,13 +323,6 @@ const validateReverseAuditRows = (rows) => {
     ElMessage.warning("仅支持选择已审核记录进行反审核");
     return false;
   }
-  const invalidQuotaRows = rows.filter(
-    (item) => Number(item.usedQuota || 0) > 0 || Number(item.frozenQuota || 0) > 0,
-  );
-  if (invalidQuotaRows.length > 0) {
-    ElMessage.warning("已发生请假扣减或冻结的额度不支持反审核");
-    return false;
-  }
   return true;
 };
 

@@ -297,6 +297,9 @@ const openProfileDetail = async (params) => {
       selectedDetail.value.defaultShift ||
       detail.defaultShiftCode ||
       "",
+    directLeaders: Array.isArray(detail.directLeaders) ? detail.directLeaders : [],
+    directLeaderUserId: detail.directLeaders?.[0]?.leaderUserId ?? "",
+    directLeaderName: detail.directLeaders?.[0]?.leaderTalentName ?? "",
   };
 };
 
@@ -336,6 +339,14 @@ const handleSaveProfile = async (payload, onSuccess) => {
         ? 1
         : payload.isPunchAttendance,
   };
+
+  if (
+    payload.directLeaderUserId !== undefined &&
+    payload.directLeaderUserId !== null &&
+    payload.directLeaderUserId !== ""
+  ) {
+    requestData.directLeaderUserIds = [Number(payload.directLeaderUserId)];
+  }
 
   Object.keys(requestData).forEach((key) => {
     if (requestData[key] === undefined || requestData[key] === null || requestData[key] === "") {

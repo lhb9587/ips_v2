@@ -68,6 +68,18 @@ const annualLeave = ref({
   remainQuota: 0,
   frozenQuota: 0,
 });
+const directLeaders = ref([]);
+
+const primaryDirectLeader = computed(() => {
+  const leader = directLeaders.value[0];
+  if (!leader) {
+    return null;
+  }
+  return {
+    name: leader.leaderTalentName || "--",
+    empStatus: leader.leaderEmpStatus || "",
+  };
+});
 
 const yesterdayGauge = computed(() => {
   const absentHours = Number(yesterdayAttendance.value.absentHours || 0);
@@ -189,6 +201,9 @@ async function loadStatistics() {
       remainQuota: Number(data.annualLeave?.remainQuota || 0),
       frozenQuota: Number(data.annualLeave?.frozenQuota || 0),
     };
+    directLeaders.value = Array.isArray(data.directLeaders)
+      ? data.directLeaders
+      : [];
   } catch (error) {
     ElMessage.error(error?.message || "加载考勤统计失败");
   } finally {
@@ -274,6 +289,21 @@ onMounted(() => {
                   todoStats.myWaitingLeaderApproveCount
                 }}</strong>
               </button>
+            </div>
+            <div class="pending-card__leader">
+              <span class="pending-card__leader-label">直接上级</span>
+              <span class="pending-card__leader-name">
+                {{ primaryDirectLeader?.name || "--" }}
+              </span>
+              <span
+                v-if="
+                  primaryDirectLeader?.empStatus &&
+                  primaryDirectLeader.empStatus !== '在职'
+                "
+                class="pending-card__leader-status"
+              >
+                {{ primaryDirectLeader.empStatus }}
+              </span>
             </div>
           </article>
 
@@ -594,6 +624,40 @@ onMounted(() => {
   font-size: 30px;
   line-height: 1;
   font-weight: 400;
+}
+
+.pending-card__leader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid #e3ebf6;
+  color: #314363;
+  font-size: 13px;
+}
+
+.pending-card__leader-label {
+  flex-shrink: 0;
+  color: #70819f;
+}
+
+.pending-card__leader-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #22304f;
+  font-weight: 500;
+}
+
+.pending-card__leader-status {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 2px;
+  background: #f5f0e8;
+  color: #b07a2a;
+  font-size: 12px;
 }
 
 .yesterday-card__body {

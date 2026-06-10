@@ -1,8 +1,13 @@
-﻿<script setup>
+﻿<!-- 考勤档案详情侧栏，展示并编辑员工考勤档案信息。 -->
+<script setup>
 import dayjs from "dayjs";
 import { computed, defineEmits, defineProps, ref, watch } from "vue";
+import { useStore } from "vuex";
 import { ElMessage } from "element-plus";
 import { queryUnarchivedAttendanceArchivePage } from "@/api/attendance";
+
+const store = useStore();
+const userList = computed(() => store.state.user.userList || []);
 
 const props = defineProps({
   detailInfo: {
@@ -41,9 +46,23 @@ const defaultPolicy = {
   attendanceSystem: "默认考勤制度",
 };
 
+const resolveDirectLeaderFromDetail = (detailInfo = {}) => {
+  const leader = Array.isArray(detailInfo.directLeaders)
+    ? detailInfo.directLeaders[0]
+    : null;
+  return {
+    directLeaderUserId:
+      detailInfo.directLeaderUserId ?? leader?.leaderUserId ?? "",
+    directLeaderName:
+      detailInfo.directLeaderName ?? leader?.leaderTalentName ?? "",
+  };
+};
+
 const syncFormData = (detailInfo) => {
+  const directLeader = resolveDirectLeaderFromDetail(detailInfo);
   formData.value = {
     ...detailInfo,
+    ...directLeader,
     holidaySystem: defaultPolicy.holidaySystem,
     attendanceSystem: defaultPolicy.attendanceSystem,
     organizationCode: detailInfo.organizationCode || "",
@@ -165,6 +184,11 @@ const chooseShift = (row) => {
   shiftDialogVisible.value = false;
 };
 
+const handleDirectLeaderChange = (userId) => {
+  const matched = userList.value.find((item) => Number(item.value) === Number(userId));
+  formData.value.directLeaderName = matched?.label || matched?.fullname || "";
+};
+
 const saveEdit = () => {
   if (!formData.value.employeeName) {
     return ElMessage.warning("请选择员工");
@@ -194,6 +218,8 @@ const saveEdit = () => {
         formData.value.processMode === "change" ? formData.value.effectiveDate : undefined,
       organizationCode: formData.value.organizationCode || props.detailInfo.organizationCode,
       organizationName: formData.value.organizationName || props.detailInfo.organizationName,
+      directLeaderUserId: formData.value.directLeaderUserId || "",
+      directLeaderName: formData.value.directLeaderName || "",
       holidaySystem: defaultPolicy.holidaySystem,
       attendanceSystem: defaultPolicy.attendanceSystem,
     },
@@ -231,6 +257,16 @@ const detailSections = computed(() => {
     [
       { label: "默认班次", key: "defaultShift", editable: true, type: "shift-dialog" },
       { label: "考勤状态", key: "status", format: "status" },
+    ],
+    [
+      {
+        label: "直接上级",
+        key: "directLeaderUserId",
+        format: "directLeader",
+        editable: true,
+        type: "direct-leader-select",
+        span: 2,
+      },
     ],
   ];
   if (isEditing.value) {
@@ -309,6 +345,17 @@ function formatProcessModeValue(value) {
   return "纠正档案信息";
 }
 
+const resolveDirectLeaderDisplayName = (userId) => {
+  if (!userId && userId !== 0) {
+    return "-";
+  }
+  const matched = userList.value.find((item) => Number(item.value) === Number(userId));
+  if (matched) {
+    return matched.label || matched.fullname || "-";
+  }
+  return formData.value.directLeaderName || props.detailInfo.directLeaderName || "-";
+};
+
 const formatValue = (field) => {
   const value = formData.value[field.key] ?? props.detailInfo[field.key];
   if (
@@ -335,6 +382,10 @@ const formatValue = (field) => {
   }
   if (field.key === "processMode") {
     return formatProcessModeValue(value);
+  }
+  if (field.format === "directLeader") {
+    const userId = formData.value.directLeaderUserId ?? props.detailInfo.directLeaderUserId;
+    return resolveDirectLeaderDisplayName(userId);
   }
   return value || "-";
 };
@@ -363,7 +414,9 @@ const canEditField = (field) => {
   if (field.key === "effectiveDate") {
     return formData.value.processMode === "change";
   }
-  return ["defaultShift", "processMode", "isPunchAttendance"].includes(field.key);
+  return ["defaultShift", "processMode", "isPunchAttendance", "directLeaderUserId"].includes(
+    field.key,
+  );
 };
 </script>
 
@@ -543,6 +596,25 @@ const canEditField = (field) => {
                   placeholder="请选择生效日期"
                   style="width: 100%"
                 />
+              </div>
+              <div
+                v-else-if="canEditField(field) && field.type === 'direct-leader-select'"
+                class="detail-item__editor"
+              >
+                <el-select
+                  v-model="formData.directLeaderUserId"
+                  placeholder="请选择直接上级"
+                  filterable
+                  style="width: 100%"
+                  @change="handleDirectLeaderChange"
+                >
+                  <el-option
+                    v-for="item in userList"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
               </div>
               <div
                 v-else

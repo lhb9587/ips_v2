@@ -118,6 +118,7 @@ const fetchCandidateList = () => {
       talentName: candidateQuery.talentName || undefined,
       pageNo: candidateQuery.pageNo,
       pageSize: candidateQuery.pageSize,
+      hasAttendanceArchive: true,
     },
     {
       isLoading: false,

@@ -384,6 +384,11 @@ const closeDetailSidebar = () => {
   currentDetail.value = null;
 };
 
+const handleRefreshList = () => {
+  closeDetailSidebar();
+  fetchSupplementRequestList();
+};
+
 const handleUpdateDetailRecord = (updatedRecord) => {
   const record = normalizeSupplementDetail(updatedRecord);
   const recordId = getSupplementRequestId(record);
@@ -557,6 +562,7 @@ onUnmounted(() => {
           admin-mode
           @close="closeDetailSidebar"
           @update-detail="handleUpdateDetailRecord"
+          @refresh-list="handleRefreshList"
         />
       </div>
     </DragSidebar>

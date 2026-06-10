@@ -74,6 +74,7 @@ onMounted(() => {
         @close="handleCloseInfo"
         @approval-done="handleCloseInfo"
         @update-detail="handleUpdateDetail"
+        @refresh-list="goOvertimeList"
       />
     </div>
   </Layout>
