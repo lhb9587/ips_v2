@@ -1,4 +1,4 @@
-<!-- 审批中心列表页，支持全部、待审批、我的申请三个页签分页查询。 -->
+<!-- 审批中心列表页，支持全部、待审批、我的申请三个页签分页查询及高级筛选。 -->
 <script setup>
 import dayjs from "dayjs";
 import { onMounted, onUnmounted, ref, watch } from "vue";
@@ -8,6 +8,7 @@ import { useStore } from "vuex";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
+import ListSearch from "@/components/common/list-search/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import { saveTableConfig } from "@/utils";
@@ -122,6 +123,7 @@ const formInline = ref({
   bizType: "",
   status: "",
 });
+const advancedFilter = ref({});
 
 const listQuery = ref({
   pageNo: 1,
@@ -223,6 +225,7 @@ const buildQueryParams = () => {
     pageSize: listQuery.value.pageSize,
     bizType: formInline.value.bizType || undefined,
     status: formInline.value.status || undefined,
+    ...advancedFilter.value,
   };
 
   if (searchKeyword) {
@@ -269,6 +272,14 @@ const fetchApprovalCenterList = () => {
 
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
+  advancedFilter.value = {};
+  fetchApprovalCenterList();
+};
+
+const handleAdvancedSearch = (typeStr) => {
+  keyword.value = "";
+  listQuery.value.pageNo = 1;
+  advancedFilter.value = { ...typeStr.data };
   fetchApprovalCenterList();
 };
 
@@ -462,6 +473,12 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
+                  <ListSearch
+                    name="approvalCenterList"
+                    :buss-id="bussId"
+                    :is-show="true"
+                    @search="handleAdvancedSearch"
+                  />
                   <el-select
                     v-model="formInline.bizType"
                     class="approval-center__select"
@@ -500,6 +517,7 @@ onUnmounted(() => {
                     :queryList="{
                       ...listQuery,
                       ...formInline,
+                      ...advancedFilter,
                       tab: tabList[selectedTab]?.value,
                       searchWord: keyword,
                     }"

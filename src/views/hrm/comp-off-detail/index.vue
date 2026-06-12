@@ -1,4 +1,4 @@
-<!-- 调休明细表列表页，负责按周期范围分页查询员工调休额度生成、使用、失效和剩余情况。 -->
+<!-- 调休明细表列表页，负责按组织、姓名及高级筛选分页查询员工调休额度生成、使用、失效和剩余情况。 -->
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
@@ -6,6 +6,7 @@ import { useStore } from "vuex";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
+import ListSearch from "@/components/common/list-search/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import { saveTableConfig } from "@/utils";
 import { queryCompOffDetailPage } from "@/api/attendance";
@@ -51,6 +52,7 @@ const mapAttendanceOrganizationTree = (list = []) =>
 const formInline = ref({
   deptCode: "",
 });
+const advancedFilter = ref({});
 
 const listQuery = ref({
   pageNo: 1,
@@ -159,6 +161,7 @@ const buildQueryParams = () => {
     pageSize: listQuery.value.pageSize,
     deptCode: formInline.value.deptCode || undefined,
     talentName: talentKeyword || undefined,
+    ...advancedFilter.value,
   };
 };
 
@@ -188,6 +191,14 @@ const fetchCompOffDetailList = () => {
 
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
+  advancedFilter.value = {};
+  fetchCompOffDetailList();
+};
+
+const handleAdvancedSearch = (typeStr) => {
+  keyword.value = "";
+  listQuery.value.pageNo = 1;
+  advancedFilter.value = { ...typeStr.data };
   fetchCompOffDetailList();
 };
 
@@ -250,6 +261,12 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
+                  <ListSearch
+                    name="compOffDetailList"
+                    :buss-id="bussId"
+                    :is-show="true"
+                    @search="handleAdvancedSearch"
+                  />
                   <el-cascader
                     v-model="formInline.deptCode"
                     class="comp-off-detail__cascader"
@@ -275,6 +292,7 @@ onUnmounted(() => {
                   :queryList="{
                     ...listQuery,
                     ...formInline,
+                    ...advancedFilter,
                     searchWord: keyword,
                   }"
                   :isFull="isFull"

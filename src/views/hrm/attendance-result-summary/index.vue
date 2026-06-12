@@ -1,4 +1,4 @@
-<!-- 考勤结果汇总列表页，负责按日期范围分页查询员工考勤结果汇总数据。 -->
+<!-- 考勤结果汇总列表页，负责按日期范围、组织及高级筛选分页查询员工考勤结果汇总数据。 -->
 <script setup>
 import dayjs from "dayjs";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
@@ -8,6 +8,7 @@ import { ElMessage } from "element-plus";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
+import ListSearch from "@/components/common/list-search/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import { downLoad, saveTableConfig } from "@/utils";
 import {
@@ -62,6 +63,7 @@ const formInline = ref({
   endDate: today,
   deptCode: "",
 });
+const advancedFilter = ref({});
 
 const dateRange = ref([formInline.value.startDate, formInline.value.endDate]);
 const listQuery = ref({
@@ -173,6 +175,7 @@ const buildQueryParams = () => {
     endDate: formInline.value.endDate || undefined,
     deptCode: formInline.value.deptCode || undefined,
     talentName: talentKeyword || undefined,
+    ...advancedFilter.value,
   };
 };
 
@@ -203,6 +206,14 @@ const fetchAttendanceResultSummaryList = () => {
 
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
+  advancedFilter.value = {};
+  fetchAttendanceResultSummaryList();
+};
+
+const handleAdvancedSearch = (typeStr) => {
+  keyword.value = "";
+  listQuery.value.pageNo = 1;
+  advancedFilter.value = { ...typeStr.data };
   fetchAttendanceResultSummaryList();
 };
 
@@ -318,6 +329,12 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
+                  <ListSearch
+                    name="attendanceResultSummaryList"
+                    :buss-id="bussId"
+                    :is-show="true"
+                    @search="handleAdvancedSearch"
+                  />
                   <el-date-picker
                     v-model="dateRange"
                     type="daterange"
@@ -369,6 +386,7 @@ onUnmounted(() => {
                   :queryList="{
                     ...listQuery,
                     ...formInline,
+                    ...advancedFilter,
                     searchWord: keyword,
                   }"
                   :isFull="isFull"

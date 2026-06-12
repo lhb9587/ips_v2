@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
+import ListSearch from "@/components/common/list-search/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import LeaveDetailContent from "@/views/hrm/my-attendance/leave-list/components/LeaveDetailContent.vue";
@@ -197,6 +198,13 @@ const fetchLeaveRequestList = () => {
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
   formInline.value = {};
+  fetchLeaveRequestList();
+};
+
+const handleAdvancedSearch = (typeStr) => {
+  diminput.value = "";
+  listQuery.value.pageNo = 1;
+  formInline.value = { ...typeStr.data };
   fetchLeaveRequestList();
 };
 
@@ -453,6 +461,12 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
+                  <ListSearch
+                    name="leaveManagementList"
+                    :buss-id="bussId"
+                    :is-show="true"
+                    @search="handleAdvancedSearch"
+                  />
                   <el-dropdown @command="handleMoreCommand">
                     <el-button>
                       更多

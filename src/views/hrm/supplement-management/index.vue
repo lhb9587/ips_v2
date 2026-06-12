@@ -8,6 +8,7 @@ import dayjs from "dayjs";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
+import ListSearch from "@/components/common/list-search/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import SupplementDetailContent from "@/views/hrm/my-attendance/supplement-detail/components/SupplementDetailContent.vue";
@@ -196,6 +197,13 @@ const fetchSupplementDetail = async (rowData) => {
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
   formInline.value = {};
+  fetchSupplementRequestList();
+};
+
+const handleAdvancedSearch = (typeStr) => {
+  diminput.value = "";
+  listQuery.value.pageNo = 1;
+  formInline.value = { ...typeStr.data };
   fetchSupplementRequestList();
 };
 
@@ -464,6 +472,12 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
+                  <ListSearch
+                    name="supplementManagementList"
+                    :buss-id="bussId"
+                    :is-show="true"
+                    @search="handleAdvancedSearch"
+                  />
                   <el-button @click="handleMissingCheck">缺卡检查</el-button>
                   <el-dropdown @command="handleMoreCommand">
                     <el-button>

@@ -8,6 +8,7 @@ import dayjs from "dayjs";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
+import ListSearch from "@/components/common/list-search/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import OvertimeDetailContent from "@/views/hrm/my-attendance/overtime-list/components/OvertimeDetailContent.vue";
@@ -193,6 +194,13 @@ const fetchOvertimeDetail = async (rowData) => {
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
   formInline.value = {};
+  fetchOvertimeRequestList();
+};
+
+const handleAdvancedSearch = (typeStr) => {
+  diminput.value = "";
+  listQuery.value.pageNo = 1;
+  formInline.value = { ...typeStr.data };
   fetchOvertimeRequestList();
 };
 
@@ -390,6 +398,12 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
+                  <ListSearch
+                    name="overtimeManagementList"
+                    :buss-id="bussId"
+                    :is-show="true"
+                    @search="handleAdvancedSearch"
+                  />
                   <el-dropdown @command="handleExport">
                     <el-button>
                       导出

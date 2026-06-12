@@ -1,4 +1,4 @@
-<!-- 出勤记录列表页，负责按组织、姓名和日期范围分页查询员工逐日出勤汇总记录。 -->
+<!-- 出勤记录列表页，负责按组织、姓名、日期范围及高级筛选分页查询员工逐日出勤汇总记录。 -->
 <script setup>
 import dayjs from "dayjs";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
@@ -7,6 +7,7 @@ import { useStore } from "vuex";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
+import ListSearch from "@/components/common/list-search/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import { saveTableConfig } from "@/utils";
 import {
@@ -39,6 +40,7 @@ const formInline = ref({
   endDate: today,
   queryType: "all",
 });
+const advancedFilter = ref({});
 const dateRange = ref([formInline.value.startDate, formInline.value.endDate]);
 const summaryDeptScopeTree = ref([]);
 
@@ -197,6 +199,7 @@ const fetchAttendanceSummaryList = () => {
       startDate: formInline.value.startDate || undefined,
       endDate: formInline.value.endDate || undefined,
       queryType: formInline.value.queryType || "all",
+      ...advancedFilter.value,
     },
     {
       isLoading: true,
@@ -220,6 +223,14 @@ const fetchAttendanceSummaryList = () => {
 
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
+  advancedFilter.value = {};
+  fetchAttendanceSummaryList();
+};
+
+const handleAdvancedSearch = (typeStr) => {
+  diminput.value = "";
+  listQuery.value.pageNo = 1;
+  advancedFilter.value = { ...typeStr.data };
   fetchAttendanceSummaryList();
 };
 
@@ -291,6 +302,12 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
+                  <ListSearch
+                    name="attendanceSummaryList"
+                    :buss-id="bussId"
+                    :is-show="true"
+                    @search="handleAdvancedSearch"
+                  />
                   <el-cascader
                     v-model="formInline.deptCode"
                     class="attendance-summary__cascader"
@@ -328,6 +345,7 @@ onUnmounted(() => {
                   :queryList="{
                     ...listQuery,
                     ...formInline,
+                    ...advancedFilter,
                     searchWord: diminput,
                   }"
                   :isFull="isFull"
