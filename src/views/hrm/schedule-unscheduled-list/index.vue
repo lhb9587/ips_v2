@@ -58,8 +58,8 @@ watch(
 const fetchLocalPageSize = () => {
   const pageSizeData = JSON.parse(localStorage.getItem("pageSize")) || [];
   const savedData = pageSizeData.find((item) => item.name === route.name);
-  const pageSize = savedData ? savedData.pageSize : 10;
-  return Math.min(pageSize, 100);
+  const pageSize = savedData ? savedData.pageSize : 50;
+  return pageSize;
 };
 
 const listQuery = ref({
@@ -218,7 +218,7 @@ onMounted(() => {
                     end-placeholder="结束日期"
                     class="schedule-unscheduled-list__date-range"
                     style="width: 260px; min-width: 260px; max-width: 260px; flex: 0 0 260px"
-                    clearable
+                    :clearable="false"
                     @change="handleDateRangeChange"
                   />
                 </div>

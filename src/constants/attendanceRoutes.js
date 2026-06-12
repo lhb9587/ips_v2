@@ -21,8 +21,6 @@ export const attendanceRouteNameSet = new Set([
   'attendance-group',
   'schedule-list',
   'schedule-list-index',
-  'schedule-unscheduled-list',
-  'schedule-vertical-list',
   'schedule-swap-list',
   'schedule-wizard',
   'my-attendance',

@@ -29,20 +29,6 @@
                 component: () => import("@/views/hrm/schedule-list/index"),
               },
               {
-                path: "unscheduled-list",
-                name: "schedule-unscheduled-list",
-                meta: { title: "未排班列表", authRequired: true },
-                hidden: true,
-                component: () => import("@/views/hrm/schedule-unscheduled-list/index"),
-              },
-              {
-                path: "vertical-list",
-                name: "schedule-vertical-list",
-                meta: { title: "纵向显示", authRequired: true },
-                hidden: true,
-                component: () => import("@/views/hrm/schedule-vertical-list/index"),
-              },
-              {
                 path: "swap-list",
                 name: "schedule-swap-list",
                 meta: { title: "调班单", authRequired: true },

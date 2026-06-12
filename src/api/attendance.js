@@ -311,6 +311,15 @@ export function queryScheduleHorizontalPage(data, config = {}) {
   })
 }
 
+export function exportScheduleList(data, config = {}) {
+  return request({
+    url: attendanceApi.exportScheduleList,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryScheduleVerticalPage(data, config = {}) {
   return request({
     url: attendanceApi.queryScheduleVerticalPage,

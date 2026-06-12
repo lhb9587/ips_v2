@@ -126,7 +126,7 @@ const fetchLocalPageSize = () => {
   const pageSizeData = JSON.parse(localStorage.getItem("pageSize")) || [];
   const savedData = pageSizeData.find((item) => item.name === route.name);
   const pageSize = savedData ? savedData.pageSize : 50;
-  return Math.min(pageSize, 200);
+  return pageSize;
 };
 
 const listQuery = ref({
@@ -191,7 +191,7 @@ const fetchAttendanceSummaryList = () => {
   queryAttendanceRecordPage(
     {
       pageNo: listQuery.value.pageNo,
-      pageSize: Math.min(listQuery.value.pageSize, 200),
+      pageSize: listQuery.value.pageSize,
       deptCode: resolveQueryDeptCode(),
       talentName: diminput.value || undefined,
       startDate: formInline.value.startDate || undefined,

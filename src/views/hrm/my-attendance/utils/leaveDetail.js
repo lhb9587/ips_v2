@@ -11,6 +11,21 @@ const formatDateTimeText = (value) => {
   return String(value);
 };
 
+export const formatLeaveApplyDate = (value) => {
+  if (value === undefined || value === null || value === "") {
+    return "";
+  }
+  const parsed = dayjs(value);
+  if (parsed.isValid()) {
+    return parsed.format("YYYY-MM-DD");
+  }
+  const text = String(value).trim();
+  if (text.includes("T")) {
+    return text.split("T")[0];
+  }
+  return text.length >= 10 ? text.slice(0, 10) : text;
+};
+
 const APPROVAL_ACTION_TYPE_LABEL_MAP = {
   submit: "发起申请",
   提交: "发起申请",
@@ -151,6 +166,35 @@ export const buildLeaveRequestIdsPayload = (rows = []) => {
   return { leaveRequestIds: ids.join(",") };
 };
 
+export const LEAVE_CALC_DURATION_REQUEST_CONFIG = {
+  isLoading: false,
+  showErrorMessage: false,
+};
+
+export const parseLeaveCalcDurationResult = (res = {}) => {
+  const data = res?.data || {};
+  return {
+    calcSuccess: true,
+    duration: Number(data.duration || 0),
+    quotaEnough: data.quotaEnough !== false,
+    message: data.message || "",
+  };
+};
+
+export const parseLeaveCalcDurationError = (error) => {
+  const message = String(error?.response?.data?.message || error?.message || "").trim();
+
+  if (!message) {
+    return null;
+  }
+  return {
+    calcSuccess: false,
+    duration: 0,
+    quotaEnough: false,
+    message,
+  };
+};
+
 export const normalizeLeaveDetail = (detail = {}, fallback = {}) => {
   const merged = {
     ...fallback,
@@ -175,10 +219,14 @@ export const normalizeLeaveDetail = (detail = {}, fallback = {}) => {
   const leaveRequestId = getLeaveRequestId(merged) ?? getLeaveRequestId(fallback);
   const requestNo =
     merged.requestNo || merged.billNo || fallback.requestNo || fallback.billNo || "";
+  const applyDate = formatLeaveApplyDate(
+    merged.applyTime || merged.applyDate || fallback.applyTime || fallback.applyDate,
+  );
 
   return {
     ...merged,
     ...(leaveRequestId !== null ? { leaveRequestId, requestId: leaveRequestId } : {}),
     ...(requestNo ? { requestNo, billNo: requestNo } : {}),
+    ...(applyDate ? { applyDate } : {}),
   };
 };

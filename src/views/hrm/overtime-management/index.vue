@@ -3,7 +3,7 @@
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { ElMessage } from "element-plus";
 import dayjs from "dayjs";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
@@ -12,7 +12,6 @@ import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import OvertimeDetailContent from "@/views/hrm/my-attendance/overtime-list/components/OvertimeDetailContent.vue";
 import {
-  abandonOvertimeRequestAdmin,
   exportOvertimeRequestAdmin,
   queryOvertimeRequestAdminPage,
 } from "@/api/attendance";
@@ -139,7 +138,7 @@ const buildListQueryParams = () => {
   const keyword = diminput.value.trim();
   const params = {
     pageNo: listQuery.value.pageNo,
-    pageSize: Math.min(listQuery.value.pageSize, 200),
+    pageSize: listQuery.value.pageSize,
     ...formInline.value,
   };
   if (!keyword) {
@@ -201,88 +200,6 @@ const getSelectedRows = () => gridRef.value?.getRowList?.() || [];
 
 const getRowRequestId = (row) => getOvertimeRequestId(row);
 
-const buildOvertimeRequestIdsPayload = (rows) => {
-  const ids = [
-    ...new Set(
-      rows.map((item) => getRowRequestId(item)).filter((id) => id || id === 0),
-    ),
-  ];
-  if (!ids.length) {
-    return null;
-  }
-  if (ids.length === 1) {
-    return { overtimeRequestId: ids[0] };
-  }
-  return { overtimeRequestIds: ids.join(",") };
-};
-
-const validateOperableRows = (rows, flagKey, actionLabel) => {
-  if (!rows.length) {
-    ElMessage.warning(`请先选择需要${actionLabel}的加班单`);
-    return null;
-  }
-  const operableRows = rows.filter((item) => item?.[flagKey]);
-  if (!operableRows.length) {
-    ElMessage.warning(`所选记录中没有可${actionLabel}的加班单`);
-    return null;
-  }
-  if (operableRows.length !== rows.length) {
-    ElMessage.warning(`所选记录中包含不可${actionLabel}的加班单，请重新选择`);
-    return null;
-  }
-  return operableRows;
-};
-
-const refreshListAfterBatchAction = (processedIds = []) => {
-  const processedIdSet = new Set(processedIds.map((id) => String(id)));
-  if (
-    currentDetail.value &&
-    processedIdSet.has(String(getRowRequestId(currentDetail.value) || ""))
-  ) {
-    closeDetailSidebar();
-  }
-  gridRef.value?.getRowNode?.()?.forEach?.((node) => node.setSelected(false));
-  fetchOvertimeRequestList();
-};
-
-const runBatchAdminAction = async ({
-  rows,
-  flagKey,
-  actionLabel,
-  confirmMessage,
-  requestFn,
-  successLabel,
-}) => {
-  const operableRows = validateOperableRows(rows, flagKey, actionLabel);
-  if (!operableRows) {
-    return;
-  }
-  try {
-    await ElMessageBox.confirm(confirmMessage, `${actionLabel}确认`, {
-      confirmButtonText: "确定",
-      cancelButtonText: "取消",
-      type: "warning",
-    });
-  } catch {
-    return;
-  }
-  const payload = buildOvertimeRequestIdsPayload(operableRows);
-  if (!payload) {
-    return ElMessage.warning(`选中记录缺少加班单ID，无法${actionLabel}`);
-  }
-  try {
-    const res = await requestFn(payload, { isLoading: true });
-    const successCount = Number(res?.data?.successCount || operableRows.length);
-    ElMessage.success(`已${successLabel} ${successCount} 条加班单`);
-    refreshListAfterBatchAction(
-      res?.data?.overtimeRequestIds ||
-        operableRows.map((item) => getRowRequestId(item)),
-    );
-  } catch (error) {
-    console.log(error);
-  }
-};
-
 const handleExport = (command) => {
   const payload = {
     ...buildExportParams(),
@@ -316,23 +233,6 @@ const handleExport = (command) => {
     downLoad(filePath, fileName);
     ElMessage.success(command === "exportSelected" ? "选中导出成功" : "全部导出成功");
   });
-};
-
-const handleMoreCommand = (command) => {
-  if (command === "exportSelected" || command === "exportAll") {
-    return handleExport(command);
-  }
-
-  if (command === "discard") {
-    return runBatchAdminAction({
-      rows: getSelectedRows(),
-      flagKey: "canAbandon",
-      actionLabel: "废弃",
-      confirmMessage: "确定要废弃选中的加班单吗？废弃后该单据将不再进入审批流程。",
-      requestFn: abandonOvertimeRequestAdmin,
-      successLabel: "废弃",
-    });
-  }
 };
 
 const formatDateTimeCell = (value) => {
@@ -490,21 +390,18 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
-                  <el-dropdown @command="handleMoreCommand">
+                  <el-dropdown @command="handleExport">
                     <el-button>
-                      更多
+                      导出
                       <i class="mdi mdi-chevron-down ms-1"></i>
                     </el-button>
                     <template #dropdown>
                       <el-dropdown-menu>
                         <el-dropdown-item command="exportSelected">
-                          导出选中
+                          选中导出
                         </el-dropdown-item>
                         <el-dropdown-item command="exportAll">
-                          导出全部
-                        </el-dropdown-item>
-                        <el-dropdown-item command="discard">
-                          废弃
+                          全部导出
                         </el-dropdown-item>
                       </el-dropdown-menu>
                     </template>

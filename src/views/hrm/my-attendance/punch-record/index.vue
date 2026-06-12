@@ -43,6 +43,7 @@ const filterForm = ref({
   startDate: monthAgo,
   endDate: today,
 });
+const dateRange = ref([monthAgo, today]);
 
 const fetchLocalPageSize = () => {
   const pageSizeData = JSON.parse(localStorage.getItem("pageSize")) || [];
@@ -146,6 +147,12 @@ async function fetchPunchRecordList() {
   } finally {
     loading.value = false;
   }
+}
+
+function handleDateRangeChange(value) {
+  const range = Array.isArray(value) ? value : [];
+  filterForm.value.startDate = range[0] || "";
+  filterForm.value.endDate = range[1] || "";
 }
 
 function handleSearch() {
@@ -269,18 +276,16 @@ onUnmounted(() => {
           <div class="card-body punch-record-card__toolbar">
             <div class="punch-record-card__filters">
               <el-date-picker
-                v-model="filterForm.startDate"
-                type="date"
+                v-model="dateRange"
+                type="daterange"
                 value-format="YYYY-MM-DD"
-                placeholder="开始日期"
-                class="punch-record-card__date"
-              />
-              <el-date-picker
-                v-model="filterForm.endDate"
-                type="date"
-                value-format="YYYY-MM-DD"
-                placeholder="结束日期"
-                class="punch-record-card__date"
+                range-separator="-"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                class="punch-record-card__date-range"
+                style="width: 260px; min-width: 260px; max-width: 260px; flex: 0 0 260px"
+                :clearable="false"
+                @change="handleDateRangeChange"
               />
               <el-button
                 type="primary"
@@ -335,7 +340,10 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.punch-record-card__date {
-  width: 160px;
+:deep(.punch-record-card__date-range.el-date-editor--daterange) {
+  width: 260px !important;
+  min-width: 260px !important;
+  max-width: 260px !important;
+  flex: 0 0 260px !important;
 }
 </style>

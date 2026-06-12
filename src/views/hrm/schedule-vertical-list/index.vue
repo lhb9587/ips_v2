@@ -4,27 +4,71 @@ import dayjs from "dayjs";
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
+import { ElMessage } from "element-plus";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
-import { queryScheduleVerticalPage } from "@/api/attendance";
+import { downLoad } from "@/utils";
+import { exportScheduleList, queryScheduleVerticalPage } from "@/api/attendance";
 
 const route = useRoute();
 const store = useStore();
 
 const gridName = "scheduleVerticalListGrid";
+const MAX_VERTICAL_DATE_RANGE_DAYS = 31;
 const WEEK_TEXT = ["日", "一", "二", "三", "四", "五", "六"];
 
 const rowHeight = ref(40);
 const diminput = ref("");
+const gridRef = ref(null);
 const total = ref(0);
 const gridData = ref([]);
+const gridOptions = {
+  rowMultiSelectWithClick: true,
+};
+
+const resolveDeptCode = (item = {}) => {
+  const code =
+    item.deptCode ?? item.deptId ?? item.organizationCode ?? item.value ?? "";
+  return code === "" || code === null || code === undefined ? "" : String(code);
+};
+
+const mapAttendanceOrganizationTree = (list = []) =>
+  list
+    .map((item) => {
+      const deptCode = resolveDeptCode(item);
+      if (!deptCode) {
+        return null;
+      }
+      return {
+        deptCode,
+        deptName: item.deptName || item.organizationName || item.label || "",
+        children: Array.isArray(item.children)
+          ? mapAttendanceOrganizationTree(item.children)
+          : [],
+      };
+    })
+    .filter(Boolean);
 
 const formInline = ref({
   startDate: dayjs().subtract(7, "day").format("YYYY-MM-DD"),
   endDate: dayjs().format("YYYY-MM-DD"),
+  deptCode: "",
 });
 const dateRange = ref([formInline.value.startDate, formInline.value.endDate]);
+
+const currentOperator = computed(() => ({
+  operatorId: store.state.user.userId || undefined,
+  operatorName: store.state.user.name || undefined,
+}));
+
+const attendanceOrganizationOptions = computed(() => {
+  const scope = store.getters["attendanceScope/scope"] || {};
+  if (Array.isArray(scope?.deptScopeTree) && scope.deptScopeTree.length > 0) {
+    return mapAttendanceOrganizationTree(scope.deptScopeTree);
+  }
+  return mapAttendanceOrganizationTree(store.getters["attendanceScope/deptScopes"] || []);
+});
 
 const calculateGridHeight = () => {
   const windowHeight = document.documentElement.clientHeight;
@@ -50,8 +94,8 @@ watch(
 const fetchLocalPageSize = () => {
   const pageSizeData = JSON.parse(localStorage.getItem("pageSize")) || [];
   const savedData = pageSizeData.find((item) => item.name === route.name);
-  const pageSize = savedData ? savedData.pageSize : 10;
-  return Math.min(pageSize, 100);
+  const pageSize = savedData ? savedData.pageSize : 50;
+  return pageSize;
 };
 
 const listQuery = ref({
@@ -140,13 +184,33 @@ const collectFlatDateMap = (record = {}) => {
 
 const isEmptyValue = (value) => value === undefined || value === null || value === "";
 
+const validateVerticalDateRange = (startDate, endDate) => {
+  if (!startDate || !endDate) {
+    return true;
+  }
+  if (dayjs(endDate).isBefore(dayjs(startDate), "day")) {
+    ElMessage.warning("结束日期不能早于开始日期");
+    return false;
+  }
+  const spanDays = dayjs(endDate).diff(dayjs(startDate), "day") + 1;
+  if (spanDays > MAX_VERTICAL_DATE_RANGE_DAYS) {
+    ElMessage.warning(`日期范围不能超过 ${MAX_VERTICAL_DATE_RANGE_DAYS} 天`);
+    return false;
+  }
+  return true;
+};
+
 const fetchVerticalList = () => {
+  if (!validateVerticalDateRange(formInline.value.startDate, formInline.value.endDate)) {
+    return;
+  }
   queryScheduleVerticalPage(
     {
       pageNo: listQuery.value.pageNo,
       pageSize: Math.min(listQuery.value.pageSize, 100),
       startDate: formInline.value.startDate,
       endDate: formInline.value.endDate,
+      deptCode: formInline.value.deptCode || undefined,
       talentName: diminput.value || undefined,
     },
     {
@@ -201,17 +265,80 @@ const fuzzySearch = () => {
 
 const handleDateRangeChange = (value) => {
   const range = Array.isArray(value) ? value : [];
-  if (!range[0] || !range[1]) {
+  const startDate = range[0] || "";
+  const endDate = range[1] || "";
+  if (!startDate || !endDate) {
     dateRange.value = [formInline.value.startDate, formInline.value.endDate];
     return;
   }
-  formInline.value.startDate = range[0] || "";
-  formInline.value.endDate = range[1] || "";
+  if (!validateVerticalDateRange(startDate, endDate)) {
+    dateRange.value = [formInline.value.startDate, formInline.value.endDate];
+    return;
+  }
+  formInline.value.startDate = startDate;
+  formInline.value.endDate = endDate;
   fuzzySearch();
 };
 
 const handlePagination = () => {
   fetchVerticalList();
+};
+
+const getSelectedRows = () => gridRef.value?.getRowList?.() || [];
+
+const buildExportParams = () => ({
+  startDate: formInline.value.startDate,
+  endDate: formInline.value.endDate,
+  deptCode: formInline.value.deptCode || undefined,
+  talentName: diminput.value?.trim() || undefined,
+  ...currentOperator.value,
+});
+
+const handleExport = (command) => {
+  if (!validateVerticalDateRange(formInline.value.startDate, formInline.value.endDate)) {
+    return;
+  }
+  const payload = {
+    ...buildExportParams(),
+    exportScope: command === "exportSelected" ? "SELECTED" : "ALL",
+  };
+
+  if (command === "exportSelected") {
+    const selectedRows = getSelectedRows();
+    if (selectedRows.length === 0) {
+      return ElMessage.warning("请先选择需要导出的记录");
+    }
+    const selectedTalentCodes = [
+      ...new Set(
+        selectedRows
+          .map((item) => item.talentCode || item.employeeCode)
+          .filter((item) => item || item === 0),
+      ),
+    ];
+    if (selectedTalentCodes.length === 0) {
+      return ElMessage.warning("选中记录缺少员工编码，无法导出");
+    }
+    if (selectedTalentCodes.length > 500) {
+      return ElMessage.warning("选中导出员工不能超过500人");
+    }
+    payload.selectedTalentCodes = selectedTalentCodes.join(",");
+  }
+
+  exportScheduleList(payload, { isLoading: true }).then((res) => {
+    const filePath = res?.data?.filePath;
+    const fileName = res?.data?.fileName || "排班列表.xlsx";
+    if (!filePath) {
+      return ElMessage.warning("导出文件地址为空");
+    }
+    downLoad(filePath, fileName);
+    ElMessage.success(command === "exportSelected" ? "选中导出成功" : "全部导出成功");
+  });
+};
+
+const handleDeptChange = (value) => {
+  formInline.value.deptCode =
+    value === "" || value === null || value === undefined ? "" : String(value);
+  fuzzySearch();
 };
 
 const cellRenderer = (params) => {
@@ -239,16 +366,17 @@ onMounted(() => {
             <div class="d-flex align-items-center">
               <span class="mb-0 flex-grow-1">
                 <div
-                  class="d-flex"
+                  class="d-flex schedule-vertical-list__toolbar"
                   style="gap: 10px"
                 >
                   <el-input
                     v-model="diminput"
-                    style="width: 200px"
-                    placeholder="搜索..."
-                    clearable
                     class="top-search"
+                    style="width: 220px"
+                    placeholder="请输入员工姓名"
+                    clearable
                     @keyup.enter="fuzzySearch"
+                    @clear="fuzzySearch"
                   >
                     <template #prepend>
                       <el-button @click="fuzzySearch">
@@ -268,18 +396,53 @@ onMounted(() => {
                     :clearable="false"
                     @change="handleDateRangeChange"
                   />
+                  <el-cascader
+                    v-model="formInline.deptCode"
+                    class="schedule-vertical-list__cascader"
+                    :options="attendanceOrganizationOptions"
+                    :props="{
+                      checkStrictly: true,
+                      emitPath: false,
+                      value: 'deptCode',
+                      label: 'deptName',
+                    }"
+                    clearable
+                    filterable
+                    :show-all-levels="false"
+                    placeholder="请选择组织"
+                    @change="handleDeptChange"
+                  />
+                  <el-dropdown @command="handleExport">
+                    <el-button>
+                      导出
+                      <i class="mdi mdi-chevron-down ms-1"></i>
+                    </el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="exportSelected">
+                          选中导出
+                        </el-dropdown-item>
+                        <el-dropdown-item command="exportAll">
+                          全部导出
+                        </el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
                 </div>
               </span>
             </div>
           </div>
           <div style="padding: 0 10px">
             <GridView
+              ref="gridRef"
               :gridName="gridName"
               :height="gridHeight"
               :rowHeight="rowHeight"
               :columnDefs="columnList"
               :grid-data="gridData"
               :cellRenderer="cellRenderer"
+              :gridOptions="gridOptions"
+              showSelectionColumn
             />
           </div>
           <div
@@ -312,6 +475,10 @@ onMounted(() => {
   min-width: 260px !important;
   max-width: 260px !important;
   flex: 0 0 260px !important;
+}
+
+.schedule-vertical-list__cascader {
+  width: 220px;
 }
 
 </style>

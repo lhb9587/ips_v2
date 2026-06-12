@@ -16,7 +16,16 @@ import {
   handleLeaveAttachmentUploadSuccess,
   uploadLeaveAttachment,
 } from "@/views/hrm/my-attendance/utils/leaveAttachmentUpload";
+import {
+  LEAVE_CALC_DURATION_REQUEST_CONFIG,
+  parseLeaveCalcDurationError,
+  parseLeaveCalcDurationResult,
+} from "@/views/hrm/my-attendance/utils/leaveDetail";
 import { getUserInfo } from "@/utils/user";
+import {
+  LEAVE_END_TIME2_OPTIONS,
+  LEAVE_START_TIME2_OPTIONS,
+} from "@/views/hrm/my-attendance/utils/leaveTime";
 import LeaveTypeCard from "./components/LeaveTypeCard.vue";
 import LeaveTimelineDialog from "./components/LeaveTimelineDialog.vue";
 
@@ -26,6 +35,7 @@ const employeeInfo = reactive({
   name: "",
   code: "",
   organization: "",
+  position: "",
 });
 
 const leaveTypes = ref([]);
@@ -49,14 +59,8 @@ const fileList = ref([]);
 const editingBillNo = ref("");
 const timelineDialogVisible = ref(false);
 
-const startTime2Options = [
-  { label: "上午 9:00", value: "9:00:00" },
-  { label: "上午 11:45", value: "11:45:00" },
-];
-const endTime2Options = [
-  { label: "下午 14:00", value: "14:00:00" },
-  { label: "下午 18:00", value: "18:00:00" },
-];
+const startTime2Options = LEAVE_START_TIME2_OPTIONS;
+const endTime2Options = LEAVE_END_TIME2_OPTIONS;
 const defaultLeaveTypeNames = ["法定年假", "司龄假", "事假", "病假"];
 const otherTypeOptions = ref([]);
 
@@ -73,6 +77,7 @@ const fetchLeaveApplicationInit = async () => {
       userInfo?.organizationName ||
       userInfo?.organization ||
       employeeInfo.organization;
+    employeeInfo.position = userInfo?.positionName || userInfo?.position || employeeInfo.position;
 
     form.applicant = employeeInfo.name;
 
@@ -84,6 +89,7 @@ const fetchLeaveApplicationInit = async () => {
     employeeInfo.name = employee?.talentName || employeeInfo.name;
     employeeInfo.code = employee?.talentCode || employeeInfo.code;
     employeeInfo.organization = employee?.deptName || employeeInfo.organization;
+    employeeInfo.position = employee?.positionName || employeeInfo.position;
     form.applicant = employeeInfo.name;
     if (data?.applyDate) {
       form.applyDate = dayjs(data.applyDate).format("YYYY-MM-DD");
@@ -184,6 +190,7 @@ const submittedCount = computed(
 const lastLeaveTime = computed(() => records.value[0]?.startTime || "--");
 
 const leaveDuration = ref(0);
+const calcSuccess = ref(true);
 const quotaEnough = ref(true);
 const calcDurationMessage = ref("");
 const lastCalcWarningMessage = ref("");
@@ -198,6 +205,7 @@ const buildDateTime = (date, period, fallback) => {
 
 const resetCalcDurationState = () => {
   leaveDuration.value = 0;
+  calcSuccess.value = true;
   quotaEnough.value = true;
   calcDurationMessage.value = "";
   lastCalcWarningMessage.value = "";
@@ -226,12 +234,13 @@ const calcLeaveDuration = async () => {
         endTime: form.endTime,
         endTime2: form.endTime2,
       },
-      { isLoading: false },
+      LEAVE_CALC_DURATION_REQUEST_CONFIG,
     );
-    const data = res?.data || {};
-    leaveDuration.value = Number(data.duration || 0);
-    quotaEnough.value = data.quotaEnough !== false;
-    calcDurationMessage.value = data.message || "";
+    const result = parseLeaveCalcDurationResult(res);
+    calcSuccess.value = result.calcSuccess;
+    leaveDuration.value = result.duration;
+    quotaEnough.value = result.quotaEnough;
+    calcDurationMessage.value = result.message;
     if (!quotaEnough.value && calcDurationMessage.value) {
       if (calcDurationMessage.value !== lastCalcWarningMessage.value) {
         ElMessage.warning(calcDurationMessage.value);
@@ -241,6 +250,18 @@ const calcLeaveDuration = async () => {
       lastCalcWarningMessage.value = "";
     }
   } catch (error) {
+    const result = parseLeaveCalcDurationError(error);
+    if (result) {
+      calcSuccess.value = result.calcSuccess;
+      leaveDuration.value = result.duration;
+      quotaEnough.value = result.quotaEnough;
+      calcDurationMessage.value = result.message;
+      if (result.message !== lastCalcWarningMessage.value) {
+        ElMessage.warning(result.message);
+        lastCalcWarningMessage.value = result.message;
+      }
+      return;
+    }
     resetCalcDurationState();
   }
 };
@@ -260,7 +281,11 @@ watch(
   { immediate: true },
 );
 
-const durationWarning = computed(() => {
+const durationHintText = computed(() => {
+  if (!calcSuccess.value && calcDurationMessage.value) {
+    return calcDurationMessage.value;
+  }
+
   if (!quotaEnough.value && calcDurationMessage.value) {
     return calcDurationMessage.value;
   }
@@ -308,7 +333,7 @@ const validateForm = (submit = false) => {
     ElMessage.warning("请填写请假说明");
     return false;
   }
-  if (!quotaEnough.value) {
+  if (!calcSuccess.value || !quotaEnough.value) {
     ElMessage.warning(calcDurationMessage.value || "当前请假无法申请，请调整假期类型或起止时间");
     return false;
   }
@@ -488,6 +513,10 @@ const openTimelineDialog = () => {
               <div class="readonly-cell">{{ employeeInfo.code }}</div>
               <div class="readonly-cell readonly-cell--label">所属组织</div>
               <div class="readonly-cell">{{ employeeInfo.organization }}</div>
+              <div class="readonly-cell readonly-cell--label">职位</div>
+              <div class="readonly-cell readonly-cell--wrap">
+                {{ employeeInfo.position }}
+              </div>
             </div>
           </section>
 
@@ -570,10 +599,14 @@ const openTimelineDialog = () => {
               <el-form-item label="请假时长">
                 <div
                   class="duration-box"
-                  :class="{ 'duration-box--error': !quotaEnough }"
+                  :class="{ 'duration-box--error': !calcSuccess || !quotaEnough }"
                 >
-                  <strong>{{ leaveDuration.toFixed(1) }} 天</strong>
-                  <span>{{ durationWarning }}</span>
+                  <strong v-if="leaveDuration > 0 || !calcSuccess">{{ leaveDuration.toFixed(1) }} 天</strong>
+                  <span
+                    :class="{
+                      'duration-box__message-only': calcSuccess && leaveDuration <= 0,
+                    }"
+                  >{{ durationHintText }}</span>
                 </div>
               </el-form-item>
 
@@ -736,7 +769,7 @@ const openTimelineDialog = () => {
 
 .readonly-grid {
   display: grid;
-  grid-template-columns: 120px minmax(0, 1fr) 180px minmax(0, 1.4fr) 180px minmax(0, 1.3fr);
+  grid-template-columns: 120px minmax(0, 1fr) 160px minmax(0, 1fr);
   padding: 18px;
 }
 
@@ -751,13 +784,21 @@ const openTimelineDialog = () => {
   font-size: 13px;
 }
 
-.readonly-cell:first-child {
+.readonly-cell:nth-child(4n + 1) {
   border-left: 1px solid #e2e8f2;
 }
 
 .readonly-cell--label {
   background: #f2f5fa;
   font-weight: 600;
+}
+
+.readonly-cell--wrap {
+  min-height: 34px;
+  line-height: 1.6;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 .leave-form-section :deep(.el-form) {
@@ -834,16 +875,16 @@ const openTimelineDialog = () => {
   color: #c45656;
 }
 
+.duration-box__message-only {
+  margin-top: 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 .upload-tip {
   color: #7a879c;
   font-size: 12px;
   line-height: 1.8;
-}
-
-@media (max-width: 1400px) {
-  .readonly-grid {
-    grid-template-columns: 110px minmax(0, 1fr) 130px minmax(0, 1fr) 130px minmax(0, 1fr);
-  }
 }
 
 @media (max-width: 1200px) {

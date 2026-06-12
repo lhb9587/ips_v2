@@ -79,8 +79,8 @@ watch(
 const fetchLocalPageSize = () => {
   const pageSizeData = JSON.parse(localStorage.getItem("pageSize")) || [];
   const savedData = pageSizeData.find((item) => item.name === route.name);
-  const pageSize = savedData ? savedData.pageSize : 10;
-  return Math.min(pageSize, 100);
+  const pageSize = savedData ? savedData.pageSize : 50;
+  return pageSize;
 };
 
 const listQuery = ref({

@@ -23,8 +23,17 @@ import {
 import {
   buildLeaveApprovalFlow,
   getLeaveRequestId,
+  LEAVE_CALC_DURATION_REQUEST_CONFIG,
   normalizeLeaveDetail,
+  parseLeaveCalcDurationError,
+  parseLeaveCalcDurationResult,
 } from "@/views/hrm/my-attendance/utils/leaveDetail";
+import {
+  formatLeaveTimeDisplay,
+  LEAVE_END_TIME2_OPTIONS,
+  LEAVE_START_TIME2_OPTIONS,
+  resolveLeaveTimeFields,
+} from "@/views/hrm/my-attendance/utils/leaveTime";
 import { formatLeaveTypeLabel } from "@/views/hrm/my-attendance/utils/leaveType";
 
 const props = defineProps({
@@ -58,14 +67,8 @@ const detailEditForm = ref({});
 const currentDetail = ref({});
 const defaultLeaveTypeNames = ["法定年假", "司龄假", "事假", "病假"];
 
-const startTime2Options = [
-  { label: "上午 9:00", value: "9:00:00" },
-  { label: "下午 14:00", value: "14:00:00" },
-];
-const endTime2Options = [
-  { label: "上午 14:00", value: "14:00:00" },
-  { label: "下午 18:00", value: "18:00:00" },
-];
+const startTime2Options = LEAVE_START_TIME2_OPTIONS;
+const endTime2Options = LEAVE_END_TIME2_OPTIONS;
 
 const leaveTypeOptions = ref([]);
 const otherLeaveTypesExpanded = ref(false);
@@ -241,93 +244,6 @@ const buildDateTime = (date, time2, fallback) => {
   return `${date} ${time}`;
 };
 
-const normalizeTime2 = (timeText, isEnd = false) => {
-  const text = String(timeText || "").trim();
-  if (!text) {
-    return isEnd ? "18:00:00" : "9:00:00";
-  }
-
-  const options = isEnd ? endTime2Options : startTime2Options;
-  const matched = options.find((item) => item.value === text);
-  if (matched) {
-    return matched.value;
-  }
-
-  const parts = text.split(":");
-  if (parts.length >= 2) {
-    const normalized = `${Number(parts[0])}:${String(parts[1]).padStart(2, "0")}:${String(parts[2] || "00").padStart(2, "0")}`;
-    const byValue = options.find((item) => item.value === normalized);
-    if (byValue) {
-      return byValue.value;
-    }
-    const hour = Number(parts[0]);
-    if (isEnd) {
-      return hour >= 18 ? "18:00:00" : "14:00:00";
-    }
-    return hour >= 14 ? "14:00:00" : "9:00:00";
-  }
-
-  if (text === "下午") {
-    return isEnd ? "18:00:00" : "14:00:00";
-  }
-  if (text === "上午") {
-    return isEnd ? "14:00:00" : "9:00:00";
-  }
-
-  return isEnd ? "18:00:00" : "9:00:00";
-};
-
-const parseDateTimeField = (timeText, isEnd = false) => {
-  const text = String(timeText || "").trim();
-  if (!text) {
-    return { date: "", time2: isEnd ? "18:00:00" : "9:00:00" };
-  }
-
-  if (text.includes("上午") || text.includes("下午")) {
-    const [date = "", period = "上午"] = text.split(" ");
-    return { date, time2: normalizeTime2(period, isEnd) };
-  }
-
-  const normalized = text.includes("T") ? text : text.replace(" ", "T");
-  const parsed = dayjs(normalized);
-  if (!parsed.isValid()) {
-    return { date: "", time2: isEnd ? "18:00:00" : "9:00:00" };
-  }
-
-  const time2 = `${parsed.hour()}:${String(parsed.minute()).padStart(2, "0")}:${String(parsed.second()).padStart(2, "0")}`;
-  return {
-    date: parsed.format("YYYY-MM-DD"),
-    time2: normalizeTime2(time2, isEnd),
-  };
-};
-
-const resolveLeaveTimeFields = (detail = {}) => {
-  const startParsed = parseDateTimeField(detail.startTime, false);
-  const endParsed = parseDateTimeField(detail.endTime, true);
-
-  return {
-    startTime: detail.startDate || startParsed.date,
-    startTime2: detail.startTime2 || startParsed.time2,
-    endTime: detail.endDate || endParsed.date,
-    endTime2: detail.endTime2 || endParsed.time2,
-  };
-};
-
-const formatTime2Label = (time2, isEnd = false) => {
-  const options = isEnd ? endTime2Options : startTime2Options;
-  return options.find((item) => item.value === time2)?.label || time2;
-};
-
-const formatLeaveTimeDisplay = (detail, isEnd = false) => {
-  const fields = resolveLeaveTimeFields(detail);
-  const date = isEnd ? fields.endTime : fields.startTime;
-  const time2 = isEnd ? fields.endTime2 : fields.startTime2;
-  if (!date) {
-    return "";
-  }
-  return `${date} ${formatTime2Label(time2, isEnd)}`;
-};
-
 const buildDetailEditForm = (detail) => ({
   leaveType: detail.leaveTypeName,
   unit: detail.durationUnit,
@@ -388,6 +304,7 @@ const onPreview = (data) => {
 };
 
 const detailDuration = ref(0);
+const detailCalcSuccess = ref(true);
 const detailQuotaEnough = ref(true);
 const detailCalcMessage = ref("");
 
@@ -398,6 +315,7 @@ const resolveLeaveTypeCode = (leaveTypeName) => {
 
 const resetDetailCalcState = () => {
   detailDuration.value = 0;
+  detailCalcSuccess.value = true;
   detailQuotaEnough.value = true;
   detailCalcMessage.value = "";
 };
@@ -430,13 +348,22 @@ const calcDetailDuration = async () => {
         endTime,
         endTime2,
       },
-      { isLoading: false },
+      LEAVE_CALC_DURATION_REQUEST_CONFIG,
     );
-    const data = res?.data || {};
-    detailDuration.value = Number(data.duration || 0);
-    detailQuotaEnough.value = data.quotaEnough !== false;
-    detailCalcMessage.value = data.message || "";
+    const result = parseLeaveCalcDurationResult(res);
+    detailCalcSuccess.value = result.calcSuccess;
+    detailDuration.value = result.duration;
+    detailQuotaEnough.value = result.quotaEnough;
+    detailCalcMessage.value = result.message;
   } catch (error) {
+    const result = parseLeaveCalcDurationError(error);
+    if (result) {
+      detailCalcSuccess.value = result.calcSuccess;
+      detailDuration.value = result.duration;
+      detailQuotaEnough.value = result.quotaEnough;
+      detailCalcMessage.value = result.message;
+      return;
+    }
     resetDetailCalcState();
   }
 };
@@ -566,12 +493,12 @@ const validateDetailEditForm = () => {
     ElMessage.warning("结束时间不能早于开始时间");
     return false;
   }
-  if (detailDuration.value <= 0) {
-    ElMessage.warning("结束时间不能早于开始时间");
+  if (!detailCalcSuccess.value || !detailQuotaEnough.value) {
+    ElMessage.warning(detailCalcMessage.value || "当前请假无法申请，请调整假期类型或起止时间");
     return false;
   }
-  if (!detailQuotaEnough.value) {
-    ElMessage.warning(detailCalcMessage.value || "当前请假无法申请，请调整假期类型或起止时间");
+  if (detailDuration.value <= 0) {
+    ElMessage.warning("结束时间不能早于开始时间");
     return false;
   }
   if (!detailEditForm.value.reason) {
@@ -856,10 +783,15 @@ const approvalFlow = computed(() => buildLeaveApprovalFlow(currentDetail.value))
             <div class="leave-info-table__label">员工编码</div>
             <div>{{ currentDetail.talentCode }}</div>
 
-            <div class="leave-info-table__label">所属组织</div>
-            <div>{{ currentDetail.deptName }}</div>
+            <div class="leave-info-table__label">职位</div>
+            <div class="leave-info-table__value--wrap">
+              {{ currentDetail.positionName || currentDetail.position || currentDetail.posName || "--" }}
+            </div>
             <div class="leave-info-table__label">申请日期</div>
-            <div>{{ currentDetail.applyTime }}</div>
+            <div>{{ currentDetail.applyDate || "--" }}</div>
+
+            <div class="leave-info-table__label">所属组织</div>
+            <div class="leave-info-table__value--full">{{ currentDetail.deptName || "--" }}</div>
           </div>
 
           <div class="detail-section">
@@ -958,18 +890,34 @@ const approvalFlow = computed(() => buildLeaveApprovalFlow(currentDetail.value))
                 </div>
                 <strong v-else>{{ formatLeaveTimeDisplay(currentDetail, true) }}</strong>
               </div>
-              <div class="detail-duration-card">
+              <div
+                class="detail-duration-card"
+                :class="{
+                  'detail-duration-card--error':
+                    detailEditMode && (!detailCalcSuccess || !detailQuotaEnough),
+                }"
+              >
                 <span>请假时长</span>
-                <strong v-if="detailEditMode">{{ detailDuration.toFixed(1) }} 天</strong>
+                <template v-if="detailEditMode">
+                  <strong v-if="detailDuration > 0 || !detailCalcSuccess">
+                    {{ detailDuration.toFixed(1) }} 天
+                  </strong>
+                  <p
+                    v-if="!detailCalcSuccess && detailCalcMessage"
+                    class="detail-duration-card__warning"
+                  >
+                    {{ detailCalcMessage }}
+                  </p>
+                  <p
+                    v-if="detailCalcSuccess && !detailQuotaEnough && detailCalcMessage"
+                    class="detail-duration-card__warning"
+                  >
+                    {{ detailCalcMessage }}
+                  </p>
+                </template>
                 <strong v-else>
                   {{ currentDetail.leaveDuration }} {{ currentDetail.durationUnit }}
                 </strong>
-                <p
-                  v-if="detailEditMode && !detailQuotaEnough && detailCalcMessage"
-                  class="detail-duration-card__warning"
-                >
-                  {{ detailCalcMessage }}
-                </p>
               </div>
             </div>
           </div>
@@ -1157,6 +1105,21 @@ const approvalFlow = computed(() => buildLeaveApprovalFlow(currentDetail.value))
   background: #f3f6fb;
   color: #31425f;
   font-weight: 600;
+}
+
+.leave-info-table__value--wrap {
+  align-items: flex-start !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  line-height: 1.6;
+  white-space: normal;
+  word-break: break-all;
+}
+
+.leave-info-table__value--full {
+  grid-column: span 3;
+  white-space: normal;
+  word-break: break-all;
 }
 
 .leave-detail-content :deep(.el-input),
@@ -1348,11 +1311,20 @@ const approvalFlow = computed(() => buildLeaveApprovalFlow(currentDetail.value))
   font-weight: 600;
 }
 
+.detail-duration-card--error {
+  border-color: #f5b5b5;
+  background: #fff5f5;
+}
+
 .detail-duration-card__warning {
   margin: 8px 0 0;
   color: #c45656;
   font-size: 12px;
   line-height: 1.6;
+}
+
+.detail-duration-card--error .detail-duration-card__warning:first-of-type {
+  margin-top: 0;
 }
 
 .detail-time-split {
@@ -1365,8 +1337,16 @@ const approvalFlow = computed(() => buildLeaveApprovalFlow(currentDetail.value))
 
 .detail-time-field {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 150px;
+  grid-template-columns: minmax(0, 1fr) 108px;
   gap: 8px;
+}
+
+.detail-time-field :deep(.el-date-editor.el-input) {
+  width: 100%;
+}
+
+.detail-time-field :deep(.el-select) {
+  width: 100%;
 }
 
 .detail-text-block {
@@ -1494,7 +1474,7 @@ const approvalFlow = computed(() => buildLeaveApprovalFlow(currentDetail.value))
   }
 
   .leave-info-table {
-    grid-template-columns: 140px minmax(0, 1fr);
+    grid-template-columns: 110px minmax(0, 1fr);
   }
 
   .leave-info-table > div:nth-child(-n + 4) {
@@ -1511,6 +1491,10 @@ const approvalFlow = computed(() => buildLeaveApprovalFlow(currentDetail.value))
 
   .leave-info-table > div:nth-child(odd) {
     border-left: 1px solid #e1e7f0;
+  }
+
+  .leave-info-table__value--full {
+    grid-column: span 1;
   }
 
   .detail-leave-type-grid,

@@ -202,14 +202,14 @@ const goSupplementList = () => {
             <div class="section-heading">基础信息</div>
             <div class="readonly-grid">
               <div class="readonly-cell readonly-cell--label">姓名</div>
-              <div class="readonly-cell">{{ employeeInfo.name || "--" }}</div>
+              <div class="readonly-cell">{{ employeeInfo.name }}</div>
               <div class="readonly-cell readonly-cell--label">员工编码</div>
-              <div class="readonly-cell">{{ employeeInfo.code || "--" }}</div>
-              <div class="readonly-cell readonly-cell--label">职位</div>
-              <div class="readonly-cell">{{ employeeInfo.position || "--" }}</div>
+              <div class="readonly-cell">{{ employeeInfo.code }}</div>
               <div class="readonly-cell readonly-cell--label">所属组织</div>
-              <div class="readonly-cell readonly-cell--wide">
-                {{ employeeInfo.organization || "--" }}
+              <div class="readonly-cell">{{ employeeInfo.organization }}</div>
+              <div class="readonly-cell readonly-cell--label">职位</div>
+              <div class="readonly-cell readonly-cell--wrap">
+                {{ employeeInfo.position }}
               </div>
             </div>
           </section>
@@ -335,7 +335,7 @@ const goSupplementList = () => {
 
 .readonly-grid {
   display: grid;
-  grid-template-columns: 120px minmax(0, 1fr) 160px minmax(0, 1.2fr) 120px minmax(0, 1.2fr);
+  grid-template-columns: 120px minmax(0, 1fr) 160px minmax(0, 1fr);
   padding: 18px;
 }
 
@@ -350,7 +350,7 @@ const goSupplementList = () => {
   font-size: 13px;
 }
 
-.readonly-cell:first-child {
+.readonly-cell:nth-child(4n + 1) {
   border-left: 1px solid #e2e8f2;
 }
 
@@ -359,8 +359,12 @@ const goSupplementList = () => {
   font-weight: 600;
 }
 
-.readonly-cell--wide {
-  grid-column: span 5;
+.readonly-cell--wrap {
+  min-height: 34px;
+  line-height: 1.6;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 .supplement-form-section :deep(.el-form) {
@@ -385,19 +389,9 @@ const goSupplementList = () => {
   width: 100%;
 }
 
-@media (max-width: 1400px) {
-  .readonly-grid {
-    grid-template-columns: 110px minmax(0, 1fr) 120px minmax(0, 1fr) 100px minmax(0, 1fr);
-  }
-}
-
 @media (max-width: 1200px) {
   .readonly-grid {
     grid-template-columns: 120px minmax(0, 1fr);
-  }
-
-  .readonly-cell--wide {
-    grid-column: auto;
   }
 }
 

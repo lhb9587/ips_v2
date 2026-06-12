@@ -9,6 +9,7 @@ import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
+import ListSearch from "@/components/common/list-search/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import AttendanceProfileDetailSidebar from "@/views/hrm/attendance-profile/detail-sidebar.vue";
 import AttendanceProfileBatchAssignDialog from "@/views/hrm/attendance-profile/batch-assign-dialog.vue";
@@ -202,6 +203,19 @@ const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
   formInline.value = {};
   fetchAttendanceArchiveList();
+};
+
+const tagList = ref([]);
+const requestData = ref(undefined);
+const handleSearch = (typeStr) => {
+  diminput.value = "";
+  listQuery.value.pageNo = 1;
+  formInline.value = { ...typeStr.data };
+  tagList.value = typeStr.tagList || [];
+  fetchAttendanceArchiveList();
+  requestData.value = {
+    ...typeStr.data,
+  };
 };
 
 const formatDateTimeCell = (value) => {
@@ -597,6 +611,13 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
+                  <ListSearch
+                    name="attendanceProfileList"
+                    :buss-id="bussId"
+                    :is-show="true"
+                    @search="handleSearch"
+                    ref="searchRef"
+                  />
                   <el-button
                     v-if="false"
                     type="primary"
@@ -607,14 +628,12 @@ onUnmounted(() => {
                   <el-button @click="openUnarchivedDialog" type="primary">未建档案</el-button>
                   <el-button
                     type="primary"
-                    plain
                     @click="openBatchAssignDialog"
                   >
                     批量赋值
                   </el-button>
                   <el-button
                     type="primary"
-                    plain
                     @click="handleBatchEnable"
                   >
                     启用

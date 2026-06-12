@@ -1,4 +1,4 @@
-<!-- 打卡记录列表页，负责按组织、姓名和日期范围分页查询员工打卡记录。 -->
+<!-- 打卡记录列表页，负责按组织、姓名、日期范围及高级筛选分页查询员工打卡记录。 -->
 <script setup>
 import dayjs from "dayjs";
 import { onMounted, onUnmounted, ref, watch } from "vue";
@@ -8,6 +8,7 @@ import { ElMessage } from "element-plus";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
+import ListSearch from "@/components/common/list-search/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import { downLoad, saveTableConfig } from "@/utils";
 import { getToken } from "@/utils/auth";
@@ -50,6 +51,7 @@ const formInline = ref({
   startDate: defaultDateRange.startDate,
   endDate: defaultDateRange.endDate,
 });
+const advancedFilter = ref({});
 const dateRange = ref([defaultDateRange.startDate, defaultDateRange.endDate]);
 
 const calculateGridHeight = () => {
@@ -77,7 +79,7 @@ const fetchLocalPageSize = () => {
   const pageSizeData = JSON.parse(localStorage.getItem("pageSize")) || [];
   const savedData = pageSizeData.find((item) => item.name === route.name);
   const pageSize = savedData ? savedData.pageSize : 50;
-  return Math.min(pageSize, 200);
+  return pageSize;
 };
 
 const listQuery = ref({
@@ -142,10 +144,11 @@ const fetchAttendanceRecordList = () => {
   queryAttendancePunchRecordPage(
     {
       pageNo: listQuery.value.pageNo,
-      pageSize: Math.min(listQuery.value.pageSize, 200),
+      pageSize: listQuery.value.pageSize,
       talentName: diminput.value || undefined,
       startDate: formInline.value.startDate || undefined,
       endDate: formInline.value.endDate || undefined,
+      ...advancedFilter.value,
     },
     {
       isLoading: true,
@@ -168,6 +171,14 @@ const fetchAttendanceRecordList = () => {
 
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
+  advancedFilter.value = {};
+  fetchAttendanceRecordList();
+};
+
+const handleAdvancedSearch = (typeStr) => {
+  diminput.value = "";
+  listQuery.value.pageNo = 1;
+  advancedFilter.value = { ...typeStr.data };
   fetchAttendanceRecordList();
 };
 
@@ -295,6 +306,12 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
+                  <ListSearch
+                    name="attendanceRecordList"
+                    :buss-id="bussId"
+                    :is-show="true"
+                    @search="handleAdvancedSearch"
+                  />
                   <el-date-picker
                     v-model="dateRange"
                     type="daterange"
@@ -339,6 +356,7 @@ onUnmounted(() => {
                   :queryList="{
                     ...listQuery,
                     ...formInline,
+                    ...advancedFilter,
                     searchWord: diminput,
                   }"
                   :isFull="isFull"

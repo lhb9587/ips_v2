@@ -272,7 +272,6 @@ const saveEdit = () => {
           <el-button
             v-if="canEdit"
             type="primary"
-            plain
             @click="startEdit"
           >
             编辑
@@ -408,6 +407,7 @@ const saveEdit = () => {
                     value-format="HH:mm"
                     format="HH:mm"
                     placeholder="请选择上班时间"
+                    :clearable="false"
                   />
                 </div>
                 <div
@@ -456,6 +456,7 @@ const saveEdit = () => {
                     value-format="HH:mm"
                     format="HH:mm"
                     placeholder="请选择下班时间"
+                    :clearable="false"
                   />
                 </div>
                 <div

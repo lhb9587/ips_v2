@@ -3,6 +3,7 @@
 import { onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
+import dayjs from "dayjs";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
@@ -14,14 +15,12 @@ const store = useStore();
 
 const gridName = "scheduleSwapListGrid";
 const DEFAULT_COLUMNS = [
-  { title: "序号", value: "sid", width: 70, minWidth: 70, maxWidth: 90 },
   { title: "调出员工编码", value: "sourceTalentCode", minWidth: 120 },
   { title: "调出姓名", value: "sourceTalentName", minWidth: 120 },
   { title: "调出考勤日期", value: "sourceScheduleDate", minWidth: 120 },
   { title: "调入员工编码", value: "targetTalentCode", minWidth: 120 },
   { title: "调入姓名", value: "targetTalentName", minWidth: 120 },
   { title: "调入考勤日期", value: "targetScheduleDate", minWidth: 120 },
-  { title: "备注", value: "reason", minWidth: 180 },
   { title: "操作人", value: "operatorName", minWidth: 100 },
   { title: "操作时间", value: "operateTime", minWidth: 170 },
 ];
@@ -66,8 +65,8 @@ watch(
 const fetchLocalPageSize = () => {
   const pageSizeData = JSON.parse(localStorage.getItem("pageSize")) || [];
   const savedData = pageSizeData.find((item) => item.name === route.name);
-  const pageSize = savedData ? savedData.pageSize : 10;
-  return Math.min(pageSize, 100);
+  const pageSize = savedData ? savedData.pageSize : 50;
+  return pageSize;
 };
 
 const listQuery = ref({
@@ -77,6 +76,14 @@ const listQuery = ref({
 const pageSizesList = ref([10, 20, 50, 100]);
 
 const formatDateType = (value) => dateTypeLabelMap[value] || value || "-";
+
+const formatOperateTime = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return "";
+  }
+  const target = dayjs(value);
+  return target.isValid() ? target.format("YYYY-MM-DD HH:mm") : String(value);
+};
 
 const parseSnapshot = (snapshot) => {
   if (!snapshot) {
@@ -112,9 +119,8 @@ const buildDetailFromResponse = (detail = {}, row = {}) => {
 
   return {
     swapHistoryId: detail.swapHistoryId || row.swapHistoryId || "",
-    reason: detail.reason || row.reason || "-",
     operatorName: detail.operatorName || row.operatorName || "-",
-    operateTime: detail.operateTime || row.operateTime || "-",
+    operateTime: formatOperateTime(detail.operateTime || row.operateTime) || "-",
     source: {
       employeeCode: sourceSnapshot.talentCode || row.sourceTalentCode || "-",
       employeeName: sourceSnapshot.talentName || row.sourceTalentName || "-",
@@ -139,6 +145,7 @@ const mapSwapRecord = (item = {}, index = 0) => ({
     `${item.sourceScheduleDayId || ""}_${item.targetScheduleDayId || ""}_${index}`,
   sourceDateTypeLabel: formatDateType(item.sourceDateType),
   targetDateTypeLabel: formatDateType(item.targetDateType),
+  operateTime: formatOperateTime(item.operateTime) || item.operateTime,
 });
 
 const fetchScheduleSwapList = () => {
@@ -284,45 +291,93 @@ onMounted(() => {
     >
       <div class="schedule-swap-detail">
         <div class="schedule-swap-detail__header">
-          <div>
-            <div class="schedule-swap-detail__title">调班单详情</div>
-          </div>
-          <el-button @click="closeDetail">关闭</el-button>
+          <div class="schedule-swap-detail__title">调班单详情</div>
+          <el-tooltip
+            content="关闭"
+            placement="top"
+            :teleported="false"
+          >
+            <div
+              class="schedule-swap-detail__close mdi mdi-window-close"
+              @click="closeDetail"
+            ></div>
+          </el-tooltip>
         </div>
 
         <div
           v-loading="detailLoading"
           class="schedule-swap-detail__body"
         >
-          <section class="detail-panel">
-            <div class="detail-grid">
-              <div>员工编码</div>
-              <div>{{ selectedDetail.source?.employeeCode || "-" }}</div>
-              <div>姓名</div>
-              <div>{{ selectedDetail.source?.employeeName || "-" }}</div>
-              <div>考勤日期</div>
-              <div>{{ selectedDetail.source?.scheduleDate || "-" }}</div>
-              <div>日期类型</div>
-              <div>{{ selectedDetail.source?.dateType || "-" }}</div>
-              <div>班次名称</div>
-              <div>{{ selectedDetail.source?.shiftName || "-" }}</div>
+          <section class="detail-section">
+            <div class="detail-section__title">基本信息</div>
+            <div class="detail-grid detail-grid--basic">
+              <div class="detail-item">
+                <div class="detail-item__label">操作人</div>
+                <div class="detail-item__value">{{ selectedDetail.operatorName || "-" }}</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-item__label">操作时间</div>
+                <div class="detail-item__value">{{ selectedDetail.operateTime || "-" }}</div>
+              </div>
             </div>
           </section>
 
-          <section class="detail-panel">
-            <div class="detail-grid">
-              <div>员工编码</div>
-              <div>{{ selectedDetail.target?.employeeCode || "-" }}</div>
-              <div>姓名</div>
-              <div>{{ selectedDetail.target?.employeeName || "-" }}</div>
-              <div>考勤日期</div>
-              <div>{{ selectedDetail.target?.scheduleDate || "-" }}</div>
-              <div>日期类型</div>
-              <div>{{ selectedDetail.target?.dateType || "-" }}</div>
-              <div>班次名称</div>
-              <div>{{ selectedDetail.target?.shiftName || "-" }}</div>
+          <div class="swap-panel-group">
+            <section class="swap-panel">
+              <div class="swap-panel__title">调班人员信息1</div>
+              <div class="swap-panel__card">
+                <div class="swap-panel__employee">
+                  <span class="swap-panel__name">{{ selectedDetail.source?.employeeName || "-" }}</span>
+                  <span class="swap-panel__code">{{ selectedDetail.source?.employeeCode || "-" }}</span>
+                </div>
+                <div class="swap-panel__grid">
+                  <div class="detail-item">
+                    <div class="detail-item__label">考勤日期</div>
+                    <div class="detail-item__value">{{ selectedDetail.source?.scheduleDate || "-" }}</div>
+                  </div>
+                  <div class="detail-item">
+                    <div class="detail-item__label">日期类型</div>
+                    <div class="detail-item__value">{{ selectedDetail.source?.dateType || "-" }}</div>
+                  </div>
+                  <div class="detail-item swap-panel__item--full">
+                    <div class="detail-item__label">班次名称</div>
+                    <div class="detail-item__value">{{ selectedDetail.source?.shiftName || "-" }}</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div
+              class="swap-panel__divider"
+              aria-hidden="true"
+            >
+              <i class="bx bx-transfer-alt"></i>
             </div>
-          </section>
+
+            <section class="swap-panel">
+              <div class="swap-panel__title">调班人员信息2</div>
+              <div class="swap-panel__card">
+                <div class="swap-panel__employee">
+                  <span class="swap-panel__name">{{ selectedDetail.target?.employeeName || "-" }}</span>
+                  <span class="swap-panel__code">{{ selectedDetail.target?.employeeCode || "-" }}</span>
+                </div>
+                <div class="swap-panel__grid">
+                  <div class="detail-item">
+                    <div class="detail-item__label">考勤日期</div>
+                    <div class="detail-item__value">{{ selectedDetail.target?.scheduleDate || "-" }}</div>
+                  </div>
+                  <div class="detail-item">
+                    <div class="detail-item__label">日期类型</div>
+                    <div class="detail-item__value">{{ selectedDetail.target?.dateType || "-" }}</div>
+                  </div>
+                  <div class="detail-item swap-panel__item--full">
+                    <div class="detail-item__label">班次名称</div>
+                    <div class="detail-item__value">{{ selectedDetail.target?.shiftName || "-" }}</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
     </DragSidebar>
@@ -352,43 +407,181 @@ onMounted(() => {
 }
 
 .schedule-swap-detail__title {
+  position: relative;
+  padding-bottom: 10px;
   color: #1f2d49;
   font-size: 18px;
   font-weight: 700;
+  line-height: 1.4;
+}
+
+.schedule-swap-detail__title::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 68px;
+  height: 3px;
+  border-radius: 999px;
+  background: #4f80c2;
+}
+
+.schedule-swap-detail__close {
+  color: #7d8aa5;
+  font-size: 22px;
+  cursor: pointer;
 }
 
 .schedule-swap-detail__body {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
-  padding: 24px 28px 32px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 28px;
+  padding: 24px 32px 36px;
   overflow: auto;
 }
 
-.detail-panel {
-  padding: 10px 18px 10px 8px;
+.detail-section {
+  display: grid;
+  gap: 16px;
+}
+
+.detail-section__title {
+  color: #1f2d49;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .detail-grid {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 18px 16px;
+  gap: 16px;
+}
+
+.detail-grid--basic {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 40px;
+}
+
+.swap-panel-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 12px;
+}
+
+.swap-panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.swap-panel__title {
   color: #1f2d49;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.swap-panel__card {
+  display: grid;
+  gap: 16px;
+  height: 100%;
+  padding: 18px 20px 20px;
+  border: 1px solid #e7edf5;
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+
+.swap-panel__employee {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed #e3eaf3;
+}
+
+.swap-panel__name {
+  color: #1f2d49;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.swap-panel__code {
+  color: #6d7b92;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.swap-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+}
+
+.swap-panel__item--full {
+  grid-column: 1 / -1;
+}
+
+.swap-panel__divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #edf5ff;
+  color: #4f80c2;
+  font-size: 22px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.detail-item__label {
+  flex: 0 0 72px;
+  color: #6d7b92;
   font-size: 14px;
   line-height: 1.7;
 }
 
-.detail-grid > div:nth-child(odd) {
-  color: #6d7b92;
+.detail-item__value {
+  flex: 1;
+  min-width: 0;
+  color: #1f2d49;
+  font-size: 14px;
+  line-height: 1.7;
+  word-break: break-word;
 }
 
 @media (max-width: 960px) {
   .schedule-swap-detail__body {
+    padding: 20px 24px 28px;
+  }
+
+  .detail-grid--basic,
+  .swap-panel__grid {
     grid-template-columns: 1fr;
   }
 
-  .detail-grid {
-    grid-template-columns: 88px minmax(0, 1fr);
+  .swap-panel-group {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .swap-panel__divider {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+
+  .detail-item__label {
+    flex-basis: 88px;
   }
 }
 </style>

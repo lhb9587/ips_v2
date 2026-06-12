@@ -394,15 +394,13 @@ const handleDiscard = () => {
             <div class="detail-info-table__label">员工编码</div>
             <div>{{ detailInfo.employeeCode || "--" }}</div>
 
-            <div class="detail-info-table__label">所属组织</div>
-            <div>{{ detailInfo.organization || "--" }}</div>
             <div class="detail-info-table__label">职位</div>
             <div class="detail-info-table__value--wrap">{{ detailInfo.position || "--" }}</div>
-
             <div class="detail-info-table__label">申请日期</div>
             <div>{{ detailInfo.applyDate || "--" }}</div>
-            <div class="detail-info-table__label">办理人</div>
-            <div>{{ detailInfo.approver || "--" }}</div>
+
+            <div class="detail-info-table__label">所属组织</div>
+            <div class="detail-info-table__value--full">{{ detailInfo.organization || "--" }}</div>
           </div>
 
           <div class="detail-section">
@@ -628,6 +626,12 @@ const handleDiscard = () => {
   word-break: break-all;
 }
 
+.detail-info-table__value--full {
+  grid-column: span 3;
+  white-space: normal;
+  word-break: break-all;
+}
+
 .supplement-detail-content :deep(.el-input),
 .supplement-detail-content :deep(.el-select),
 .supplement-detail-content :deep(.el-date-editor.el-input),
@@ -818,6 +822,10 @@ const handleDiscard = () => {
 
   .detail-info-table > div:nth-child(odd) {
     border-left: 1px solid #e1e7f0;
+  }
+
+  .detail-info-table__value--full {
+    grid-column: span 1;
   }
 }
 </style>

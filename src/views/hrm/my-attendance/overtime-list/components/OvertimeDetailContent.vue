@@ -4,7 +4,6 @@ import { computed, ref, watch, defineProps, defineEmits } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import dayjs from "dayjs";
 import {
-  abandonOvertimeRequestAdmin,
   abandonOvertimeRequestSelf,
   approveApprovalTask,
   rejectApprovalTask,
@@ -76,7 +75,9 @@ const showEditButton = computed(() => currentDetail.value?.canEdit === true);
 
 const showSubmitButton = computed(() => currentDetail.value?.canSubmit === true);
 
-const showAbandonButton = computed(() => currentDetail.value?.canAbandon === true);
+const showAbandonButton = computed(
+  () => !props.adminMode && currentDetail.value?.canAbandon === true,
+);
 
 const approvalDialogTitle = computed(() =>
   approvalDialogType.value === "approve" ? "审批通过" : "审批退回",
@@ -294,9 +295,6 @@ const handleDiscardDetail = () => {
     ElMessage.warning("缺少加班单ID，无法操作");
     return;
   }
-  const abandonApi = props.adminMode
-    ? abandonOvertimeRequestAdmin
-    : abandonOvertimeRequestSelf;
   ElMessageBox.confirm(
     "确定要废弃当前加班单吗？废弃后该单据将不再进入审批流程。",
     "废弃确认",
@@ -307,7 +305,7 @@ const handleDiscardDetail = () => {
     },
   )
     .then(() =>
-      abandonApi({ overtimeRequestId }, { isLoading: true }).then(async () => {
+      abandonOvertimeRequestSelf({ overtimeRequestId }, { isLoading: true }).then(async () => {
         detailEditMode.value = false;
         await refreshCurrentDetail();
         ElMessage.success("加班单已废弃");
@@ -450,10 +448,13 @@ const approvalFlow = computed(() => {
             <div class="detail-info-table__label">员工编码</div>
             <div>{{ currentDetail.employeeCode }}</div>
 
-            <div class="detail-info-table__label">所属组织</div>
-            <div>{{ currentDetail.organization }}</div>
             <div class="detail-info-table__label">职位</div>
-            <div class="detail-info-table__value--wrap">{{ currentDetail.position }}</div>
+            <div class="detail-info-table__value--wrap">{{ currentDetail.position || "--" }}</div>
+            <div class="detail-info-table__label">申请日期</div>
+            <div>{{ currentDetail.applyDate || "--" }}</div>
+
+            <div class="detail-info-table__label">所属组织</div>
+            <div class="detail-info-table__value--full">{{ currentDetail.organization || "--" }}</div>
           </div>
 
           <div class="detail-section">
@@ -643,7 +644,7 @@ const approvalFlow = computed(() => {
 
 .detail-info-table {
   display: grid;
-  grid-template-columns: 180px minmax(0, 1fr) 180px minmax(0, 1fr);
+  grid-template-columns: 120px minmax(0, 1fr) 120px minmax(0, 1fr);
   margin-bottom: 18px;
 }
 
@@ -679,6 +680,12 @@ const approvalFlow = computed(() => {
   padding-top: 8px !important;
   padding-bottom: 8px !important;
   line-height: 1.6;
+  white-space: normal;
+  word-break: break-all;
+}
+
+.detail-info-table__value--full {
+  grid-column: span 3;
   white-space: normal;
   word-break: break-all;
 }
@@ -876,7 +883,7 @@ const approvalFlow = computed(() => {
   }
 
   .detail-info-table {
-    grid-template-columns: 140px minmax(0, 1fr);
+    grid-template-columns: 110px minmax(0, 1fr);
   }
 
   .detail-info-table > div:nth-child(-n + 4) {
@@ -893,6 +900,10 @@ const approvalFlow = computed(() => {
 
   .detail-info-table > div:nth-child(odd) {
     border-left: 1px solid #e1e7f0;
+  }
+
+  .detail-info-table__value--full {
+    grid-column: span 1;
   }
 
   .detail-form-grid {

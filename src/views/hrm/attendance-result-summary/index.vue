@@ -28,8 +28,30 @@ const gridRef = ref(null);
 const gridData = ref([]);
 const total = ref(0);
 const columnList = ref([]);
-const deptCodes = ref([]);
 const keyword = ref("");
+
+const resolveDeptCode = (item = {}) => {
+  const code =
+    item.deptCode ?? item.deptId ?? item.organizationCode ?? item.value ?? "";
+  return code === "" || code === null || code === undefined ? "" : String(code);
+};
+
+const mapAttendanceOrganizationTree = (list = []) =>
+  list
+    .map((item) => {
+      const deptCode = resolveDeptCode(item);
+      if (!deptCode) {
+        return null;
+      }
+      return {
+        deptCode,
+        deptName: item.deptName || item.organizationName || item.label || "",
+        children: Array.isArray(item.children)
+          ? mapAttendanceOrganizationTree(item.children)
+          : [],
+      };
+    })
+    .filter(Boolean);
 const today = dayjs().format("YYYY-MM-DD");
 const gridOptions = {
   rowMultiSelectWithClick: true,
@@ -51,9 +73,9 @@ const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
 const attendanceOrganizationOptions = computed(() => {
   const scope = store.getters["attendanceScope/scope"] || {};
   if (Array.isArray(scope?.deptScopeTree) && scope.deptScopeTree.length > 0) {
-    return scope.deptScopeTree;
+    return mapAttendanceOrganizationTree(scope.deptScopeTree);
   }
-  return store.getters["attendanceScope/deptScopes"] || [];
+  return mapAttendanceOrganizationTree(store.getters["attendanceScope/deptScopes"] || []);
 });
 
 const setColumn = (list) => {
@@ -85,7 +107,7 @@ const fetchLocalPageSize = () => {
   const pageSizeData = JSON.parse(localStorage.getItem("pageSize")) || [];
   const savedData = pageSizeData.find((item) => item.name === route.name);
   const pageSize = savedData ? savedData.pageSize : 50;
-  return Math.min(pageSize, 200);
+  return pageSize;
 };
 
 listQuery.value.pageSize = fetchLocalPageSize();
@@ -146,7 +168,7 @@ const buildQueryParams = () => {
   const talentKeyword = keyword.value.trim();
   return {
     pageNo: listQuery.value.pageNo,
-    pageSize: Math.min(listQuery.value.pageSize, 200),
+    pageSize: listQuery.value.pageSize,
     startDate: formInline.value.startDate || undefined,
     endDate: formInline.value.endDate || undefined,
     deptCode: formInline.value.deptCode || undefined,
@@ -191,9 +213,8 @@ const handlePagination = () => {
 };
 
 const handleDeptChange = (value) => {
-  const nextCodes = Array.isArray(value) ? value : [];
-  deptCodes.value = nextCodes;
-  formInline.value.deptCode = nextCodes.length ? nextCodes[nextCodes.length - 1] : "";
+  formInline.value.deptCode =
+    value === "" || value === null || value === undefined ? "" : String(value);
   fuzzySearch();
 };
 
@@ -308,19 +329,18 @@ onUnmounted(() => {
                     @change="handleDateRangeChange"
                   />
                   <el-cascader
-                    v-model="deptCodes"
+                    v-model="formInline.deptCode"
                     class="attendance-result-summary__cascader"
                     :options="attendanceOrganizationOptions"
                     :props="{
                       checkStrictly: true,
-                      emitPath: true,
+                      emitPath: false,
                       value: 'deptCode',
                       label: 'deptName',
                     }"
                     clearable
                     filterable
-                    collapse-tags
-                    collapse-tags-tooltip
+                    :show-all-levels="false"
                     placeholder="请选择组织"
                     @change="handleDeptChange"
                   />

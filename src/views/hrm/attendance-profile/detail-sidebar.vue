@@ -449,15 +449,13 @@ const canEditField = (field) => {
           </el-button>
           <el-button
             type="primary"
-            plain
             @click="startEdit"
           >
             编辑
           </el-button>
           <el-button
             v-if="Number(props.detailInfo?.status) !== 0"
-            type="warning"
-            plain
+            type="danger"
             @click="disableRecord"
           >
             禁用

@@ -53,7 +53,7 @@ const buildQueryParams = () => {
   const [startTime, endTime] = Array.isArray(dateRange.value) ? dateRange.value : [];
   return {
     pageNo: listQuery.pageNo,
-    pageSize: Math.min(listQuery.pageSize, 200),
+    pageSize: listQuery.pageSize,
     startTime: startTime || undefined,
     endTime: endTime || undefined,
     queryMode: TAB_MAP[activeTab.value]?.queryMode || "mine",

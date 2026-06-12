@@ -2,6 +2,7 @@
 <script setup>
 import dayjs from "dayjs";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage } from "element-plus";
 import Layout from "@/layouts/main";
@@ -14,6 +15,7 @@ import {
 } from "@/api/attendance";
 
 const store = useStore();
+const router = useRouter();
 
 const ruleLoading = ref(false);
 const submitLoading = ref(false);
@@ -49,6 +51,15 @@ const ruleDialogForm = ref({
   startDate: "",
   endDate: "",
 });
+
+const isRuleDateRangeWithinOneMonth = (startDate, endDate) => {
+  if (!startDate || !endDate) return false;
+  const start = dayjs(startDate);
+  const end = dayjs(endDate);
+  if (!start.isValid() || !end.isValid()) return false;
+  if (end.isBefore(start, "day")) return false;
+  return !end.isAfter(start.add(1, "month"), "day");
+};
 
 const cascaderProps = {
   emitPath: false,
@@ -295,19 +306,14 @@ const handleConfirmRule = () => {
     ElMessage.warning("请选择开始日期和结束日期");
     return;
   }
-  if (
-    dayjs(ruleDialogForm.value.endDate).isBefore(dayjs(ruleDialogForm.value.startDate), "day")
-  ) {
-    ElMessage.warning("结束日期不能早于开始日期");
-    return;
-  }
-  if (
-    dayjs(ruleDialogForm.value.endDate).isAfter(
-      dayjs(ruleDialogForm.value.startDate).add(1, "month"),
-      "day",
-    )
-  ) {
-    ElMessage.warning("开始日期和结束日期间隔不能超过一个月");
+  if (!isRuleDateRangeWithinOneMonth(ruleDialogForm.value.startDate, ruleDialogForm.value.endDate)) {
+    if (
+      dayjs(ruleDialogForm.value.endDate).isBefore(dayjs(ruleDialogForm.value.startDate), "day")
+    ) {
+      ElMessage.warning("结束日期不能早于开始日期");
+    } else {
+      ElMessage.warning("开始日期和结束日期间隔不能超过一个月");
+    }
     return;
   }
   form.value.ruleId = ruleDialogForm.value.ruleId;
@@ -338,8 +344,12 @@ const handleSubmit = () => {
     ElMessage.warning("请选择开始日期和结束日期");
     return;
   }
-  if (dayjs(form.value.endDate).isBefore(dayjs(form.value.startDate), "day")) {
-    ElMessage.warning("结束日期不能早于开始日期");
+  if (!isRuleDateRangeWithinOneMonth(form.value.startDate, form.value.endDate)) {
+    if (dayjs(form.value.endDate).isBefore(dayjs(form.value.startDate), "day")) {
+      ElMessage.warning("结束日期不能早于开始日期");
+    } else {
+      ElMessage.warning("开始日期和结束日期间隔不能超过一个月");
+    }
     return;
   }
   submitLoading.value = true;
@@ -369,6 +379,12 @@ const handleSubmit = () => {
     });
 };
 
+const handleOpenScheduleList = () => {
+  router.push({
+    name: "schedule-list",
+  });
+};
+
 watch(
   () => employeeFilter.value.organization,
   () => {
@@ -390,6 +406,7 @@ onMounted(() => {
           <el-button type="primary" @click="handleOpenEmployeeDialog">选择员工</el-button>
           <el-button type="primary" @click="handleOpenRuleDialog">轮班规则</el-button>
           <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>
+          <el-button type="primary" plain @click="handleOpenScheduleList">排班列表</el-button>
         </div>
       </div>
 
@@ -448,6 +465,13 @@ onMounted(() => {
       :close-on-click-modal="false"
     >
       <div class="schedule-wizard-dialog-filter">
+        <el-input
+          v-model="employeeFilter.employeeName"
+          placeholder="请输入姓名"
+          class="schedule-wizard-dialog-control"
+          @keyup.enter="handleEmployeeFilter"
+          clearable
+        />
         <el-cascader
           v-model="employeeFilter.organization"
           :options="organizationCascaderOptions"
@@ -475,12 +499,6 @@ onMounted(() => {
             :value="item.value"
           />
         </el-select>
-        <el-input
-          v-model="employeeFilter.employeeName"
-          placeholder="请输入姓名"
-          class="schedule-wizard-dialog-control"
-          @keyup.enter="handleEmployeeFilter"
-        />
         <el-button type="primary" @click="handleEmployeeFilter">查询</el-button>
       </div>
 

@@ -8,16 +8,20 @@ import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
+import ListSearch from "@/components/common/list-search/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import ScheduleDetailSidebar from "@/views/hrm/schedule-list/detail-sidebar.vue";
-import { saveTableConfig } from "@/utils";
+import { downLoad, saveTableConfig } from "@/utils";
 import {
+  exportScheduleList,
   queryAttendanceGroupPage,
   queryAttendanceRotationRuleList,
   queryAttendanceShiftDetail,
   queryAttendanceShiftList,
   queryScheduleDetail,
   queryScheduleHorizontalPage,
+  queryScheduleUnscheduledPage,
+  queryScheduleVerticalPage,
   queryScheduleWizardMemberPage,
   submitScheduleDetailUpdate,
   submitScheduleTimeRevision,
@@ -29,14 +33,39 @@ const route = useRoute();
 const router = useRouter();
 const store = useStore();
 
-const bussId = 458;
-const gridName = "scheduleListGrid";
+const TAB_MAP = {
+  horizontal: {
+    label: "横向显示",
+    bussId: 458,
+    gridName: "scheduleListGrid",
+  },
+  vertical: {
+    label: "纵向显示",
+    bussId: 0,
+    gridName: "scheduleVerticalListGrid",
+  },
+  unscheduled: {
+    label: "未排班列表",
+    bussId: 460,
+    gridName: "scheduleUnscheduledListGrid",
+  },
+};
+
+const MAX_SCHEDULE_DATE_RANGE_DAYS = 365;
+const MAX_VERTICAL_DATE_RANGE_DAYS = 31;
+const WEEK_TEXT = ["日", "一", "二", "三", "四", "五", "六"];
 const DATE_TYPE_MAP = {
   workday: "工作日",
   restday: "休息日",
   holiday: "节假日",
 };
 
+const resolveInitialTab = () => {
+  const tab = route.query.tab;
+  return TAB_MAP[tab] ? tab : "horizontal";
+};
+
+const activeTab = ref(resolveInitialTab());
 const columnList = ref([]);
 const setColumn = (list) => {
   columnList.value = Array.isArray(list) ? list : [];
@@ -83,10 +112,70 @@ const formInline = ref({
   startDate: dayjs().subtract(7, "day").format("YYYY-MM-DD"),
   endDate: dayjs().format("YYYY-MM-DD"),
 });
+const advancedFilter = ref({});
 const dateRange = ref([formInline.value.startDate, formInline.value.endDate]);
 const gridOptions = {
   rowMultiSelectWithClick: true,
 };
+
+const currentBussId = computed(() => TAB_MAP[activeTab.value].bussId);
+const currentGridName = computed(() => TAB_MAP[activeTab.value].gridName);
+const showScheduleWizardAction = computed(
+  () =>
+    activeTab.value === "horizontal" ||
+    activeTab.value === "vertical" ||
+    activeTab.value === "unscheduled",
+);
+const showTimeRevisionAction = computed(
+  () => activeTab.value === "horizontal" || activeTab.value === "vertical",
+);
+const showMoreAction = computed(() => activeTab.value === "horizontal");
+const showVerticalExport = computed(() => activeTab.value === "vertical");
+const showSelectionColumn = computed(
+  () => activeTab.value === "horizontal" || activeTab.value === "vertical",
+);
+const showRowClick = computed(() => activeTab.value === "horizontal");
+const currentGridOptions = computed(() =>
+  activeTab.value === "horizontal" ? gridOptions : undefined,
+);
+
+const dynamicDateList = computed(() => {
+  const start = dayjs(formInline.value.startDate);
+  const end = dayjs(formInline.value.endDate);
+  if (!start.isValid() || !end.isValid() || end.isBefore(start, "day")) {
+    return [];
+  }
+  const result = [];
+  let cursor = start;
+  while (cursor.isBefore(end, "day") || cursor.isSame(end, "day")) {
+    const dateKey = cursor.format("YYYY-MM-DD");
+    result.push({
+      key: dateKey,
+      title: `${dateKey}(${WEEK_TEXT[cursor.day()]})`,
+    });
+    cursor = cursor.add(1, "day");
+  }
+  return result;
+});
+
+const verticalColumnList = computed(() => {
+  const fixedColumns = [
+    { title: "序号", value: "sid", width: 70, minWidth: 70, maxWidth: 90 },
+    { title: "员工编码", value: "employeeCode", minWidth: 120 },
+    { title: "姓名", value: "employeeName", minWidth: 120 },
+    { title: "考勤组织", value: "attendanceOrganization", minWidth: 220 },
+  ];
+  const dateColumns = dynamicDateList.value.map((item) => ({
+    title: item.title,
+    value: `day_${item.key}`,
+    minWidth: 160,
+  }));
+  return [...fixedColumns, ...dateColumns];
+});
+
+const currentColumnDefs = computed(() =>
+  activeTab.value === "vertical" ? verticalColumnList.value : columnList.value,
+);
 
 const showRuleDialog = ref(false);
 const employeeTableRef = ref(null);
@@ -225,8 +314,8 @@ watch(
 const fetchLocalPageSize = () => {
   const pageSizeData = JSON.parse(localStorage.getItem("pageSize")) || [];
   const savedData = pageSizeData.find((item) => item.name === route.name);
-  const pageSize = savedData ? savedData.pageSize : 10;
-  return Math.min(pageSize, 100);
+  const pageSize = savedData ? savedData.pageSize : 50;
+  return pageSize;
 };
 
 const listQuery = ref({
@@ -344,14 +433,93 @@ const fetchDetailShiftOptions = () => {
     });
 };
 
-const fetchScheduleList = () => {
+const mapDayText = (dayItem = {}) => {
+  if (!dayItem.scheduled) {
+    return "未排班";
+  }
+  if (dayItem.shiftName) {
+    return dayItem.shiftName;
+  }
+  if (dayItem.shiftCode) {
+    return dayItem.shiftCode;
+  }
+  return "已排班";
+};
+
+const DATE_KEY_PATTERN = /^(\d{4}-\d{2}-\d{2})(?:[(（].*[)）])?$/;
+
+const normalizeDateKey = (rawKey = "") => {
+  const key = String(rawKey || "").trim();
+  const match = key.match(DATE_KEY_PATTERN);
+  return match ? match[1] : "";
+};
+
+const collectFlatDateMap = (record = {}) => {
+  const result = {};
+  const mergeFromObject = (obj = {}) => {
+    Object.keys(obj).forEach((key) => {
+      const dateKey = normalizeDateKey(key);
+      if (dateKey) {
+        result[dateKey] = obj[key];
+      }
+    });
+  };
+
+  mergeFromObject(record);
+  Object.keys(record).forEach((key) => {
+    const value = record[key];
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      mergeFromObject(value);
+    }
+  });
+
+  return result;
+};
+
+const isEmptyValue = (value) => value === undefined || value === null || value === "";
+
+const buildSharedQueryParams = () => ({
+  startDate: formInline.value.startDate,
+  endDate: formInline.value.endDate,
+  deptCode: advancedFilter.value.deptCode || undefined,
+  talentCode: advancedFilter.value.talentCode || undefined,
+  talentName: diminput.value?.trim() || advancedFilter.value.talentName || undefined,
+  shiftCode: advancedFilter.value.shiftCode || undefined,
+  groupId: advancedFilter.value.groupId || undefined,
+});
+
+const validateVerticalDateRange = (startDate, endDate) => {
+  if (!startDate || !endDate) {
+    return true;
+  }
+  if (dayjs(endDate).isBefore(dayjs(startDate), "day")) {
+    ElMessage.warning("结束日期不能早于开始日期");
+    return false;
+  }
+  const spanDays = dayjs(endDate).diff(dayjs(startDate), "day") + 1;
+  if (spanDays > MAX_VERTICAL_DATE_RANGE_DAYS) {
+    ElMessage.warning(`日期范围不能超过 ${MAX_VERTICAL_DATE_RANGE_DAYS} 天`);
+    return false;
+  }
+  return true;
+};
+
+const validateDateRangeForTab = (startDate, endDate, tab = activeTab.value) => {
+  if (tab === "vertical") {
+    return validateVerticalDateRange(startDate, endDate);
+  }
+  return validateScheduleDateRange(startDate, endDate);
+};
+
+const fetchHorizontalList = () => {
+  if (!validateScheduleDateRange(formInline.value.startDate, formInline.value.endDate)) {
+    return;
+  }
   queryScheduleHorizontalPage(
     {
       pageNo: listQuery.value.pageNo,
       pageSize: Math.min(listQuery.value.pageSize, 100),
-      startDate: formInline.value.startDate,
-      endDate: formInline.value.endDate,
-      talentName: diminput.value || undefined,
+      ...buildSharedQueryParams(),
     },
     {
       isLoading: true,
@@ -386,6 +554,104 @@ const fetchScheduleList = () => {
     });
 };
 
+const fetchVerticalList = () => {
+  if (!validateVerticalDateRange(formInline.value.startDate, formInline.value.endDate)) {
+    return;
+  }
+  queryScheduleVerticalPage(
+    {
+      pageNo: listQuery.value.pageNo,
+      pageSize: Math.min(listQuery.value.pageSize, 200),
+      ...buildSharedQueryParams(),
+    },
+    {
+      isLoading: true,
+    },
+  )
+    .then((res) => {
+      const records = Array.isArray(res?.data) ? res.data : res?.data?.records || [];
+      gridData.value = records.map((item, index) => {
+        const flatDateMap = collectFlatDateMap(item);
+        const row = {
+          ...item,
+          id: item.talentCode || `${item.attendanceOrgCode || ""}_${index}`,
+          employeeCode: item.talentCode || "",
+          employeeName: item.talentName || "",
+          attendanceOrganization: item.attendanceOrgName || "",
+          sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index + 1,
+        };
+
+        const dayMap = {};
+        (item.days || []).forEach((dayItem) => {
+          if (dayItem?.scheduleDate) {
+            dayMap[dayItem.scheduleDate] = mapDayText(dayItem);
+          }
+        });
+
+        dynamicDateList.value.forEach((dateItem) => {
+          const dayValueByFlatKey = flatDateMap[dateItem.key];
+          const dayValueByDays = dayMap[dateItem.key];
+          const finalValue = !isEmptyValue(dayValueByFlatKey)
+            ? dayValueByFlatKey
+            : !isEmptyValue(dayValueByDays)
+              ? dayValueByDays
+              : undefined;
+          row[`day_${dateItem.key}`] = isEmptyValue(finalValue) ? "未排班" : finalValue;
+        });
+
+        return row;
+      });
+      total.value = Number(res?.total) || Number(res?.data?.total) || 0;
+    })
+    .catch(() => {
+      gridData.value = [];
+      total.value = 0;
+    });
+};
+
+const fetchUnscheduledList = () => {
+  if (!validateScheduleDateRange(formInline.value.startDate, formInline.value.endDate)) {
+    return;
+  }
+  queryScheduleUnscheduledPage(
+    {
+      pageNo: listQuery.value.pageNo,
+      pageSize: Math.min(listQuery.value.pageSize, 100),
+      ...buildSharedQueryParams(),
+    },
+    {
+      isLoading: true,
+    },
+  )
+    .then((res) => {
+      const records = Array.isArray(res?.data) ? res.data : res?.data?.records || [];
+      gridData.value = records.map((item, index) => ({
+        ...item,
+        id: item.talentCode || `${item.attendanceOrgCode || ""}_${index}`,
+        employeeCode: item.talentCode || "",
+        employeeName: item.talentName || "",
+        attendanceOrganization: item.attendanceOrgName || "",
+        employeeStatus: item.empStatus || "",
+        sid: (listQuery.value.pageNo - 1) * listQuery.value.pageSize + index,
+      }));
+      total.value = Number(res?.total) || Number(res?.data?.total) || 0;
+    })
+    .catch(() => {
+      gridData.value = [];
+      total.value = 0;
+    });
+};
+
+const fetchActiveTabList = () => {
+  if (activeTab.value === "vertical") {
+    return fetchVerticalList();
+  }
+  if (activeTab.value === "unscheduled") {
+    return fetchUnscheduledList();
+  }
+  return fetchHorizontalList();
+};
+
 const changeBorder = (newVal) => {
   if (newVal) {
     if (!activeClass.value.includes("Borderline")) {
@@ -394,7 +660,7 @@ const changeBorder = (newVal) => {
   } else {
     activeClass.value = activeClass.value.filter((item) => item !== "Borderline");
   }
-  saveTableConfig("isBorderline", gridName, newVal);
+  saveTableConfig("isBorderline", currentGridName.value, newVal);
 };
 
 const changeRowStyle = (newVal) => {
@@ -405,12 +671,12 @@ const changeRowStyle = (newVal) => {
   } else {
     activeClass.value = activeClass.value.filter((item) => item !== "zebra");
   }
-  saveTableConfig("iszebra", gridName, newVal);
+  saveTableConfig("iszebra", currentGridName.value, newVal);
 };
 
 const changeRowHeight = (height) => {
   rowHeight.value = height;
-  saveTableConfig("rowHeight", gridName, height);
+  saveTableConfig("rowHeight", currentGridName.value, height);
 };
 
 const changeScreenSize = () => {
@@ -437,14 +703,97 @@ const handleFullScreenChange = () => {
 
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
-  fetchScheduleList();
+  advancedFilter.value = {};
+  fetchActiveTabList();
+};
+
+const handleAdvancedSearch = (typeStr) => {
+  diminput.value = "";
+  listQuery.value.pageNo = 1;
+  advancedFilter.value = { ...typeStr.data };
+  fetchActiveTabList();
+};
+
+const validateScheduleDateRange = (startDate, endDate) => {
+  if (!startDate || !endDate) {
+    return true;
+  }
+  if (dayjs(endDate).isBefore(dayjs(startDate), "day")) {
+    ElMessage.warning("结束日期不能早于开始日期");
+    return false;
+  }
+  const spanDays = dayjs(endDate).diff(dayjs(startDate), "day") + 1;
+  if (spanDays > MAX_SCHEDULE_DATE_RANGE_DAYS) {
+    ElMessage.warning(`日期范围不能超过 ${MAX_SCHEDULE_DATE_RANGE_DAYS} 天`);
+    return false;
+  }
+  return true;
 };
 
 const handleDateRangeChange = (value) => {
   const range = Array.isArray(value) ? value : [];
-  formInline.value.startDate = range[0] || "";
-  formInline.value.endDate = range[1] || "";
+  const startDate = range[0] || "";
+  const endDate = range[1] || "";
+  if (!validateDateRangeForTab(startDate, endDate)) {
+    dateRange.value = [formInline.value.startDate, formInline.value.endDate];
+    return;
+  }
+  formInline.value.startDate = startDate;
+  formInline.value.endDate = endDate;
   fuzzySearch();
+};
+
+const handleTabChange = () => {
+  listQuery.value.pageNo = 1;
+  fetchActiveTabList();
+};
+
+const getSelectedRows = () => gridRef.value?.getRowList?.() || [];
+
+const buildExportParams = () => ({
+  ...buildSharedQueryParams(),
+  ...currentOperator.value,
+});
+
+const handleExport = (command) => {
+  if (!validateVerticalDateRange(formInline.value.startDate, formInline.value.endDate)) {
+    return;
+  }
+  const payload = {
+    ...buildExportParams(),
+    exportScope: command === "exportSelected" ? "SELECTED" : "ALL",
+  };
+
+  if (command === "exportSelected") {
+    const selectedRows = getSelectedRows();
+    if (selectedRows.length === 0) {
+      return ElMessage.warning("请先选择需要导出的记录");
+    }
+    const selectedTalentCodes = [
+      ...new Set(
+        selectedRows
+          .map((item) => item.talentCode || item.employeeCode)
+          .filter((item) => item || item === 0),
+      ),
+    ];
+    if (selectedTalentCodes.length === 0) {
+      return ElMessage.warning("选中记录缺少员工编码，无法导出");
+    }
+    if (selectedTalentCodes.length > 500) {
+      return ElMessage.warning("选中导出员工不能超过500人");
+    }
+    payload.selectedTalentCodes = selectedTalentCodes.join(",");
+  }
+
+  exportScheduleList(payload, { isLoading: true }).then((res) => {
+    const filePath = res?.data?.filePath;
+    const fileName = res?.data?.fileName || "排班列表.xlsx";
+    if (!filePath) {
+      return ElMessage.warning("导出文件地址为空");
+    }
+    downLoad(filePath, fileName);
+    ElMessage.success(command === "exportSelected" ? "选中导出成功" : "全部导出成功");
+  });
 };
 
 // const openRuleDialog = () => {
@@ -517,7 +866,7 @@ const handleScheduleSwap = () => {
   )
     .then((res) => {
       ElMessage.success(formatSwapMessage(res?.data || {}, sourceRow, targetRow));
-      fetchScheduleList();
+      fetchActiveTabList();
     })
     .finally(() => {
       swapLoading.value = false;
@@ -765,32 +1114,21 @@ const submitTimeRevision = () => {
     .then((res) => {
       ElMessage.success(res?.message || res?.data?.message || "排班时间修订成功");
       showTimeRevisionDialog.value = false;
-      fetchScheduleList();
+      fetchActiveTabList();
     })
     .finally(() => {
       timeRevisionLoading.value = false;
     });
 };
 
-const handleOpenUnscheduledList = () => {
-  router.push({
-    name: "schedule-unscheduled-list",
-  });
-};
-
-const handleOpenVerticalList = () => {
-  router.push({
-    name: "schedule-vertical-list",
-  });
-};
-
 const handleMoreCommand = (command) => {
-  const commandMap = {
-    swapList: handleOpenScheduleSwapList,
-    unscheduledList: handleOpenUnscheduledList,
-    verticalList: handleOpenVerticalList,
-  };
-  commandMap[command]?.();
+  if (command === "swap") {
+    handleScheduleSwap();
+    return;
+  }
+  if (command === "swapList") {
+    handleOpenScheduleSwapList();
+  }
 };
 
 const handleEmployeeSelectionChange = (rows) => {
@@ -840,7 +1178,7 @@ const submitRuleDialog = () => {
   )
     .then((res) => {
       showRuleDialog.value = false;
-      fetchScheduleList();
+      fetchActiveTabList();
       ElMessage.success(res?.data?.message || "轮班规则已应用");
     })
     .finally(() => {
@@ -933,7 +1271,7 @@ const handleDetailSave = (payload) => {
         },
       ).then((detailRes) => {
         selectedDetail.value = buildScheduleDetailRecord(detailRes?.data || {});
-        fetchScheduleList();
+        fetchActiveTabList();
       });
     })
     .finally(() => {
@@ -942,14 +1280,14 @@ const handleDetailSave = (payload) => {
 };
 
 const handlePagination = () => {
-  fetchScheduleList();
+  fetchActiveTabList();
 };
 
 onMounted(() => {
   document.addEventListener("fullscreenchange", handleFullScreenChange);
   fetchAttendanceGroupOptions();
   fetchRotationRuleOptions();
-  fetchScheduleList();
+  fetchActiveTabList();
 });
 
 onUnmounted(() => {
@@ -973,7 +1311,7 @@ onUnmounted(() => {
             <div class="d-flex align-items-center">
               <span class="mb-0 flex-grow-1">
                 <div
-                  class="d-flex"
+                  class="d-flex schedule-list__toolbar"
                   style="gap: 10px"
                 >
                   <el-input
@@ -991,6 +1329,12 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
+                  <ListSearch
+                    name="scheduleList"
+                    :buss-id="TAB_MAP.horizontal.bussId"
+                    :is-show="true"
+                    @search="handleAdvancedSearch"
+                  />
                   <el-date-picker
                     v-model="dateRange"
                     type="daterange"
@@ -1000,56 +1344,82 @@ onUnmounted(() => {
                     end-placeholder="结束日期"
                     class="schedule-list__date-range"
                     style="width: 260px; min-width: 260px; max-width: 260px; flex: 0 0 260px"
-                    clearable
+                    :clearable="false"
                     @change="handleDateRangeChange"
                   />
                   <el-button
+                    v-if="showScheduleWizardAction"
                     type="primary"
-                    plain
-                    :loading="swapLoading"
-                    @click="handleScheduleSwap"
-                  >
-                    调班
-                  </el-button>
-                  <el-button
-                    type="primary"
-                    plain
                     @click="handleOpenScheduleWizard"
                   >
                     排班向导
                   </el-button>
                   <el-button
+                    v-if="showTimeRevisionAction"
                     type="primary"
-                    plain
                     @click="handleOpenTimeRevisionDialog"
                   >
                     排班时间修订
                   </el-button>
-                  <el-dropdown @command="handleMoreCommand">
+                  <el-dropdown
+                    v-if="showMoreAction"
+                    @command="handleMoreCommand"
+                  >
                     <el-button>
                       更多
                       <i class="mdi mdi-chevron-down ms-1"></i>
                     </el-button>
                     <template #dropdown>
                       <el-dropdown-menu>
+                        <el-dropdown-item command="swap">
+                          调班
+                        </el-dropdown-item>
                         <el-dropdown-item command="swapList">
                           调班单
                         </el-dropdown-item>
-                        <el-dropdown-item command="unscheduledList">
-                          未排班列表
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                  <el-dropdown
+                    v-if="showVerticalExport"
+                    @command="handleExport"
+                  >
+                    <el-button>
+                      导出
+                      <i class="mdi mdi-chevron-down ms-1"></i>
+                    </el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="exportSelected">
+                          选中导出
                         </el-dropdown-item>
-                        <el-dropdown-item command="verticalList">
-                          纵向显示
+                        <el-dropdown-item command="exportAll">
+                          全部导出
                         </el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
                   </el-dropdown>
                 </div>
               </span>
-              <div class="d-flex gap-2">
+              <div class="d-flex gap-2 schedule-list__actions">
+                <div class="schedule-list__tabs">
+                  <el-tabs
+                    v-model="activeTab"
+                    @tab-change="handleTabChange"
+                  >
+                    <el-tab-pane
+                      v-for="(item, key) in TAB_MAP"
+                      :key="key"
+                      :label="item.label"
+                      :name="key"
+                    />
+                  </el-tabs>
+                </div>
                 <TopListTool
-                  :gridName="gridName"
-                  :buss-id="bussId"
+                  v-if="activeTab !== 'vertical'"
+                  :key="currentBussId"
+                  :gridName="currentGridName"
+                  :buss-id="currentBussId"
                   @changeBorder="changeBorder"
                   @changeRowStyle="changeRowStyle"
                   @changeRowHeight="changeRowHeight"
@@ -1058,7 +1428,9 @@ onUnmounted(() => {
                   :queryList="{
                     ...listQuery,
                     ...formInline,
+                    ...advancedFilter,
                     searchWord: diminput,
+                    activeTab,
                   }"
                   :isFull="isFull"
                 >
@@ -1069,17 +1441,18 @@ onUnmounted(() => {
           <div style="padding: 0 10px">
             <GridView
               ref="gridRef"
-              :gridName="gridName"
-              :bussId="bussId"
+              :key="activeTab"
+              :gridName="currentGridName"
+              :bussId="activeTab === 'vertical' ? undefined : currentBussId"
               :height="gridHeight"
               :rowHeight="rowHeight"
-              :columnDefs="columnList"
+              :columnDefs="currentColumnDefs"
               :grid-data="gridData"
-              :activeClass="activeClass"
+              :activeClass="activeTab === 'vertical' ? [] : activeClass"
               :cellRenderer="cellRenderer"
-              :showSelectionColumn="true"
-              :rowClick="openScheduleDetail"
-              :gridOptions="gridOptions"
+              :showSelectionColumn="showSelectionColumn"
+              :rowClick="showRowClick ? openScheduleDetail : undefined"
+              :gridOptions="currentGridOptions"
             />
           </div>
           <div
@@ -1392,6 +1765,7 @@ onUnmounted(() => {
                   value-format="HH:mm"
                   format="HH:mm"
                   placeholder="上班时间"
+                  :clearable="false"
                 />
               </div>
               <div class="schedule-time-revision__segment-field">
@@ -1417,6 +1791,7 @@ onUnmounted(() => {
                   value-format="HH:mm"
                   format="HH:mm"
                   placeholder="下班时间"
+                  :clearable="false"
                 />
               </div>
               <div class="schedule-time-revision__segment-field">
@@ -1562,6 +1937,73 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .card-body {
   flex: none;
+}
+
+.schedule-list__toolbar {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.schedule-list__actions {
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.schedule-list__tabs {
+  flex: 0 0 auto;
+}
+
+:deep(.schedule-list__tabs .el-tabs) {
+  width: auto;
+}
+
+:deep(.schedule-list__tabs .el-tabs__nav-wrap::after) {
+  display: none;
+}
+
+:deep(.schedule-list__tabs .el-tabs__header) {
+  margin: 0;
+}
+
+:deep(.schedule-list__tabs .el-tabs__nav-wrap) {
+  padding: 4px;
+  border-radius: 4px;
+  background: #f3f6fb;
+}
+
+:deep(.schedule-list__tabs .el-tabs__nav) {
+  gap: 4px;
+  border: none !important;
+}
+
+:deep(.schedule-list__tabs .el-tabs__active-bar) {
+  display: none;
+}
+
+:deep(.schedule-list__tabs .el-tabs__item) {
+  height: 28px;
+  line-height: 28px;
+  padding: 0 18px !important;
+  border: none !important;
+  border-radius: 4px;
+  color: #5f6b7a;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+:deep(.schedule-list__tabs .el-tabs__item:hover) {
+  color: #2f6bff;
+  background: rgba(47, 107, 255, 0.08);
+}
+
+:deep(.schedule-list__tabs .el-tabs__item.is-active) {
+  color: #2f6bff;
+  font-weight: 600;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(31, 45, 61, 0.08);
 }
 
 :deep(.schedule-list__date-range.el-date-editor--daterange),
