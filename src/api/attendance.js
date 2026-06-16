@@ -93,10 +93,11 @@ export function queryLeaveQuotaLedgerPage(data, config = {}) {
   })
 }
 
-export function queryLeaveTypeList(config = {}) {
+export function queryLeaveTypeList(data,config = {}) {
   return request({
     url: attendanceApi.queryLeaveTypeList,
     method: 'get',
+    data,
     ...config
   })
 }

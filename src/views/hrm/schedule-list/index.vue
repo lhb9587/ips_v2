@@ -51,7 +51,7 @@ const TAB_MAP = {
   },
 };
 
-const MAX_SCHEDULE_DATE_RANGE_DAYS = 365;
+const MAX_SCHEDULE_DATE_RANGE_DAYS = 31;
 const MAX_VERTICAL_DATE_RANGE_DAYS = 31;
 const WEEK_TEXT = ["日", "一", "二", "三", "四", "五", "六"];
 const DATE_TYPE_MAP = {

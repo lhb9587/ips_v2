@@ -7,6 +7,7 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import Layout from "@/layouts/main";
 import GridView from "@/components/common/grid-table/index.vue";
 import TopListTool from "@/components/common/top-list-tool/index.vue";
+import ListSearch from "@/components/common/list-search/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import DragSidebar from "@/components/common/sidebar-drag/index.vue";
 import LeaveQuotaDetailSidebar from "@/views/hrm/leave-quota-management/detail-sidebar.vue";
@@ -41,6 +42,7 @@ const isFull = ref(false);
 const boxRef = ref(null);
 const gridRef = ref(null);
 const diminput = ref("");
+const advancedFilter = ref({});
 const quotaDetailVisible = ref(false);
 const selectedQuotaDetail = ref({});
 const detailLoading = ref(false);
@@ -144,7 +146,6 @@ const listQuery = ref({
 });
 
 const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
-const formInline = ref({});
 
 const attendanceScope = computed(() => store.getters["attendanceScope/scope"] || {});
 
@@ -159,6 +160,16 @@ const attendanceOrganizationOptions = computed(() => {
 });
 
 const gridData = computed(() => quotaList.value);
+
+const buildQueryParams = ({ includePagination = true } = {}) => {
+  const searchWord = diminput.value.trim();
+  return {
+    pageNo: includePagination ? listQuery.value.pageNo : undefined,
+    pageSize: includePagination ? listQuery.value.pageSize : undefined,
+    talentName: searchWord || undefined,
+    ...advancedFilter.value,
+  };
+};
 
 const mapQuotaBaseRecord = (item) => {
   return {
@@ -195,17 +206,9 @@ const mapQuotaRecord = (item, index) => {
 };
 
 const fetchLeaveQuotaList = () => {
-  queryLeaveQuotaAccountPage(
-    {
-      pageNo: listQuery.value.pageNo,
-      pageSize: listQuery.value.pageSize,
-      talentName: diminput.value || undefined,
-      ...formInline.value,
-    },
-    {
-      isLoading: true,
-    },
-  )
+  queryLeaveQuotaAccountPage(buildQueryParams(), {
+    isLoading: true,
+  })
     .then((res) => {
       const records = Array.isArray(res?.data) ? res.data : [];
       quotaList.value = records.map((item, index) => mapQuotaRecord(item, index));
@@ -219,6 +222,14 @@ const fetchLeaveQuotaList = () => {
 
 const fuzzySearch = () => {
   listQuery.value.pageNo = 1;
+  advancedFilter.value = {};
+  fetchLeaveQuotaList();
+};
+
+const handleAdvancedSearch = (payload) => {
+  diminput.value = "";
+  listQuery.value.pageNo = 1;
+  advancedFilter.value = { ...payload.data };
   fetchLeaveQuotaList();
 };
 
@@ -271,9 +282,7 @@ const openBatchExtendDialog = () => {
     batchDialogVisible.value = true;
     return;
   }
-  queryLeaveTypeList({
-    isLoading: true,
-  }).then((res) => {
+  queryLeaveTypeList().then((res) => {
     batchExtendLeaveTypeOptions.value = Array.isArray(res?.data) ? res.data : [];
     batchDialogVisible.value = true;
   });
@@ -285,7 +294,7 @@ const openGenerateDialog = () => {
     return;
   }
   queryLeaveTypeList({
-    isLoading: true,
+    quotaOnly: true,
   }).then((res) => {
     generateLeaveTypeOptions.value = Array.isArray(res?.data) ? res.data : [];
     generateDialogVisible.value = true;
@@ -533,7 +542,7 @@ const buildBatchExtendPayload = (formData) => {
 
   if (formData.targetType === "all") {
     payload.extendTargetType = "ALL_LIST";
-    payload.talentName = diminput.value || undefined;
+    Object.assign(payload, buildQueryParams({ includePagination: false }));
     return payload;
   }
 
@@ -677,6 +686,12 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
+                  <ListSearch
+                    name="leaveQuotaManagementList"
+                    :buss-id="bussId"
+                    :is-show="true"
+                    @search="handleAdvancedSearch"
+                  />
                   <el-button
                     type="primary"
                     :loading="generateLoading"
@@ -729,8 +744,8 @@ onUnmounted(() => {
                   :buss-id="bussId"
                   :queryList="{
                     ...listQuery,
-                    ...formInline,
                     searchWord: diminput,
+                    ...advancedFilter,
                   }"
                   :isFull="isFull"
                   @changeBorder="changeBorder"

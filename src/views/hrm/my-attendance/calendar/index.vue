@@ -375,6 +375,9 @@ function buildSupplementSummaryTooltip(item = {}) {
 }
 
 function resolveBusinessTone(summary, type) {
+  if (type === "trip") {
+    return "success";
+  }
   if (approvalSummaryTypes.has(type)) {
     const list = normalizeSummaryList(summary);
     if (!list) {
@@ -430,6 +433,9 @@ function buildBusinessTooltip(type, summary) {
     supplement: "补卡",
   };
   const label = labelMap[type] || "状态";
+  if (type === "trip") {
+    return label;
+  }
   if (approvalSummaryTypes.has(type)) {
     const list = normalizeSummaryList(summary);
     if (!list) {

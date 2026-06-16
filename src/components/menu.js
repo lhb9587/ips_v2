@@ -456,6 +456,7 @@ export const menuItems = [
         link: "/hrm/attendance-management",
         parentId: 56,
         icon: "bx bx-calendar-event",
+        permissions: [540],
       },
       {
         id: 59,

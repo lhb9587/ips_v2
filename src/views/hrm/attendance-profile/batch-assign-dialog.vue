@@ -116,6 +116,7 @@ const fetchCandidateList = () => {
       talentName: candidateQuery.talentName || undefined,
       pageNo: candidateQuery.pageNo,
       pageSize: candidateQuery.pageSize,
+      hasAttendanceArchive: true,
     },
     {
       isLoading: false,
@@ -344,13 +345,6 @@ const closeDialog = () => {
     >
       <div class="candidate-toolbar">
         <el-input
-          v-model="candidateQuery.talentCode"
-          class="candidate-toolbar__field"
-          placeholder="请输入员工编码"
-          clearable
-          @keyup.enter="handleCandidateSearch"
-        />
-        <el-input
           v-model="candidateQuery.talentName"
           class="candidate-toolbar__field"
           placeholder="请输入员工姓名"
@@ -363,6 +357,13 @@ const closeDialog = () => {
             </el-button>
           </template>
         </el-input>
+        <el-input
+          v-model="candidateQuery.talentCode"
+          class="candidate-toolbar__field"
+          placeholder="请输入员工编码"
+          clearable
+          @keyup.enter="handleCandidateSearch"
+        />
         <el-cascader
           v-model="candidateQuery.deptCodes"
           class="candidate-toolbar__dept"

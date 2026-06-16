@@ -2,12 +2,13 @@
 <script setup>
 import dayjs from "dayjs";
 import { computed, onMounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import Layout from "@/layouts/main";
 import { queryAttendanceArchiveHistoryPage } from "@/api/attendance";
 
 const route = useRoute();
+const router = useRouter();
 const store = useStore();
 
 const pageTitle = "档案历史";
@@ -16,6 +17,10 @@ const loading = ref(false);
 const historyList = ref([]);
 const total = ref(0);
 const headerInfo = computed(() => historyList.value[0] || {});
+
+const handleBack = () => {
+  router.back();
+};
 
 const calculateContentHeight = () => {
   const layout = store.state.layout.layoutType;
@@ -177,7 +182,13 @@ onMounted(() => {
     <div class="attendance-profile-history-page">
       <section class="history-hero card">
         <div class="history-hero__content">
-          <h1 class="history-hero__title">{{ pageTitle }}</h1>
+          <div class="history-hero__header">
+            <el-button @click="handleBack" class="history-hero__back-btn">
+              <i class="bx bx-arrow-back"></i>
+              返回
+            </el-button>
+            <h1 class="history-hero__title">{{ pageTitle }}</h1>
+          </div>
           <div class="history-hero__meta">
             <span class="history-hero__meta-item">
               员工编码：{{ headerInfo.employeeCode || "-" }}
@@ -319,6 +330,32 @@ onMounted(() => {
 .history-hero__content {
   display: grid;
   gap: 10px;
+}
+
+.history-hero__header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.history-hero__back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid #dce6f2;
+  border-radius: 8px;
+  background: #fff;
+  color: #37507c;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #f2f6fc;
+    border-color: #c4d6ed;
+  }
 }
 
 .history-hero__eyebrow {

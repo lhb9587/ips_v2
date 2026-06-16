@@ -575,6 +575,7 @@ const handleDiscardDetail = () => {
       abandonApi({ leaveRequestId }, { isLoading: true }).then(async () => {
         detailEditMode.value = false;
         await refreshCurrentDetail();
+        emit("refresh-list");
         ElMessage.success("请假单已废弃");
       }),
     )
