@@ -655,6 +655,14 @@ const handleSaveDetail = () => {
 
 const approvalFlow = computed(() => buildLeaveApprovalFlow(currentDetail.value));
 
+const approvalEmptyState = computed(() => {
+  const status = currentDetail.value?.requestStatus || "未提交申请";
+  return {
+    status,
+    message: "暂无审批流程",
+  };
+});
+
 </script>
 
 <template>
@@ -988,7 +996,7 @@ const approvalFlow = computed(() => buildLeaveApprovalFlow(currentDetail.value))
         <div class="approval-timeline">
           <div
             v-for="(item, index) in approvalFlow"
-            :key="`${item.title}-${index}`"
+            :key="`${item.stepName || item.actionType || item.time || index}`"
             class="approval-step"
             :class="{ 'approval-step--active': item.active }"
           >
@@ -996,10 +1004,42 @@ const approvalFlow = computed(() => buildLeaveApprovalFlow(currentDetail.value))
             <div class="approval-step__dot"></div>
             <div class="approval-step__body">
               <div class="approval-step__time">{{ item.time }}</div>
-              <div class="approval-step__title">{{ item.title }}</div>
-              <div class="approval-step__actor">{{ item.actor }}</div>
-              <p>{{ item.description }}</p>
+              <div
+                v-if="item.stepName"
+                class="approval-step__title"
+              >
+                {{ item.stepName }}
+                <span
+                  v-if="item.actionType"
+                  class="approval-step__status"
+                >
+                  {{ item.actionType }}
+                </span>
+              </div>
+              <p
+                v-if="item.actionComment"
+                class="approval-step__comment"
+              >
+                审批意见：{{ item.actionComment }}
+              </p>
+              <div
+                v-if="item.actor"
+                class="approval-step__actor"
+              >
+                {{ item.actor }}
+              </div>
             </div>
+          </div>
+          <div
+            v-if="!approvalFlow.length"
+            class="approval-empty-state"
+          >
+            <span class="approval-empty-state__badge">
+              {{ approvalEmptyState.status }}
+            </span>
+            <p class="approval-empty-state__message">
+              {{ approvalEmptyState.message }}
+            </p>
           </div>
         </div>
       </section>
@@ -1456,17 +1496,50 @@ const approvalFlow = computed(() => buildLeaveApprovalFlow(currentDetail.value))
   font-weight: 600;
 }
 
+.approval-step__status {
+  margin-left: 8px;
+  color: #4f5f77;
+  font-size: 13px;
+  font-weight: 400;
+}
+
 .approval-step__actor {
   margin-top: 6px;
   color: #466083;
   font-size: 13px;
 }
 
-.approval-step p {
+.approval-step__comment {
   margin: 8px 0 0;
   color: #4f5f77;
   font-size: 13px;
   line-height: 1.7;
+}
+
+.approval-empty-state {
+  padding: 16px;
+  border: 1px dashed #d6e1f2;
+  border-radius: 8px;
+  background: #fafcff;
+}
+
+.approval-empty-state__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #3c5f99;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.approval-empty-state__message {
+  margin: 8px 0 0;
+  color: #6f7f97;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 @media (max-width: 1200px) {

@@ -37,6 +37,35 @@ const form = reactive({
   items: [createEmptySupplementItem()],
 });
 
+const resolvePresetAttendanceDateTime = () => {
+  const sourceType = String(route.query.sourceType || "").trim();
+  const sourceDateTime = String(route.query.sourceDateTime || "").trim();
+  if (!sourceDateTime) {
+    return "";
+  }
+
+  const parsed = dayjs(sourceDateTime);
+  if (sourceType === "calendar") {
+    if (!parsed.isValid()) {
+      return "";
+    }
+    return `${parsed.format("YYYY-MM-DD")} ${dayjs(defaultAttendanceTime).format("HH:mm")}`;
+  }
+
+  if (sourceType === "punch-record") {
+    if (!parsed.isValid()) {
+      return sourceDateTime;
+    }
+    const hasExplicitTime = /(\d{1,2}:\d{2})(:\d{2})?/.test(sourceDateTime);
+    if (hasExplicitTime) {
+      return parsed.format("YYYY-MM-DD HH:mm");
+    }
+    return `${parsed.format("YYYY-MM-DD")} ${dayjs(defaultAttendanceTime).format("HH:mm")}`;
+  }
+
+  return "";
+};
+
 const fetchSupplementApplicationInit = async () => {
   try {
     const res = await querySupplementRequestSelfInit({}, { isLoading: true });
@@ -55,17 +84,12 @@ const fetchSupplementApplicationInit = async () => {
       : [];
 
     const defaultDetail = data.defaultDetail || {};
-    const isCalendarEntry = route.query.sourceType === "calendar";
-    const calendarDate = route.query.sourceDateTime
-      ? dayjs(route.query.sourceDateTime).format("YYYY-MM-DD")
-      : "";
+    const presetAttendanceDateTime = resolvePresetAttendanceDateTime();
     form.items = [
       normalizeSupplementItem(
-        isCalendarEntry
+        presetAttendanceDateTime
           ? {
-              attendanceDateTime: calendarDate
-                ? `${calendarDate} ${dayjs(defaultAttendanceTime).format("HH:mm")}`
-                : "",
+              attendanceDateTime: presetAttendanceDateTime,
               remark: "",
             }
           : {

@@ -333,7 +333,7 @@ onUnmounted(() => {
                     end-placeholder="结束日期"
                     class="attendance-summary__date-range"
                     style="width: 260px; min-width: 260px; max-width: 260px; flex: 0 0 260px"
-                    clearable
+                    :clearable="false"
                     @change="handleDateRangeChange"
                   />
                 </div>

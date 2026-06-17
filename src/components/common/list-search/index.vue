@@ -616,6 +616,24 @@
                       filterable
                     />
                     <el-cascader
+                      v-if="item.filterType === 'cascader'&&(item.property=='deptCode')"
+                      v-model="queryModuleData[item.property]"
+                      :options="item.values"
+                      collapse-tags
+                      :max-collapse-tags="5"
+                      :show-all-levels="false"
+                      style="width: 100%"
+                      :props="{
+                        children: 'childrens',
+                        label: 'orgName',
+                        value: 'deptCode',
+                        multiple: true,
+                        expandTrigger: 'hover',
+                      }"
+                      clearable
+                      filterable
+                    />
+                    <el-cascader
                       v-if="item.filterType === 'cascader'&&(item.property=='feetIds')"
                       v-model="queryModuleData[item.property]"
                       :options="item.values"

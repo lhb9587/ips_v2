@@ -204,11 +204,11 @@ const detailRows = computed(() => {
     },
     {
       label: "上班打卡",
-      value: extractPunchTime(0),
+      value: extractPunchTime("上班卡"),
     },
     {
       label: "下班打卡",
-      value: extractPunchTime(-1),
+      value: extractPunchTime("下班卡"),
     },
     {
       label: "实际工作时间",
@@ -490,13 +490,20 @@ function buildScheduleText(schedule, snapshot) {
   return shiftText || "--";
 }
 
-function extractPunchTime(index) {
+function formatPunchTime(record) {
+  return record?.punchTime ? dayjs(record.punchTime).format("HH:mm") : "--";
+}
+
+function extractPunchTime(punchCardType) {
   const records = detailData.value?.punchRecords || [];
   if (!records.length) {
     return "--";
   }
-  const target = index === -1 ? records[records.length - 1] : records[index];
-  return target?.punchTime ? dayjs(target.punchTime).format("HH:mm") : "--";
+
+  const matchedRecord = records.find(
+    (item) => String(item?.punchCardType || "").trim() === punchCardType,
+  );
+  return formatPunchTime(matchedRecord);
 }
 
 async function loadMonthData() {

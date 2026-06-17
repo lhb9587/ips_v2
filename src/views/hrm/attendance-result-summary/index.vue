@@ -54,12 +54,13 @@ const mapAttendanceOrganizationTree = (list = []) =>
     })
     .filter(Boolean);
 const today = dayjs().format("YYYY-MM-DD");
+const monthStart = dayjs().startOf("month").format("YYYY-MM-DD");
 const gridOptions = {
   rowMultiSelectWithClick: true,
 };
 
 const formInline = ref({
-  startDate: today,
+  startDate: monthStart,
   endDate: today,
   deptCode: "",
 });
@@ -232,9 +233,9 @@ const handleDeptChange = (value) => {
 const handleDateRangeChange = (value) => {
   const range = Array.isArray(value) ? value : [];
   if (!range.length) {
-    formInline.value.startDate = today;
+    formInline.value.startDate = monthStart;
     formInline.value.endDate = today;
-    dateRange.value = [today, today];
+    dateRange.value = [monthStart, today];
   } else {
     formInline.value.startDate = range[0] || "";
     formInline.value.endDate = range[1] || "";
@@ -344,6 +345,7 @@ onUnmounted(() => {
                     end-placeholder="结束日期"
                     class="attendance-result-summary__date-range"
                     @change="handleDateRangeChange"
+                    :clearable="false"
                   />
                   <el-cascader
                     v-model="formInline.deptCode"
