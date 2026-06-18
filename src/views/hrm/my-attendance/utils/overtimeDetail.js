@@ -46,55 +46,14 @@ const formatDateText = (value) => {
   return text.includes("T") ? text.split("T")[0] : text.slice(0, 10);
 };
 
-const APPROVAL_ACTION_TYPE_LABEL_MAP = {
-  submit: "发起申请",
-  提交: "发起申请",
-  approve: "直属上级审批",
-  同意: "直属上级审批",
-  审批: "直属上级审批",
-  审批通过: "直属上级审批",
-  reject: "审批退回",
-  退回: "审批退回",
-  abandon: "废弃申请",
-  废弃: "废弃申请",
-  direct_pass: "提交生效",
-  提交生效: "提交生效",
-  reverse_approve: "反审批",
-  反审批: "反审批",
-};
-
-const APPROVAL_ACTION_RESULT_LABEL_MAP = {
-  submitted: "提交申请",
-  submit: "提交申请",
-  approved: "审批通过",
-  passed: "审批通过",
-  pass: "审批通过",
-  rejected: "已退回",
-  reject: "已退回",
-  returned: "已退回",
-  pending: "审批中",
-  processing: "审批中",
-  abandoned: "已废弃",
-  abandon: "已废弃",
-};
-
-const buildApprovalLogTitle = (log = {}) => {
-  const actionType = String(log?.actionType || "").trim();
-  const actionResult = String(log?.actionResult || "").trim();
-  const typeLabel = APPROVAL_ACTION_TYPE_LABEL_MAP[actionType] || actionType;
-  const resultLabel = APPROVAL_ACTION_RESULT_LABEL_MAP[actionResult] || actionResult;
-  if (typeLabel && resultLabel) {
-    return `${typeLabel} · ${resultLabel}`;
-  }
-  return typeLabel || resultLabel || "审批记录";
-};
-
-const buildApprovalLogDescription = (log = {}, title = "") => {
-  if (log?.actionComment) {
-    return log.actionComment;
-  }
-  return title;
-};
+const normalizeApprovalLog = (log = {}) => ({
+  ...log,
+  time: formatDateTimeText(log?.actionTime) || String(log?.actionTime || ""),
+  stepName: log?.stepName || "",
+  actionType: log?.actionType || "",
+  actionComment: log?.actionComment || "",
+  actor: log?.operatorName || "",
+});
 
 const resolveOvertimeApplyTime = (detail = {}) =>
   formatDateTimeText(detail.applyTime) ||
@@ -106,56 +65,7 @@ const resolveOvertimeApplyTime = (detail = {}) =>
 export const buildOvertimeApprovalFlow = (detail = {}) => {
   const logs = Array.isArray(detail?.approvalLogs) ? detail.approvalLogs : [];
   const requestStatus = detail?.requestStatus || detail?.status || "";
-  const talentName = detail?.talentName || detail?.applicant || "";
-  const overtimeTypeName = detail?.overtimeType || detail?.overtimeTypeName || "加班";
   const isPending = requestStatus === "审批中";
-  const applyTime = resolveOvertimeApplyTime(detail);
-
-  if (!logs.length) {
-    if (requestStatus === "未提交") {
-      return [
-        {
-          time: applyTime,
-          title: "保存草稿",
-          actor: talentName,
-          description: "加班单暂未提交审批。",
-          active: true,
-        },
-      ];
-    }
-
-    if (requestStatus === "已废弃") {
-      return [
-        {
-          time: applyTime,
-          title: "废弃申请",
-          actor: talentName,
-          description: detail.approvalStatus || "",
-          active: true,
-        },
-      ];
-    }
-
-    return [
-      {
-        time: applyTime,
-        title: "发起申请",
-        actor: talentName,
-        description: `提交${overtimeTypeName}申请，等待直属上级审批。`,
-        active: true,
-      },
-      {
-        time: applyTime,
-        title:
-          requestStatus === "已通过"
-            ? "直属上级审批 · 审批通过"
-            : "直属上级审批",
-        actor: detail.currentApproverNames || detail.approver || "",
-        description: detail.approvalStatus || "",
-        active: isPending,
-      },
-    ];
-  }
 
   const sortedLogs = [...logs].sort((left, right) => {
     const leftTime = dayjs(left?.actionTime).valueOf();
@@ -166,23 +76,15 @@ export const buildOvertimeApprovalFlow = (detail = {}) => {
     return leftTime - rightTime;
   });
 
-  return sortedLogs.map((log, index) => {
-    const title = buildApprovalLogTitle(log);
-    const isLast = index === sortedLogs.length - 1;
-    return {
-      time: formatDateTimeText(log?.actionTime) || String(log?.actionTime || ""),
-      title,
-      actor: log?.operatorName || "",
-      description: buildApprovalLogDescription(log, title),
-      active: isLast && isPending,
-    };
-  });
+  return sortedLogs.map((log, index) => ({
+    ...normalizeApprovalLog(log),
+    active: isPending && index === sortedLogs.length - 1,
+  }));
 };
 
 const getApiFirstDetail = (apiDetail = {}) =>
   (Array.isArray(apiDetail?.details) ? apiDetail.details : [])[0] || {};
 
-/** 加班日期、时段仅取自详情接口，不使用列表行 fallback。 */
 const resolveOvertimeDate = (apiDetail = {}) => {
   const firstDetail = getApiFirstDetail(apiDetail);
   return (
@@ -197,12 +99,7 @@ const resolveOvertimeDate = (apiDetail = {}) => {
 
 const resolveOvertimeStartTime = (apiDetail = {}) => {
   const firstDetail = getApiFirstDetail(apiDetail);
-  return (
-    apiDetail.overtimeStartTime ||
-    apiDetail.startTime ||
-    firstDetail.startTime ||
-    ""
-  );
+  return apiDetail.overtimeStartTime || apiDetail.startTime || firstDetail.startTime || "";
 };
 
 const resolveOvertimeEndTime = (apiDetail = {}) => {
@@ -237,7 +134,6 @@ export const resolveOvertimeDateFromDateTime = (dateTime) => {
   return parsed.isValid() ? parsed.format("YYYY-MM-DD") : formatDateText(formatted);
 };
 
-/** 仅映射 admin/detail 接口（queryOvertimeRequestAdminDetail）返回体，不合并列表或其它来源。 */
 export const normalizeOvertimeDetail = (apiDetail = {}) => {
   const firstDetail = getApiFirstDetail(apiDetail);
   const overtimeRequestId = getOvertimeRequestId(apiDetail);
@@ -300,10 +196,7 @@ export const normalizeOvertimeDetail = (apiDetail = {}) => {
       formatDateText(apiDetail.createTime) ||
       "",
     applyTime:
-      formatDateTimeText(apiDetail.applyTime) ||
-      formatDateTimeText(apiDetail.submitTime) ||
-      formatDateTimeText(apiDetail.createTime) ||
-      "",
+      resolveOvertimeApplyTime(apiDetail),
     currentApproverNames:
       apiDetail.currentApproverNames ||
       apiDetail.currentApproverName ||
@@ -345,7 +238,6 @@ export async function fetchOvertimeRequestDetail(
   return normalizeOvertimeDetail(res?.data || {});
 }
 
-/** 审批中心打开详情时，在 admin/detail 结果上补全列表行上的审批任务字段。 */
 export async function fetchOvertimeRequestDetailForApproval(
   overtimeRequestId,
   approvalRow = {},

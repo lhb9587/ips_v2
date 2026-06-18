@@ -132,5 +132,9 @@ export const normalizeLeaveDetail = (detail = {}, fallback = {}) => {
     ...(leaveRequestId !== null ? { leaveRequestId, requestId: leaveRequestId } : {}),
     ...(requestNo ? { requestNo, billNo: requestNo } : {}),
     ...(applyDate ? { applyDate } : {}),
+    currentTaskId: merged.currentTaskId ?? merged.taskId ?? merged.task?.taskId ?? null,
+    taskId: merged.taskId ?? merged.currentTaskId ?? merged.task?.taskId ?? null,
+    canAdjustAssignee: merged.canAdjustAssignee === true,
+    userList: Array.isArray(merged.userList) ? merged.userList : [],
   };
 };

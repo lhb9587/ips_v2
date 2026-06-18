@@ -1,7 +1,7 @@
 <!-- 出勤记录列表页，负责按组织、姓名、日期范围及高级筛选分页查询员工逐日出勤汇总记录。 -->
 <script setup>
 import dayjs from "dayjs";
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useStore } from "vuex";
 import Layout from "@/layouts/main";
@@ -11,7 +11,6 @@ import ListSearch from "@/components/common/list-search/index.vue";
 import Pagination from "@/components/common/pagination/index.vue";
 import { saveTableConfig } from "@/utils";
 import {
-  queryAttendanceCalcParams,
   queryAttendanceRecordPage,
 } from "@/api/attendance";
 
@@ -35,73 +34,12 @@ const gridData = ref([]);
 
 const today = dayjs().format("YYYY-MM-DD");
 const formInline = ref({
-  deptCode: "",
   startDate: today,
   endDate: today,
   queryType: "all",
 });
 const advancedFilter = ref({});
 const dateRange = ref([formInline.value.startDate, formInline.value.endDate]);
-const summaryDeptScopeTree = ref([]);
-
-const resolveDeptCode = (item = {}) => {
-  const code =
-    item.deptCode ?? item.deptId ?? item.organizationCode ?? item.value ?? "";
-  return code === "" || code === null || code === undefined ? "" : String(code);
-};
-
-const mapAttendanceOrganizationTree = (list = []) =>
-  list
-    .map((item) => {
-      const deptCode = resolveDeptCode(item);
-      if (!deptCode) {
-        return null;
-      }
-      return {
-        deptCode,
-        deptName: item.deptName || item.organizationName || item.label || "",
-        children: Array.isArray(item.children)
-          ? mapAttendanceOrganizationTree(item.children)
-          : [],
-      };
-    })
-    .filter(Boolean);
-
-const attendanceOrganizationOptions = computed(() => {
-  if (summaryDeptScopeTree.value.length > 0) {
-    return mapAttendanceOrganizationTree(summaryDeptScopeTree.value);
-  }
-  const scope = store.getters["attendanceScope/scope"] || {};
-  if (Array.isArray(scope?.deptScopeTree) && scope.deptScopeTree.length > 0) {
-    return mapAttendanceOrganizationTree(scope.deptScopeTree);
-  }
-  return mapAttendanceOrganizationTree(store.getters["attendanceScope/deptScopes"] || []);
-});
-
-const resolveQueryDeptCode = () => {
-  const deptCode = formInline.value.deptCode;
-  return deptCode === "" || deptCode === null || deptCode === undefined
-    ? undefined
-    : String(deptCode);
-};
-
-const fetchDeptScopeOptions = () => {
-  return queryAttendanceCalcParams(
-    {},
-    {
-      isLoading: false,
-    },
-  )
-    .then((res) => {
-      const data = res?.data || {};
-      summaryDeptScopeTree.value = Array.isArray(data.deptScopeTree)
-        ? data.deptScopeTree
-        : [];
-    })
-    .catch(() => {
-      summaryDeptScopeTree.value = [];
-    });
-};
 
 const calculateGridHeight = () => {
   const windowHeight = document.documentElement.clientHeight;
@@ -194,7 +132,6 @@ const fetchAttendanceSummaryList = () => {
     {
       pageNo: listQuery.value.pageNo,
       pageSize: listQuery.value.pageSize,
-      deptCode: resolveQueryDeptCode(),
       talentName: diminput.value || undefined,
       startDate: formInline.value.startDate || undefined,
       endDate: formInline.value.endDate || undefined,
@@ -245,12 +182,6 @@ const handleDateRangeChange = (value) => {
   fuzzySearch();
 };
 
-const handleDeptChange = (value) => {
-  formInline.value.deptCode =
-    value === "" || value === null || value === undefined ? "" : String(value);
-  fuzzySearch();
-};
-
 const cellRenderer = (params) => {
   const value = params.value || params.value === 0 ? params.value : "";
   return `<span title="${value}">${value}</span>`;
@@ -258,9 +189,7 @@ const cellRenderer = (params) => {
 
 onMounted(() => {
   document.addEventListener("fullscreenchange", handleFullScreenChange);
-  fetchDeptScopeOptions().finally(() => {
-    fetchAttendanceSummaryList();
-  });
+  fetchAttendanceSummaryList();
 });
 
 onUnmounted(() => {
@@ -307,22 +236,6 @@ onUnmounted(() => {
                     :buss-id="bussId"
                     :is-show="true"
                     @search="handleAdvancedSearch"
-                  />
-                  <el-cascader
-                    v-model="formInline.deptCode"
-                    class="attendance-summary__cascader"
-                    :options="attendanceOrganizationOptions"
-                    :props="{
-                      checkStrictly: true,
-                      emitPath: false,
-                      value: 'deptCode',
-                      label: 'deptName',
-                    }"
-                    clearable
-                    filterable
-                    :show-all-levels="false"
-                    placeholder="请选择组织"
-                    @change="handleDeptChange"
                   />
                   <el-date-picker
                     v-model="dateRange"
@@ -396,10 +309,6 @@ onUnmounted(() => {
 
 .attendance-summary__toolbar {
   flex-wrap: wrap;
-}
-
-:deep(.attendance-summary__cascader.el-cascader) {
-  width: 260px;
 }
 
 :deep(.attendance-summary__date-range.el-date-editor--daterange) {

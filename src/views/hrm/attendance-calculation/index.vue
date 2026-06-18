@@ -92,6 +92,7 @@ const formInline = ref({
 });
 const keyword = ref("");
 const calculatedExceptionFilters = ref([]);
+const supplementSubmitted = ref("");
 const listQuery = ref({
   pageNo: 1,
   pageSize: 50,
@@ -218,6 +219,9 @@ const buildCalculatedExceptionQueryParams = () => {
   calculatedExceptionFilters.value.forEach((field) => {
     params[field] = 1;
   });
+  if (supplementSubmitted.value !== "") {
+    params.supplementSubmitted = supplementSubmitted.value;
+  }
   return params;
 };
 
@@ -299,6 +303,7 @@ const handleDeptChange = (value) => {
 const handleTabChange = (tabName) => {
   if (tabName !== "calculated") {
     calculatedExceptionFilters.value = [];
+    supplementSubmitted.value = "";
   }
   listQuery.value.pageNo = 1;
   fetchAttendanceCalculationList();
@@ -655,6 +660,16 @@ onUnmounted(() => {
                   {{ item.label }}
                 </el-checkbox>
               </el-checkbox-group>
+              <el-radio-group
+                v-if="showCalculatedExceptionFilters"
+                v-model="supplementSubmitted"
+                class="attendance-calculation__supplement-filter"
+                @change="handleCalculatedExceptionFilterChange"
+              >
+                <el-radio label="">全部</el-radio>
+                <el-radio label="1">已提交申请</el-radio>
+                <el-radio label="0">未提交申请</el-radio>
+              </el-radio-group>
             </div>
           </div>
 

@@ -103,6 +103,7 @@ const attendanceApi = {
   queryApprovalCenterPage: `${ATTENDANCE_URL}/api/approval/center/page`,
   approveApprovalTask: `${ATTENDANCE_URL}/api/approval/task/approve`,
   rejectApprovalTask: `${ATTENDANCE_URL}/api/approval/task/reject`,
+  adjustApprovalAssignee: `${ATTENDANCE_URL}/api/approval/center/assignee/adjust`,
   uploadCommonAttachment: `${ATTENDANCE_URL}/api/common/attachment/upload`,
 }
 

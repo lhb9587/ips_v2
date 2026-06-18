@@ -43,6 +43,7 @@ const isFull = ref(false);
 const boxRef = ref(null);
 const gridRef = ref(null);
 const diminput = ref("");
+const statusFilter = ref("");
 const detailDrawerVisible = ref(false);
 const currentDetail = ref(null);
 let rowClickTimer = null;
@@ -143,11 +144,11 @@ const gridData = computed(() =>
 );
 
 const fetchSupplementList = async () => {
-  const keyword = diminput.value.trim();
   const payload = {
     pageNo: listQuery.value.pageNo,
     pageSize: Math.min(listQuery.value.pageSize, 100),
-    keyword: keyword || undefined,
+    requestNo: diminput.value?.trim() || undefined,
+    status: statusFilter.value || undefined,
   };
   try {
     const res = await querySupplementRequestSelfPage(payload, { isLoading: false });
@@ -381,7 +382,7 @@ onUnmounted(() => {
                   <el-input
                     v-model="diminput"
                     style="width: 220px"
-                    placeholder="搜索..."
+                    placeholder="请输入单据编号"
                     clearable
                     class="top-search"
                     @keyup.enter="fuzzySearch"
@@ -392,6 +393,20 @@ onUnmounted(() => {
                       </el-button>
                     </template>
                   </el-input>
+                  <el-select
+                    v-model="statusFilter"
+                    clearable
+                    placeholder="单据状态"
+                    style="width: 140px"
+                    @change="fuzzySearch"
+                  >
+                    <el-option
+                      v-for="item in ['未提交', '审批中', '已通过', '已退回']"
+                      :key="item"
+                      :label="item"
+                      :value="item"
+                    />
+                  </el-select>
                   <el-button type="primary" @click="goCreate">
                     新建补签申请
                   </el-button>
@@ -423,6 +438,7 @@ onUnmounted(() => {
                   :queryList="{
                     ...listQuery,
                     searchWord: diminput,
+                    status: statusFilter,
                     bussId,
                   }"
                   :isFull="isFull"

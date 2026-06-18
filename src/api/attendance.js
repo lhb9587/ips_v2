@@ -930,3 +930,12 @@ export function rejectApprovalTask(data, config = {}) {
     ...config
   })
 }
+
+export function adjustApprovalAssignee(data, config = {}) {
+  return request({
+    url: attendanceApi.adjustApprovalAssignee,
+    method: 'post',
+    data,
+    ...config
+  })
+}

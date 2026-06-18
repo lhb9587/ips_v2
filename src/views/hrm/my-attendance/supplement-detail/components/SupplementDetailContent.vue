@@ -4,6 +4,7 @@
 import { computed, ref, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
+  adjustApprovalAssignee,
   abandonSupplementRequestSelf,
   approveApprovalTask,
   querySupplementRequestSelfInit,
@@ -19,6 +20,9 @@ import {
   normalizeSupplementDetail,
   normalizeSupplementItem,
 } from "@/views/hrm/my-attendance/utils/supplementDetail";
+import { useStore } from "vuex";
+
+const store = useStore();
 
 const props = defineProps({
   detailInfo: {
@@ -59,6 +63,9 @@ const approvalDialogType = ref("approve");
 const approvalOpinion = ref("");
 const approveLoading = ref(false);
 const rejectLoading = ref(false);
+const adjustAssigneeDialogVisible = ref(false);
+const adjustingAssignee = ref(false);
+const selectedAssigneeUserIds = ref([]);
 
 watch(
   () => props.detailInfo,
@@ -71,6 +78,10 @@ watch(
 );
 
 const approvalFlow = computed(() => buildSupplementApprovalFlow(detailInfo.value));
+const approvalEmptyState = computed(() => ({
+  status: detailInfo.value?.status || "未提交申请",
+  message: "暂无审批流程",
+}));
 
 const displayItem = computed(() => detailInfo.value.items?.[0] || {});
 
@@ -84,11 +95,17 @@ const showAbandonButton = computed(
   () => !props.adminMode && detailInfo.value?.canAbandon === true,
 );
 
-const resolveApprovalTaskId = (detail = {}) => detail.taskId ?? detail.task?.taskId ?? null;
+const resolveApprovalTaskId = (detail = {}) => detail.currentTaskId ?? null;
 
 const showApproveButton = computed(() => !!detailInfo.value?.canApprove);
 
 const showRejectButton = computed(() => !!detailInfo.value?.canReject);
+const showAdjustAssigneeButton = computed(
+  () => detailInfo.value?.canAdjustAssignee === true && !!resolveApprovalTaskId(detailInfo.value),
+);
+const adjustAssigneeOptions = computed(() =>
+  store.state.user.userList || [],
+);
 
 const approvalDialogTitle = computed(() =>
   approvalDialogType.value === "approve" ? "审批通过" : "审批退回",
@@ -126,6 +143,53 @@ const submitApproval = async () => {
     console.log(error);
   } finally {
     loadingRef.value = false;
+  }
+};
+
+const openAdjustAssigneeDialog = () => {
+  const taskId = resolveApprovalTaskId(detailInfo.value);
+  if (!taskId) {
+    ElMessage.warning("缺少审批任务ID，无法操作");
+    return;
+  }
+  const options = adjustAssigneeOptions.value;
+  if (!options.length) {
+    ElMessage.warning("暂无可选审核人");
+    return;
+  }
+  adjustAssigneeDialogVisible.value = true;
+};
+
+const submitAdjustAssignee = async () => {
+  const taskId = resolveApprovalTaskId(detailInfo.value);
+  if (!taskId) {
+    ElMessage.warning("缺少审批任务ID，无法操作");
+    return;
+  }
+  if (!selectedAssigneeUserIds.value.length) {
+    ElMessage.warning("请选择审核人");
+    return;
+  }
+  if (adjustingAssignee.value) {
+    return;
+  }
+  adjustingAssignee.value = true;
+  try {
+    await adjustApprovalAssignee(
+      {
+        taskId,
+        newAssigneeUserIds: selectedAssigneeUserIds.value,
+      },
+      { isLoading: true },
+    );
+    adjustAssigneeDialogVisible.value = false;
+    await refreshCurrentDetail();
+    ElMessage.success("审核人调整成功");
+    emit("refresh-list");
+  } catch (error) {
+    console.log(error);
+  } finally {
+    adjustingAssignee.value = false;
   }
 };
 
@@ -353,6 +417,14 @@ const handleDiscard = () => {
           >
             废弃
           </el-button>
+          <el-button
+            v-if="showAdjustAssigneeButton"
+            type="primary"
+            plain
+            @click="openAdjustAssigneeDialog"
+          >
+            调整审核人
+          </el-button>
         </template>
         <el-button
           v-if="showSubmitButton"
@@ -462,7 +534,7 @@ const handleDiscard = () => {
         <div class="approval-timeline">
           <div
             v-for="(item, index) in approvalFlow"
-            :key="`${item.title}-${index}`"
+            :key="`${item.stepName || item.actionType || item.time || index}`"
             class="approval-step"
             :class="{ 'approval-step--active': item.active }"
           >
@@ -470,10 +542,42 @@ const handleDiscard = () => {
             <div class="approval-step__dot"></div>
             <div class="approval-step__body">
               <div class="approval-step__time">{{ item.time }}</div>
-              <div class="approval-step__title">{{ item.title }}</div>
-              <div class="approval-step__actor">{{ item.actor }}</div>
-              <p>{{ item.description }}</p>
+              <div
+                v-if="item.stepName"
+                class="approval-step__title"
+              >
+                {{ item.stepName }}
+                <span
+                  v-if="item.actionType"
+                  class="approval-step__status"
+                >
+                  {{ item.actionType }}
+                </span>
+              </div>
+              <p
+                v-if="item.actionComment"
+                class="approval-step__comment"
+              >
+                审批意见：{{ item.actionComment }}
+              </p>
+              <div
+                v-if="item.actor"
+                class="approval-step__actor"
+              >
+                {{ item.actor }}
+              </div>
             </div>
+          </div>
+          <div
+            v-if="!approvalFlow.length"
+            class="approval-empty-state"
+          >
+            <span class="approval-empty-state__badge">
+              {{ approvalEmptyState.status }}
+            </span>
+            <p class="approval-empty-state__message">
+              {{ approvalEmptyState.message }}
+            </p>
           </div>
         </div>
       </section>
@@ -505,6 +609,44 @@ const handleDiscard = () => {
             type="primary"
             :loading="approvalDialogType === 'approve' ? approveLoading : rejectLoading"
             @click="submitApproval"
+          >
+            确定
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="adjustAssigneeDialogVisible"
+      title="调整审核人"
+      width="500px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <el-form label-width="80px">
+        <el-form-item label="审核人">
+          <el-select
+            v-model="selectedAssigneeUserIds"
+            multiple
+            filterable
+            placeholder="请选择审核人"
+          >
+            <el-option
+              v-for="item in adjustAssigneeOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="adjustAssigneeDialogVisible = false">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="adjustingAssignee"
+            @click="submitAdjustAssignee"
           >
             确定
           </el-button>
@@ -770,17 +912,50 @@ const handleDiscard = () => {
   font-weight: 600;
 }
 
+.approval-step__status {
+  margin-left: 8px;
+  color: #4f5f77;
+  font-size: 13px;
+  font-weight: 400;
+}
+
 .approval-step__actor {
   margin-top: 6px;
   color: #466083;
   font-size: 13px;
 }
 
-.approval-step p {
+.approval-step__comment {
   margin: 8px 0 0;
   color: #4f5f77;
   font-size: 13px;
   line-height: 1.7;
+}
+
+.approval-empty-state {
+  padding: 16px;
+  border: 1px dashed #d6e1f2;
+  border-radius: 8px;
+  background: #fafcff;
+}
+
+.approval-empty-state__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #3c5f99;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.approval-empty-state__message {
+  margin: 8px 0 0;
+  color: #6f7f97;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 @media (max-width: 1200px) {
