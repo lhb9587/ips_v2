@@ -47,19 +47,6 @@ const tabList = ref([
   { label: "我的申请", value: "mine" },
 ]);
 
-const BIZ_TYPE_OPTIONS = [
-  { label: "请假", value: "leave" },
-  { label: "加班", value: "overtime" },
-  { label: "补签", value: "supplement" },
-  { label: "出差", value: "trip" },
-];
-
-const STATUS_OPTIONS = [
-  { label: "审批中", value: "审批中" },
-  { label: "已通过", value: "已通过" },
-  { label: "已退回", value: "已退回" },
-];
-
 const resolveInitialTab = () => {
   const tab = route.query.tab;
   const index = tabList.value.findIndex((item) => item.value === tab);
@@ -119,10 +106,7 @@ const gridOptions = {
   suppressRowClickSelection: true,
 };
 
-const formInline = ref({
-  bizType: "",
-  status: "",
-});
+const formInline = ref({});
 const advancedFilter = ref({});
 
 const listQuery = ref({
@@ -223,8 +207,6 @@ const buildQueryParams = () => {
     tab: tabList.value[selectedTab.value]?.value || "all",
     pageNo: listQuery.value.pageNo,
     pageSize: listQuery.value.pageSize,
-    bizType: formInline.value.bizType || undefined,
-    status: formInline.value.status || undefined,
     ...advancedFilter.value,
   };
 
@@ -479,34 +461,6 @@ onUnmounted(() => {
                     :is-show="true"
                     @search="handleAdvancedSearch"
                   />
-                  <el-select
-                    v-model="formInline.bizType"
-                    class="approval-center__select"
-                    clearable
-                    placeholder="业务类型"
-                    @change="fuzzySearch"
-                  >
-                    <el-option
-                      v-for="item in BIZ_TYPE_OPTIONS"
-                      :key="item.value"
-                      :label="item.label"
-                      :value="item.value"
-                    />
-                  </el-select>
-                  <el-select
-                    v-model="formInline.status"
-                    class="approval-center__select"
-                    clearable
-                    placeholder="审批状态"
-                    @change="fuzzySearch"
-                  >
-                    <el-option
-                      v-for="item in STATUS_OPTIONS"
-                      :key="item.value"
-                      :label="item.label"
-                      :value="item.value"
-                    />
-                  </el-select>
                 </div>
               </div>
               <div class="flex-shrink-0">
@@ -619,10 +573,6 @@ onUnmounted(() => {
 .approval-center__toolbar {
   flex-wrap: wrap;
   align-items: center;
-}
-
-:deep(.approval-center__select.el-select) {
-  width: 140px;
 }
 
 .custom-tabs {

@@ -138,7 +138,7 @@ const fetchHistoryList = () => {
     {
       archiveId: archiveId.value,
       pageNo: listQuery.value.pageNo,
-      pageSize: Math.min(listQuery.value.pageSize, 100),
+      pageSize: listQuery.value.pageSize,
     },
     {
       isLoading: false,

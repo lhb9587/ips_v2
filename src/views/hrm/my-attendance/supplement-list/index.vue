@@ -146,7 +146,7 @@ const gridData = computed(() =>
 const fetchSupplementList = async () => {
   const payload = {
     pageNo: listQuery.value.pageNo,
-    pageSize: Math.min(listQuery.value.pageSize, 100),
+    pageSize: listQuery.value.pageSize,
     requestNo: diminput.value?.trim() || undefined,
     status: statusFilter.value || undefined,
   };

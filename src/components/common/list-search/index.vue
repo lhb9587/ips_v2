@@ -178,6 +178,7 @@
                     <el-select-v2
                       v-if="item.filterType === 'selectMany'"
                       v-model="queryModuleData[item.property]"
+                      :multiple="true"
                       :options="item.values || []"
                       :placeholder="$trans('common.keywordPlaceholder')"
                       filterable
@@ -873,6 +874,7 @@ import {
   queryList
   // queryApplicantByApplicantNameMh,
 } from "@/api/caseList";
+import { queryAttendanceGroupPage } from "@/api/attendance";
 import { queryAllUrl } from "@/api/applicant";
 import { querylyctListUrl,queryCustContactAllUrl,queryCustomerAddrAll,queryCollaborationAll } from "@/api/customerList";
 // import { queryAgencyListByName } from '@/api/case'
@@ -970,6 +972,31 @@ export default {
     }
   },
   methods: {
+    loadAttendanceGroupOptions() {
+      return queryAttendanceGroupPage(
+        {
+          pageNo: 1,
+          pageSize: 1000,
+        },
+        {
+          isLoading: false,
+        }
+      )
+        .then((res) => {
+          const records = Array.isArray(res?.data)
+            ? res.data
+            : Array.isArray(res?.data?.records)
+              ? res.data.records
+              : [];
+          return records.map((group) => ({
+            id: group.groupId,
+            value: group.groupName,
+          }));
+        })
+        .catch(() => {
+          return [];
+        });
+    },
     agentNumStartChange(value) {
       if (!this.queryModuleData.agentNumEnd) {
         this.queryModuleData.agentNumEnd = value;
@@ -1182,13 +1209,13 @@ export default {
       };
       this.conditionsModuleList = [];
 
-      queryFilterConfig(data).then((res) => {
+      queryFilterConfig(data).then(async (res) => {
         this.transferVisible = false;
         this.saveConfigLoading = false
         this.filtersLoading = false
         this.$nextTick(() => {
-          this.conditionsModuleList = res.data;
-          let keyList = res.data.map((item) => item.property);
+          let nextConditionsModuleList = Array.isArray(res.data) ? [...res.data] : [];
+          let keyList = nextConditionsModuleList.map((item) => item.property);
           for (var key in this.queryModuleData) {
             if (!keyList.includes(key)) {
               if (key.includes("Date") || ["belongToYearMonth"].includes(key)) {
@@ -1214,7 +1241,14 @@ export default {
               searchType: undefined,
             });
           }
-          res.data.forEach((item) => {
+          const attendanceGroupFilterIndex = nextConditionsModuleList.findIndex(
+            (item) =>
+              item.filterType === "selectMany" &&
+              item.property === "attendanceGroupIdList"
+          );
+          const applyConditionList = (list) => {
+            this.conditionsModuleList = list;
+            list.forEach((item) => {
             if (item.filterType.includes("Many")) {
               if (this.queryModuleData[item.property]) {
                 if (item.filterType.includes("Many")) {
@@ -1249,8 +1283,21 @@ export default {
                 this.queryModuleData[item.property] = [];
               }
             }
-          });
-          this.transferValue = res.data.map((item) => item.filterId);
+            });
+            this.transferValue = list.map((item) => item.filterId);
+          };
+          if (attendanceGroupFilterIndex > -1) {
+            this.loadAttendanceGroupOptions().then((options) => {
+              nextConditionsModuleList[attendanceGroupFilterIndex] = {
+                ...nextConditionsModuleList[attendanceGroupFilterIndex],
+                values: options,
+                valueList: options,
+              };
+              applyConditionList(nextConditionsModuleList);
+            });
+            return;
+          }
+          applyConditionList(nextConditionsModuleList);
         });
       });
     },

@@ -207,7 +207,7 @@ const fetchVerticalList = () => {
   queryScheduleVerticalPage(
     {
       pageNo: listQuery.value.pageNo,
-      pageSize: Math.min(listQuery.value.pageSize, 100),
+      pageSize: listQuery.value.pageSize,
       startDate: formInline.value.startDate,
       endDate: formInline.value.endDate,
       deptCode: formInline.value.deptCode || undefined,

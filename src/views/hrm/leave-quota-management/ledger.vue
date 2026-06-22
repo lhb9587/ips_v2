@@ -133,7 +133,7 @@ const fetchLedgerList = () => {
   queryLeaveQuotaLedgerPage(
     {
       pageNo: listQuery.value.pageNo,
-      pageSize: Math.min(listQuery.value.pageSize, 100),
+      pageSize: listQuery.value.pageSize,
       talentName: diminput.value || undefined,
     },
     {

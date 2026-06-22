@@ -54,11 +54,6 @@ const TAB_MAP = {
 const MAX_SCHEDULE_DATE_RANGE_DAYS = 31;
 const MAX_VERTICAL_DATE_RANGE_DAYS = 31;
 const WEEK_TEXT = ["日", "一", "二", "三", "四", "五", "六"];
-const DATE_TYPE_MAP = {
-  workday: "工作日",
-  restday: "休息日",
-  holiday: "节假日",
-};
 
 const resolveInitialTab = () => {
   const tab = route.query.tab;
@@ -257,7 +252,7 @@ const buildScheduleDetailRecord = (item = {}) => ({
   attendanceOrgName: item.attendanceOrgName || "",
   scheduleDate: item.scheduleDate || "",
   dateTypeValue: item.dateType || "",
-  dateType: DATE_TYPE_MAP[item.dateType] || item.dateType || "",
+  dateType: item.dateType || "",
   attendanceArchiveCode: item.attendanceArchiveCode || "",
   attendancePolicyCode: item.attendancePolicyCode || "",
   attendancePolicyName: item.attendancePolicyName || item.attendancePolicyCode || "",
@@ -322,7 +317,7 @@ const listQuery = ref({
   pageNo: 1,
   pageSize: fetchLocalPageSize(),
 });
-const pageSizesList = ref([10, 20, 50, 100]);
+const pageSizesList = ref([10, 50, 200, 500, 1000, 5000, 10000]);
 
 const fetchAttendanceGroupOptions = () => {
   attendanceGroupLoading.value = true;
@@ -478,15 +473,15 @@ const collectFlatDateMap = (record = {}) => {
 
 const isEmptyValue = (value) => value === undefined || value === null || value === "";
 
-const buildSharedQueryParams = () => ({
-  startDate: formInline.value.startDate,
-  endDate: formInline.value.endDate,
-  deptCode: advancedFilter.value.deptCode || undefined,
-  talentCode: advancedFilter.value.talentCode || undefined,
-  talentName: diminput.value?.trim() || advancedFilter.value.talentName || undefined,
-  shiftCode: advancedFilter.value.shiftCode || undefined,
-  groupId: advancedFilter.value.groupId || undefined,
-});
+const buildSharedQueryParams = () => {
+  const searchWord = diminput.value.trim();
+  return {
+    startDate: formInline.value.startDate,
+    endDate: formInline.value.endDate,
+    talentName: searchWord || undefined,
+    ...advancedFilter.value,
+  };
+};
 
 const validateVerticalDateRange = (startDate, endDate) => {
   if (!startDate || !endDate) {
@@ -518,7 +513,7 @@ const fetchHorizontalList = () => {
   queryScheduleHorizontalPage(
     {
       pageNo: listQuery.value.pageNo,
-      pageSize: Math.min(listQuery.value.pageSize, 100),
+      pageSize: listQuery.value.pageSize,
       ...buildSharedQueryParams(),
     },
     {
@@ -536,7 +531,7 @@ const fetchHorizontalList = () => {
         attendanceGroupName:
           item.attendanceGroupName || item.groupName || item.attendanceGroup || "",
         attendanceDate: item.scheduleDate || "",
-        dateType: DATE_TYPE_MAP[item.dateType] || item.dateType || "",
+        dateType: item.dateType || "",
         shiftName: item.shiftName || "",
         workStartTime: item.workStartTime || "",
         workEndTime: item.workEndTime || "",
@@ -561,7 +556,7 @@ const fetchVerticalList = () => {
   queryScheduleVerticalPage(
     {
       pageNo: listQuery.value.pageNo,
-      pageSize: Math.min(listQuery.value.pageSize, 200),
+      pageSize: listQuery.value.pageSize,
       ...buildSharedQueryParams(),
     },
     {
@@ -616,7 +611,7 @@ const fetchUnscheduledList = () => {
   queryScheduleUnscheduledPage(
     {
       pageNo: listQuery.value.pageNo,
-      pageSize: Math.min(listQuery.value.pageSize, 100),
+      pageSize: listQuery.value.pageSize,
       ...buildSharedQueryParams(),
     },
     {
