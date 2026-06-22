@@ -173,6 +173,10 @@ const handleCreate = () => {
   router.push({ name: "my-overtime-application" });
 };
 
+const handleBackToAttendanceHome = () => {
+  router.push({ name: "my-attendance" });
+};
+
 const getSelectedRows = () => gridRef.value?.getRowList?.() || [];
 
 const getRowRequestId = (row) => getOvertimeRequestId(row);
@@ -449,6 +453,12 @@ onUnmounted(() => {
                 </div>
               </span>
               <div class="d-flex gap-2">
+                <el-button
+                  plain
+                  @click="handleBackToAttendanceHome"
+                >
+                  返回我的考勤
+                </el-button>
                 <TopListTool
                   :gridName="gridName"
                   :buss-id="bussId"

@@ -5,10 +5,10 @@ export const ATTENDANCE_DETAIL_FROM = {
 };
 
 export const navigateAttendanceDetailBack = (router, route, defaultRoute) => {
-  if (window.self !== window.top) {
-    window.parent.postMessage({ code: "2" }, "*");
-    return;
-  }
+  // if (window.self !== window.top) {
+  //   window.parent.postMessage({ code: "2" }, "*");
+  //   return;
+  // }
 
   const { from, tab } = route.query || {};
   if (from === ATTENDANCE_DETAIL_FROM.APPROVAL_CENTER) {

@@ -180,6 +180,10 @@ const handleCreate = () => {
   router.push({ name: "my-leave-application" });
 };
 
+const handleBackToAttendanceHome = () => {
+  router.push({ name: "my-attendance" });
+};
+
 const getSelectedRows = () => gridRef.value?.getRowList?.() || [];
 
 const getRowRequestId = (row) => getLeaveRequestId(row);
@@ -435,6 +439,12 @@ onUnmounted(() => {
                 </div>
               </span>
               <div class="d-flex gap-2">
+                <el-button
+                  plain
+                  @click="handleBackToAttendanceHome"
+                >
+                  返回我的考勤
+                </el-button>
                 <TopListTool
                   :gridName="gridName"
                   :buss-id="bussId"
