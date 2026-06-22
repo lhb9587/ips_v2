@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, onUnmounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage, ElMessageBox } from "element-plus";
 import dayjs from "dayjs";
@@ -26,7 +26,12 @@ import {
 } from "@/views/hrm/my-attendance/utils/leaveDetail";
 
 const route = useRoute();
+const router = useRouter();
 const store = useStore();
+
+const handleBackToAttendanceManagement = () => {
+  router.push({ name: "attendance-management" });
+};
 
 const bussId = 473;
 const gridName = "leaveManagementGrid";
@@ -492,6 +497,12 @@ onUnmounted(() => {
                 </div>
               </span>
               <div class="d-flex gap-2">
+                <el-button
+                  plain
+                  @click="handleBackToAttendanceManagement"
+                >
+                  返回假勤管理导航
+                </el-button>
                 <TopListTool
                   :gridName="gridName"
                   :buss-id="bussId"

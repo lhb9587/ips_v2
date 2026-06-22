@@ -1,7 +1,7 @@
 <!-- 考勤计算列表页，负责按考勤周期、人员、组织与考勤组筛选三类计算状态列表。 -->
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage } from "element-plus";
 import Layout from "@/layouts/main";
@@ -22,7 +22,12 @@ import {
 import CalcTaskDialog from "./calc-task-dialog.vue";
 
 const route = useRoute();
+const router = useRouter();
 const store = useStore();
+
+const handleBackToAttendanceManagement = () => {
+  router.push({ name: "attendance-management" });
+};
 
 const CALCULATED_EXCEPTION_FILTER_OPTIONS = [
   { field: "absent", label: "旷工" },
@@ -579,6 +584,12 @@ onUnmounted(() => {
                     />
                   </el-tabs>
                 </div>
+                <el-button
+                  plain
+                  @click="handleBackToAttendanceManagement"
+                >
+                  返回假勤管理导航
+                </el-button>
                 <TopListTool
                   :gridName="currentGridName"
                   :buss-id="currentBussId"

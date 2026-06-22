@@ -33,6 +33,10 @@ const route = useRoute();
 const router = useRouter();
 const store = useStore();
 
+const handleBackToAttendanceManagement = () => {
+  router.push({ name: "attendance-management" });
+};
+
 const TAB_MAP = {
   horizontal: {
     label: "横向显示",
@@ -288,7 +292,7 @@ const currentOperator = computed(() => ({
 const calculateGridHeight = () => {
   const windowHeight = document.documentElement.clientHeight;
   if (store.state.layout.embedMode) {
-    return windowHeight - 135;
+    return windowHeight - 140;
   }
   const layout = store.state.layout.layoutType;
   if (layout === "vertical") {
@@ -1397,6 +1401,12 @@ onUnmounted(() => {
                 </div>
               </span>
               <div class="d-flex gap-2 schedule-list__actions">
+                <el-button
+                  plain
+                  @click="handleBackToAttendanceManagement"
+                >
+                  返回假勤管理导航
+                </el-button>
                 <div class="schedule-list__tabs">
                   <el-tabs
                     v-model="activeTab"

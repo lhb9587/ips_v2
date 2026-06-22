@@ -30,6 +30,10 @@ const route = useRoute();
 const router = useRouter();
 const store = useStore();
 
+const handleBackToAttendanceManagement = () => {
+  router.push({ name: "attendance-management" });
+};
+
 const bussId = 479;
 const gridName = "supplementManagementGrid";
 
@@ -504,6 +508,12 @@ onUnmounted(() => {
                 </div>
               </span>
               <div class="d-flex gap-2">
+                <el-button
+                  plain
+                  @click="handleBackToAttendanceManagement"
+                >
+                  返回假勤管理导航
+                </el-button>
                 <TopListTool
                   :gridName="gridName"
                   :buss-id="bussId"

@@ -1,6 +1,6 @@
 ﻿<script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import { ElMessage, ElMessageBox } from "element-plus";
 import Layout from "@/layouts/main";
@@ -20,7 +20,12 @@ import {
 } from "@/api/attendance";
 
 const route = useRoute();
+const router = useRouter();
 const store = useStore();
+
+const handleBackToAttendanceManagement = () => {
+  router.push({ name: "attendance-management" });
+};
 
 const bussId = 457;
 const gridName = "attendanceGroupGrid";
@@ -535,6 +540,12 @@ onUnmounted(() => {
                 </div>
               </span>
               <div class="d-flex gap-2">
+                <el-button
+                  plain
+                  @click="handleBackToAttendanceManagement"
+                >
+                  返回假勤管理导航
+                </el-button>
                 <TopListTool
                   :gridName="gridName"
                   :buss-id="bussId"
