@@ -8,6 +8,7 @@ import Layout from "@/layouts/main";
 import {
   queryAttendanceCalendarDayDetail,
   queryAttendanceCalendarMonth,
+  refreshAttendanceCalendarSnapshot,
 } from "@/api/attendance";
 
 const route = useRoute();
@@ -109,6 +110,7 @@ const statusIconRules = [
 
 const monthLoading = ref(false);
 const detailLoading = ref(false);
+const refreshLoading = ref(false);
 const resolveInitialDate = () => {
   const queryDate = String(route.query.date || "").trim();
   if (queryDate && dayjs(queryDate).isValid()) {
@@ -119,6 +121,10 @@ const resolveInitialDate = () => {
 const currentMonth = ref(dayjs(resolveInitialDate()).startOf("month"));
 const selectedDate = ref(resolveInitialDate());
 const monthData = ref({
+  talentCode: "",
+  talentName: "",
+  deptName: "",
+  yearMonth: "",
   stats: {},
   days: [],
 });
@@ -514,6 +520,10 @@ async function loadMonthData() {
       { isLoading: false },
     );
     monthData.value = {
+      talentCode: res.data?.talentCode || "",
+      talentName: res.data?.talentName || "",
+      deptName: res.data?.deptName || "",
+      yearMonth: res.data?.yearMonth || currentMonth.value.format("YYYY-MM"),
       stats: res.data?.stats || {},
       days: res.data?.days || [],
     };
@@ -560,6 +570,34 @@ async function loadDayDetail() {
 async function refreshPage() {
   await loadMonthData();
   await loadDayDetail();
+}
+
+async function handleRefreshSnapshot() {
+  const talentCode = String(monthData.value.talentCode || "").trim();
+  if (!talentCode) {
+    ElMessage.warning("未获取到员工编码，无法刷新快照");
+    return;
+  }
+
+  refreshLoading.value = true;
+  try {
+    const res = await refreshAttendanceCalendarSnapshot(
+      {
+        talentCode,
+        startDate: currentMonth.value.startOf("month").format("YYYY-MM-DD"),
+        endDate: currentMonth.value.endOf("month").format("YYYY-MM-DD"),
+        refreshMode: "manual_refresh",
+      },
+      { isLoading: false },
+    );
+    const data = res.data || {};
+    ElMessage.success(
+      `快照刷新完成：成功 ${data.successCount ?? 0} 天，失败 ${data.failCount ?? 0} 天`,
+    );
+    await refreshPage();
+  } finally {
+    refreshLoading.value = false;
+  }
 }
 
 function changeMonth(step) {
@@ -692,13 +730,24 @@ onMounted(async () => {
                 <i class="bx bx-chevron-right"></i>
               </button>
             </div>
-            <el-date-picker
-              v-model="selectedMonthValue"
-              type="month"
-              value-format="YYYY-MM"
-              placeholder="选择月份"
-              class="calendar-board__picker"
-            />
+            <div class="calendar-board__actions">
+              <el-button
+                type="primary"
+                :loading="refreshLoading"
+                :disabled="monthLoading || !monthData.talentCode"
+                @click="handleRefreshSnapshot"
+              >
+                <i class="bx bx-refresh"></i>
+                刷新
+              </el-button>
+              <el-date-picker
+                v-model="selectedMonthValue"
+                type="month"
+                value-format="YYYY-MM"
+                placeholder="选择月份"
+                class="calendar-board__picker"
+              />
+            </div>
           </div>
 
           <div class="calendar-weekdays">
@@ -953,6 +1002,18 @@ onMounted(async () => {
   gap: 14px;
 }
 
+.calendar-board__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.calendar-board__actions :deep(.el-button) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .switch-btn {
   width: 34px;
   height: 34px;
@@ -1162,6 +1223,11 @@ onMounted(async () => {
   .calendar-toolbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .calendar-board__actions {
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .calendar-toolbar__actions,

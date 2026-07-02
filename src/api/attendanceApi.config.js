@@ -50,6 +50,7 @@ const attendanceApi = {
   queryAttendanceRotationRuleList: `${ATTENDANCE_URL}/api/attendance/setting/rotation-rule/list`,
   queryAttendanceCalendarMonth: `${ATTENDANCE_URL}/api/attendance/calendar/month`,
   queryAttendanceCalendarDayDetail: `${ATTENDANCE_URL}/api/attendance/calendar/day-detail`,
+  refreshAttendanceCalendarSnapshot: `${ATTENDANCE_URL}/api/attendance/calendar/snapshot/refresh`,
   queryAttendanceCalcParams: `${ATTENDANCE_URL}/api/attendance/calc/params`,
   initAttendanceCalcCycleState: `${ATTENDANCE_URL}/api/attendance/calc/cycle-state/init`,
   queryAttendanceCalcNotCalculatedPage: `${ATTENDANCE_URL}/api/attendance/calc/not-calculated/page`,

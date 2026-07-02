@@ -438,6 +438,15 @@ export function queryAttendanceCalendarDayDetail(data, config = {}) {
   })
 }
 
+export function refreshAttendanceCalendarSnapshot(data, config = {}) {
+  return request({
+    url: attendanceApi.refreshAttendanceCalendarSnapshot,
+    method: 'post',
+    data,
+    ...config
+  })
+}
+
 export function queryAttendanceCalcParams(data = {}, config = {}) {
   return request({
     url: attendanceApi.queryAttendanceCalcParams,
